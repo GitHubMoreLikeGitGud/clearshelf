@@ -47,7 +47,7 @@ From the repository root, in PowerShell:
 
 | Task | File | Scope | Status |
 |---|---|---|---|
-| C1 | C1-zetaris-preflight.md | read-only Zetaris JDBC preflight | planned |
+| C1 | C1-zetaris-preflight.md | read-only Zetaris JDBC preflight | done 2026-10-23 |
 | C2 | C2-lightning-sql-and-usl.md | Lightning SQL create/select pairs, clearance_usl DDL and DQ rules | planned |
 | C3 | C3-lexicon-and-verifiers.md | multilingual lexicon, jurisdiction, GTIN normaliser, claim tester and tests | planned |
 | C4 | C4-ui-screens.md | the four UI screens | planned |

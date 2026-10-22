@@ -66,3 +66,40 @@ Creating ClearShelf objects in Zetaris (that is C2 and the gateway onboarding), 
 ## Commit
 
 This task changes no files in this repository; the task file and its run record are committed here. The run transcript is kept privately.
+
+## Run record (2026-10-23)
+
+Cursor Agent CLI 2026.10.22, model `Auto`, headless (`-p --trust --force`), workspace = the getting-started clone. Wall time 65.8 s; the CLI reported 59.8 s of agent time, 20,930 input tokens, 2,862 output tokens and 127,744 cached input tokens. Exit code 0.
+
+What Cursor Agent did, in order:
+
+1. Read `docs/connections/cursor-connection.md`, then ran `python3 scripts/preflight.py --jdbc`. On this Windows machine `python3` is the Microsoft Store alias, so the command failed (exit 9009).
+2. Checked for `.venv\Scripts\python.exe`, `.env.local` and `JAVA_HOME\bin\java.exe` (all present), then ran `.venv\Scripts\python.exe scripts/preflight.py --jdbc` (exit 1, `NOT READY: 4 check(s) failed`):
+
+   | Check | Result |
+   |---|---|
+   | env file | PASS |
+   | `ZETARIS_API_KEY` | FAIL (missing; REST is not configured) |
+   | `ZETARIS_USERNAME`, `ZETARIS_PASSWORD` | PASS (set) |
+   | `ZETARIS_USER_AGENT` | INFO (not set) |
+   | REST | FAIL (no API key) |
+   | JDBC port 10000 | PASS (open) |
+   | Java (JDK 11+) | FAIL: "none found" |
+   | `.venv` | FAIL: "missing" |
+   | jaydebeapi | PASS (importable) |
+   | driver JAR | PASS (file exists) |
+
+3. Read `scripts/zetaris_sql.py` and identified the Java and `.venv` failures as Windows path false negatives: the script looks for `bin/java` and `.venv/bin/python`, while Windows has `bin\java.exe` and `.venv\Scripts\python.exe`. It confirmed `java -version` (Temurin 21.0.12.1) and that jaydebeapi imports from `.venv`.
+4. Its first attempt at a direct connection was refused by the CLI's own command check (a PowerShell quoting problem, nothing ran). It retried with a PowerShell here-string piped to `.venv\Scripts\python.exe -`, loading `.env.local` without printing values and connecting with `com.zetaris.lightning.jdbc.LightningDriver`:
+
+   | Statement | Result |
+   |---|---|
+   | `SELECT 1` | `1` |
+   | `SHOW LIGHTNING DATABASES` | 6 rows: `CLEARSHELF_FDA`, `CLEARSHELF_FSA`, `CLEARSHELF_OFF`, `CLEARSHELF_OPS` (created earlier the same morning by the onboarding gates), `NY_TAXI`, `TPCDS_DB` |
+   | `SHOW NAMESPACES OR TABLES IN lightning.metastore` | 1 row: namespace `clearshelf`, 0 USLs |
+
+5. Reported JDBC as ready and REST as not configured, installed nothing, changed no files, and stopped to wait for a go-ahead before any create work.
+
+Afterwards `git status` in the getting-started clone showed no tracked changes; the only new file is Python's gitignored `scripts/__pycache__/`. No credential value appears in the run output.
+
+Finding for the gateway: the getting-started JDBC helpers assume macOS/Linux paths. ClearShelf's adapted `gateway/jdbc.py` accepts `bin\java.exe` as well as `bin/java`.
