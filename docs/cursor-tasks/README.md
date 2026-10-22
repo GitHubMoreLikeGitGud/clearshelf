@@ -42,3 +42,16 @@ From the repository root, in PowerShell:
 2. After the run: review `git status` and `git diff`. Check that only the paths under **Deliverables** changed, that the checks pass when run again by hand, and that no secret, private path or bulk source data was added.
 3. Stage the deliverables by explicit path (`git add <path> ...`, never `git add -A`) and commit with the message from the task file: `Cn: <task> (Cursor Agent)`. Plain messages only, with no trailers.
 4. Transcripts of runs are kept privately, outside the repository.
+
+## Task index
+
+| Task | File | Scope | Status |
+|---|---|---|---|
+| C1 | C1-zetaris-preflight.md | read-only Zetaris JDBC preflight | planned |
+| C2 | C2-lightning-sql-and-usl.md | Lightning SQL create/select pairs, clearance_usl DDL and DQ rules | planned |
+| C3 | C3-lexicon-and-verifiers.md | multilingual lexicon, jurisdiction, GTIN normaliser, claim tester and tests | planned |
+| C4 | C4-ui-screens.md | the four UI screens | planned |
+| C5 | C5-evidence-drawer-and-ledger.md | evidence drawer and ledger trace view | planned |
+| C6 | C6-eval-runner.md | eval runner and report | planned |
+| C7 | C7-readme-drafts.md | README and how-cursor-was-used drafts | planned |
+| C8 | C8-rehearsal-fixes.md | interactive fixes during rehearsal | planned |
