@@ -1,0 +1,23 @@
+# Local secrets and settings
+.env
+.env.local
+
+# Runtime state. Only the regulatory reference and the intake manifest are committed.
+data/*
+!data/reference/
+!data/manifest/
+
+# Dependencies and environments
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Private working material
+transcripts/
+notes/
+
+# OS files
+Thumbs.db
+.DS_Store

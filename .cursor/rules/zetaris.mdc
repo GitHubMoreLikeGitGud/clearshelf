@@ -1,0 +1,51 @@
+---
+description: Zetaris Lightning SQL rules for the gateway, onboarding scripts and USL model
+globs: gateway/**,zetaris/**,ops/**,agent/src/zetaris/**
+alwaysApply: false
+---
+
+# Zetaris rules
+
+Zetaris Lightning 2.4.3.1 runs locally in Docker. JDBC `jdbc:zetaris:lightning@localhost:10000`, driver class `com.zetaris.lightning.jdbc.LightningDriver`, driver JAR from `ZETARIS_JDBC_JAR`. UI http://localhost:3000, API 8888. Never call port 8889.
+
+## Writing SQL
+
+- Lightning SQL only. Not Spark SQL or Hive SQL; never start a local Spark session.
+- One statement per call, no trailing semicolon, qualified names (`<source>.<table>`).
+- A multi-table `COMPILE USL ... DDL CREATE TABLE ...; CREATE TABLE ...` is ONE statement. Never split it on `;`.
+- `lightning.metastore` must exist before `CREATE NAMESPACE IF NOT EXISTS lightning.metastore.clearshelf`.
+- `DESCRIBE BY` text accepts only letters, digits, spaces and `_ . - ,`. Parentheses, slashes and colons fail.
+- `SHOW DQ ALL INVALID TABLE <namespace.usl.table>` needs the `TABLE` clause.
+- Custom DQ rules: same table only, no alias, no window functions. PK and FK rules are generated; confirm names with `LIST DQ USL lightning.metastore.clearshelf.clearance_usl`.
+- `ACTIVATE USL TABLE` from raw tables (activating from a view is untested), with `COALESCE` on every NOT NULL column.
+- Nested JSON arrays are read with `LATERAL VIEW explode(...)`.
+- Never select firm street addresses (`address_1`, `address_2`, `postal_code`) or Open Food Facts contributor fields.
+
+## Objects we own (and the only ones we touch)
+
+- Lightning databases `CLEARSHELF_OFF`, `CLEARSHELF_FDA`, `CLEARSHELF_FSA`, `CLEARSHELF_OPS`; schemastore container `clearshelf`.
+- USL `lightning.metastore.clearshelf.clearance_usl`.
+- Never DROP anything we did not create; never touch other namespaces or databases. Teardown goes through the onboarding tool, never hand-written DROP.
+
+## REST tables
+
+- Source tables (openFDA, FSA, one `clearshelf_off.off_<gtin13>` per SKU) are `CACHE TABLE`d. CACHE is per session: on reconnect the gateway re-runs the warm-up.
+- Ops tables (`http://clearshelf-ops/<name>.json`, shape `{"data":[...]}`) are never cached. Every ops file keeps a sentinel row whose primary key is `"__schema__"` with every field filled; activation queries filter it out. Writes are atomic (temp file, then rename).
+- The `user-agent` header comes from `CLEARSHELF_USER_AGENT`. Never commit or send the `YOUR_APP_NAME YOUR_CONTACT_EMAIL` placeholder, and never invent a contact.
+- Open Food Facts registrations at least 2.5 s apart; on 429/503 back off to 5 s and retry twice.
+
+## Gateway contract
+
+- The agent sends only `{template_id, params, role}` to `POST /sql/template`; it never sends SQL text.
+- Params are validated by regex: GTIN `^\d{13}$` with a valid check digit; notice ids `^H-\d{4}-\d{4}$` or `^FSA-AA-\d+-\d{4}$`; brand `[a-z0-9 ]{1,40}`.
+- Allowlist. Reader: `SELECT`, `SHOW`, `DESCRIBE`, `LOAD USL`, `LIST DQ`, `RUN DQ`, `SHOW DQ`. Registrar adds: `CREATE LIGHTNING REST TABLE` for hosts world.openfoodfacts.org, api.fda.gov, data.food.gov.uk and clearshelf-ops only; `CACHE`/`UNCACHE TABLE` on `clearshelf_*`; `ACTIVATE USL TABLE lightning.metastore.clearshelf.*`; onboarding-only `COMPILE USL`, `REGISTER DQ`, `CREATE LIGHTNING DATABASE`.
+- Always refused: `DROP`, `GRANT`, `REVOKE`, `INVALIDATE CACHE`, `OFFSITE*`, anything touching port 8889.
+- Every statement is logged to `data/evidence/sql_log.jsonl` with its sha256.
+- DQ checks run with a bounded wait. If DQ hangs, run the equivalent plain SQL and label the evidence "DQ-equivalent SQL".
+
+## Scripts and verification
+
+- Create scripts live in `zetaris/sql/` as `NN_<name>_create.sql` / `_select.sql` pairs, declared in `zetaris/manifest.json`.
+- Dry-run first (`--dry-run`), rerun with `--skip-exists`.
+- After creating a table, compare its row count with an independent `curl ... | jq` count and record both in `zetaris/README.md`.
+- Reference: the Zetaris getting-started repository (https://github.com/zetaris/getting-started), `docs/guides/zetaris-lightning-sql-commands.md` and `docs/guides/zetaris-lightning-sql-companion.md`.

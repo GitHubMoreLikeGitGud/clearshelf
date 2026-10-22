@@ -1,0 +1,43 @@
+---
+description: Meterless engine contracts (H-MEM, World Model, Markovian, Scout subset) and the never-edit rule for engines/
+globs: engines/**,agent/src/memory/**,agent/src/world/**,agent/src/loop/**,agent/src/contract/**
+alwaysApply: false
+---
+
+# Meterless rules
+
+## Vendored engines are read-only
+
+- `engines/` holds the Meterless reference implementations and conformance suites, vendored unchanged from the upstream commit in `engines/UPSTREAM.md`. Never edit, reformat or "fix" a file there.
+- Import them as TypeScript modules through tsx, for example `import { HMEM } from "../../engines/hmem/reference/src/index.ts"`.
+- Extensions live in `agent/src/` and must keep the engine contract: the H-MEM facade (`agent/src/memory/hmemFacade.ts`, a subclass of `HMEM`) has to pass `engines/hmem/conformance/runner.ts` via `HMEM_IMPL=<absolute path, forward slashes>`.
+- Rerun conformance after any change that touches an engine boundary and record the result in `docs/conformance.md`.
+
+## H-MEM
+
+- `new HMEM({ persistDir: "data/hmem", actor: "clearshelf-agent", minerFn })`. `minerFn` calls Nemotron with think off and strict JSON array output; the reference's model-free path is the fallback.
+- Facts carry `source: "zetaris:<object>"`, `provenance.origin` (`document` for source rows, `plan_completion` for derived results), `provenance.refs = [evidenceId, sqlSha256]`, and tags `gtin:<13>`, `brand:<norm>`, `allergen:<code>`, `polarity:contains|may_contain|free_from`, `notice:<id>`.
+- Officer reasons go through `mine("user_correction", reason)` with actor `officer`.
+- Allergen-polarity conflicts (same GTIN or brand, same allergen, opposite polarity) are found in `agent/src/memory/allergenConflicts.ts`, logged as `conflict_detected`, and NEVER auto-resolved. Resolution sets `supersededBy` on the loser and logs `conflict_resolved` with actor `officer`. Nothing is deleted.
+- Dream proposals materialise only through the officer's `approve()`. Approved invariants may only escalate a decision, never relax it.
+
+## World Model
+
+- `new WorldModel({ storage: "local", namespace: "clearshelf", directory: "data/world", conflictPolicy: "most-recent-wins" })`.
+- Provenance `at` comes from the source record (OFF `last_modified_t`, FDA `report_date`, FSA `created`), never from retrieval time. That keeps re-ingest idempotent (empty diff).
+- Merge bands: similarity >= 0.85 auto-links; 0.82 to 0.85 goes to `mergeQueue()` for the officer. A name match never auto-HOLDs.
+- `assertFact(product, "clearance:<market>", status)` and `snapshot()` on every decision.
+- The vendored `control-plane/live.html` shows only its own seed data; never present it as showing ClearShelf data.
+
+## Markovian
+
+- `new Markovian({ chunkConfig: { chunkSize: 2000, maxChunks: 8, carryoverTokens: 768, overlapTokens: 0 }, historyDir: "data/markovian", generator })`; the recall sweep uses `maxChunks: 16`.
+- The orchestrator is unchanged; our generator (`agent/src/loop/generator.ts`) runs at most 2 tool calls per chunk and returns marker text: content, one `<NEEDS_TOOL tool=".." input='..'/>` per executed call, `[STATE_CHECKPOINT]` with the typed state JSON, and `[TASK_COMPLETE]` only when the checklist is satisfied.
+- A run that ends at max-chunks yields HOLD with reason "investigation incomplete".
+- Telemetry labels: Ollama `prompt_eval_count`/`eval_count` are "measured"; the naive full-history baseline is "estimated (chars/4)".
+
+## Scout Intent (our partial reimplementation)
+
+- There is no upstream reference. Our subset (`agent/src/contract/`) is labelled "partial reimplementation" everywhere it is described.
+- Guard: scan every untrusted text before any model sees it; on a hit wrap it in `<untrusted>` and flag the SKU `untrusted_text` (forces HOLD). Never drop text silently.
+- Execution contract: HMAC-SHA256 over canonical JSON with `CLEARSHELF_CONTRACT_SECRET`, expiry 15 minutes, verified by both the TypeScript ops writer and the Python registrar. Describe it as an integrity check, not cryptographic-grade security.

@@ -1,0 +1,30 @@
+{
+  "name": "clearshelf-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ClearShelf agent and UI server: Node 22 + TypeScript via tsx, no runtime dependencies.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "cli": "tsx src/cli.ts",
+    "onboard": "tsx src/cli.ts onboard",
+    "clear": "tsx src/cli.ts clear",
+    "watch": "tsx src/cli.ts watch",
+    "replay": "tsx src/cli.ts replay",
+    "eval": "tsx src/cli.ts eval",
+    "warmup": "tsx src/cli.ts warmup",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  },
+  "overrides": {
+    "vite": "7.3.7"
+  }
+}

@@ -1,0 +1,32 @@
+---
+description: Languages, code style, tests and commit conventions for ClearShelf
+alwaysApply: true
+---
+
+# Style rules
+
+## Languages
+
+- Agent and UI server: TypeScript on Node 22, run with tsx, ES modules. No runtime dependencies in `agent/package.json`; devDependencies are tsx, typescript and vitest at pinned versions.
+- Zetaris gateway: Python 3.12 in the repo-root `.venv`, FastAPI + JayDeBeApi + JPype1 (`gateway/requirements.txt`).
+- UI: plain HTML, CSS and ES modules in `ui/`, no build step, live updates over SSE from `/api/events`.
+
+## Code
+
+- Small, focused modules matching the layout in `AGENTS.md`. Deterministic logic (verifiers, policy, statements, GTIN checks) stays free of model calls so it can be unit-tested.
+- Model output is parsed against a JSON schema; invalid output is retried once, then a deterministic fallback step is taken and labelled "fallback step".
+- Every claim shown to the officer lists one or more evidence ids from `agent/src/evidence/store.ts`.
+- Ops JSON files are written atomically (temp file, then rename).
+- Comments explain why, not what changed.
+
+## Tests
+
+- TypeScript: vitest, files in `agent/test/*.test.ts`; run `cd agent && npm test`.
+- Python: pytest in `gateway/tests/`.
+- A task is done when its listed tests pass. Do not weaken or skip a test to make it pass.
+
+## Commits
+
+- Stage explicit paths only. Cursor Agent commits use the message `Cn: <task> (Cursor Agent)`.
+- Plain commit messages: no co-author lines and no other trailers.
+- Public text (README, docs, code comments, commit messages) names no development tool other than Cursor.

@@ -1,0 +1,42 @@
+ClearShelf
+Copyright 2026 Umar Mohktar
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+
+Third-party software in this repository
+---------------------------------------
+
+Meterless reference engines: H-MEM, Markovian, World Model
+  Paths: engines/hmem, engines/markovian, engines/world-model
+  Source: https://github.com/Meterless/Meterless
+  Commit: 1742dec56a66e58eef9dda2d2b865823758ca8cd
+  Copyright 2026 Meterless
+  Licensed under the Apache License, Version 2.0. Vendored unchanged;
+  see engines/UPSTREAM.md. Each engine's LICENSE is kept alongside it.
+
+
+Data sources read at runtime
+----------------------------
+
+No bulk data from these sources is distributed in this repository.
+
+Open Food Facts
+  Data from Open Food Facts (openfoodfacts.org), ODbL 1.0
+  https://opendatacommons.org/licenses/odbl/1-0/
+
+openFDA food enforcement reports (U.S. Food and Drug Administration)
+  Public domain / CC0 1.0. ClearShelf is not endorsed by the FDA.
+
+UK Food Standards Agency food alerts
+  Contains public sector information licensed under the Open Government
+  Licence v3.0.
+  https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+
+
+Models
+------
+
+NVIDIA Nemotron (nemotron-3-nano) runs locally through Ollama under the
+NVIDIA Open Model License. The model weights are not redistributed in this
+repository.

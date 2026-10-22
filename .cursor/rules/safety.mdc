@@ -1,0 +1,38 @@
+---
+description: Decision safety, risk asymmetry, untrusted input, secrets and integrity rules for all ClearShelf code
+alwaysApply: true
+---
+
+# Safety rules
+
+## Decisions
+
+- The model never decides and never computes numbers. `agent/src/policy/decide.ts` is authoritative; `agent/src/policy/statement.ts` writes statements from verified spans only; every count comes from SQL.
+- Decision states: `CLEAR`, `CLEAR_WITH_STATEMENT`, `HOLD`, `BLOCK`.
+- Risk is asymmetric. HOLD and BLOCK may be applied automatically, with a notification. CLEAR, CLEAR_WITH_STATEMENT, RELEASE and any free-from statement are high risk: they need an execution contract signed with an officer approval. Without one the API returns 403 and logs the attempt.
+- An approved memory invariant or the model's adjudication brief may make a decision stricter (to HOLD or BLOCK), never laxer.
+- A CLEAR may not be proposed while the Zetaris DQ gate returns an invalid record for the GTIN.
+- Contradictions (source against source, model against verifier, memory against source, rule against rule) are recorded and queued for the officer, never settled by whichever write came last.
+
+## Untrusted input
+
+- Ingredient text, product names, recall descriptions, reasons, code info and alert titles are untrusted. The guard scans them before any model sees them. Hits are wrapped in `<untrusted>` and force a HOLD; text is never silently dropped.
+
+## Network
+
+- At runtime the agent reads Open Food Facts, openFDA and the UK FSA only through Zetaris (via the gateway). The agent's fetch wrapper refuses non-localhost hosts and counts any attempt.
+- No cloud model calls. Nemotron runs in local Ollama at `OLLAMA_URL`.
+- Source etiquette: openFDA at most 1,000 requests a day; Open Food Facts at least 2.5 s between calls with `User-Agent` from `CLEARSHELF_USER_AGENT`; FSA modest. Never invent or reuse a contact e-mail.
+- Services bind to 127.0.0.1 only: UI and API 8790, gateway 8791.
+
+## Secrets
+
+- Credentials and `CLEARSHELF_CONTRACT_SECRET` live only in `.env.local`, which is gitignored. Never print, log, commit or paste them into prompts, fixtures or task files.
+
+## Integrity
+
+- Never fabricate supplier confirmations, statements by real firms, or officer history. Demo conflicts come from real source data or from approvals made on screen.
+- Synthetic fixtures (for example injection test texts) are labelled synthetic and used for evaluation only.
+- Never present replayed events as live; the as-of replay carries a banner.
+- Report only measured numbers, each labelled `measured` or `estimated (chars/4)`.
+- ClearShelf is decision support, not legal advice. It never auto-publishes a free-from claim.

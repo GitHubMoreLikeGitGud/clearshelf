@@ -1,0 +1,32 @@
+---
+description: Data source licences, attribution text and what data may be committed
+globs: data/**,docs/**,zetaris/**,README.md,NOTICE,metadata.json,scripts/**
+alwaysApply: false
+---
+
+# Data and licence rules
+
+## Sources and required attribution
+
+| Source | Licence | Attribution text |
+|---|---|---|
+| Open Food Facts product API v2 | ODbL 1.0 | "Data from Open Food Facts (openfoodfacts.org), ODbL" |
+| openFDA food enforcement | Public domain / CC0 | Say the project is not endorsed by the FDA. |
+| UK FSA food alerts | Open Government Licence v3.0 | "Contains public sector information licensed under the Open Government Licence v3.0" |
+
+Evidence records carry the source URL and the licence string.
+
+## What may be committed
+
+- Committed data: `data/reference/market_allergens.json` (each entry with statute, edition and citation URL) and `data/manifest/skus.json` (GTIN, market, reference labels).
+- Never commit bulk Open Food Facts data, Open Food Facts ingredient text, or raw API dumps. Everything else under `data/` is runtime state and stays gitignored.
+- The US tree-nut list is transcribed from FDA's food-allergen guidance (Edition 5) page, with its URL, not typed from memory.
+- Evaluation labels are "reference labels" derived from recalls and documented label rules. Never call them "hand-labelled".
+- No personal data: firm street addresses are never selected, and no Open Food Facts contributor fields are read.
+
+## Code and model licences
+
+- The project is Apache-2.0 (`LICENSE`, `NOTICE`).
+- Meterless engines are Apache-2.0 and vendored unchanged; keep their `LICENSE` files and the entry in `NOTICE`.
+- Code adapted from the Zetaris getting-started repository (Apache-2.0) keeps an attribution header in the file and gets an entry in `NOTICE`.
+- NVIDIA Nemotron is used under the NVIDIA Open Model License. Model weights are never added to the repository.

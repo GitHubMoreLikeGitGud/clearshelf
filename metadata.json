@@ -1,0 +1,30 @@
+{
+  "name": "ClearShelf",
+  "tagline": "Allergen clearance and recall watch for online grocers. Every decision is cited and every release is signed.",
+  "track": "Track 3: Reasoning Architecture",
+  "team": "Umar Mohktar (solo)",
+  "repository": "",
+  "demo_video": "",
+  "meterless": {
+    "engines": ["hmem", "world-model", "markovian", "scout-intent"],
+    "usage": {}
+  },
+  "zetaris": {
+    "role": "",
+    "instance": "local Docker, Zetaris 2.4.3.1",
+    "usl": "lightning.metastore.clearshelf.clearance_usl",
+    "lightning_databases": ["CLEARSHELF_OFF", "CLEARSHELF_FDA", "CLEARSHELF_FSA", "CLEARSHELF_OPS"]
+  },
+  "nvidia": {
+    "model": "nemotron-3-nano:4b via Ollama, local RTX 4070 Ti Super 16 GB",
+    "roles": [],
+    "cloud_model_calls": null
+  },
+  "cursor": "",
+  "data_sources": [
+    {"name": "Open Food Facts product API v2", "licence": "ODbL-1.0"},
+    {"name": "openFDA food enforcement", "licence": "Public domain / CC0"},
+    {"name": "UK FSA Food Alerts API", "licence": "OGL-UK-3.0"}
+  ],
+  "pre_existing_code": ["Meterless reference engines (Apache-2.0)"]
+}
