@@ -122,10 +122,34 @@ describe("testClaim", () => {
     expect(r.contradicting).toEqual([]);
   });
 
-  it("ignores unverified spans", () => {
+  it("leaves vegan UNTESTED, never NOT_SUPPORTED or SUPPORTED, on an unverified milk contains span", () => {
     const r = testClaim("vegan", {
       ingredientText: "full",
       spans: [milkUnverified],
+      recalls: [],
+    });
+    expect(r).toMatchObject({
+      verdict: "UNTESTED",
+      reason: "unverified contradiction",
+      contradicting: ["milk"],
+      evidenceIds: ["ev-unv"],
+    });
+  });
+
+  it("prefers UNTESTED over PARTLY_SUPPORTED while a contains contradiction is unverified", () => {
+    const r = testClaim("vegan", {
+      ingredientText: "full",
+      spans: [milkMay, milkUnverified],
+      recalls: [],
+    });
+    expect(r.verdict).toBe("UNTESTED");
+    expect(r.evidenceIds).toEqual(["ev-unv"]);
+  });
+
+  it("ignores unverified spans of groups that do not contradict the claim", () => {
+    const r = testClaim("vegan", {
+      ingredientText: "full",
+      spans: [{ evidenceId: "ev-soy", group: "soy", relation: "contains", verified: false }],
       recalls: [],
     });
     expect(r.verdict).toBe("SUPPORTED");

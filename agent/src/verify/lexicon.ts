@@ -1,10 +1,12 @@
 /** Lexicon scan, span verification against lexicon hits, and naive keyword baseline. */
 
-import { isGrounded, normaliseForGrounding } from "../llm/grounding.ts";
+import { isGrounded } from "../llm/grounding.ts";
 import type { AllergenGroup, ExtractionSpan, SpanRelation } from "../llm/schemas.ts";
 import {
+  ALLERGEN_PATTERNS,
   ALLERGEN_TERMS,
   FREE_FROM_PATTERNS,
+  PLANT_TRAP_PATTERNS,
   PRECAUTIONARY_PATTERNS,
   RULE_TERMS,
   TRAP_TERMS,
@@ -83,6 +85,20 @@ function findTermMatches(
   return out;
 }
 
+function findPatternMatches(text: string, source: string): { start: number; end: number }[] {
+  const out: { start: number; end: number }[] = [];
+  const re = new RegExp(source, "giu");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m[0].length === 0) {
+      re.lastIndex++;
+      continue;
+    }
+    out.push({ start: m.index, end: m.index + m[0].length });
+  }
+  return out;
+}
+
 function overlaps(a: { start: number; end: number }, b: { start: number; end: number }): boolean {
   return a.start < b.end && b.start < a.end;
 }
@@ -120,7 +136,9 @@ function collectPrecautionaryScopes(text: string): { start: number; end: number;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
       const start = m.index;
-      const end = scopeEnd(text, start + m[0].length, p.lang);
+      const matchEnd = start + m[0].length;
+      // "kann ... enthalten" already holds its own end: the clause stops at that "enthalten".
+      const end = p.lang === "de" && /enthalten$/iu.test(m[0]) ? matchEnd : scopeEnd(text, matchEnd, p.lang);
       scopes.push({ start, end, lang: p.lang });
     }
   }
@@ -145,6 +163,20 @@ function collectRawMatches(text: string): RawMatch[] {
         group: t.group,
         kind: "trap",
         reason: t.reason,
+      });
+    }
+  }
+
+  for (const p of PLANT_TRAP_PATTERNS) {
+    for (const m of findPatternMatches(text, p.source)) {
+      raw.push({
+        start: m.start,
+        end: m.end,
+        term: text.slice(m.start, m.end),
+        lang: p.lang,
+        group: p.group,
+        kind: "trap",
+        reason: p.reason,
       });
     }
   }
@@ -175,6 +207,19 @@ function collectRawMatches(text: string): RawMatch[] {
         lang: t.lang,
         group: t.group,
         species: t.species,
+        kind: "allergen",
+      });
+    }
+  }
+
+  for (const p of ALLERGEN_PATTERNS) {
+    for (const m of findPatternMatches(text, p.source)) {
+      raw.push({
+        start: m.start,
+        end: m.end,
+        term: text.slice(m.start, m.end),
+        lang: p.lang,
+        group: p.group,
         kind: "allergen",
       });
     }
@@ -302,48 +347,92 @@ export function lexiconScan(text: string, lang?: LexLang): LexiconHit[] {
   return [...byKey.values()].sort((a, b) => a.start - b.start || a.end - b.end);
 }
 
-function locateEvidence(nfc: string, evidence: string): { start: number; end: number } | null {
-  const normE = normaliseForGrounding(evidence);
-  if (!normE) return null;
-  // Walk NFC text with the same normalisation collapsing whitespace.
+/** Every place the evidence occurs in the text: case-insensitive, any run of whitespace between words. */
+function locateEvidence(nfc: string, evidence: string): { start: number; end: number }[] {
   const lower = nfc.toLocaleLowerCase("und");
-  const needle = evidence.normalize("NFC").replace(/\s+/gu, " ").trim().toLocaleLowerCase("und");
-  if (!needle) return null;
-
-  // Try exact case-insensitive substring first (common path).
-  const idx = lower.indexOf(needle);
-  if (idx >= 0) return { start: idx, end: idx + needle.length };
-
-  // Whitespace-flexible: find by scanning normalised windows.
-  const parts = needle.split(" ").filter(Boolean);
-  if (parts.length === 0) return null;
+  const parts = evidence.normalize("NFC").toLocaleLowerCase("und").split(/\s+/u).filter(Boolean);
+  const out: { start: number; end: number }[] = [];
+  if (parts.length === 0) return out;
   const first = parts[0]!;
   let from = 0;
-  while (from < lower.length) {
+  while (from <= lower.length - first.length) {
     const i = lower.indexOf(first, from);
     if (i < 0) break;
     let cursor = i + first.length;
     let ok = true;
     for (let p = 1; p < parts.length; p++) {
+      const gap = cursor;
       while (cursor < nfc.length && /\s/u.test(nfc[cursor]!)) cursor++;
       const part = parts[p]!;
-      if (lower.slice(cursor, cursor + part.length) !== part) {
+      if (cursor === gap || lower.slice(cursor, cursor + part.length) !== part) {
         ok = false;
         break;
       }
       cursor += part.length;
     }
-    if (ok) return { start: i, end: cursor };
+    if (ok) out.push({ start: i, end: cursor });
     from = i + 1;
   }
-  return null;
+  return out;
 }
 
-function groupsCompatible(model: AllergenGroup, lexicon: AllergenGroup, lexiconIsWheatTerm: boolean): boolean {
-  if (model === lexicon) return true;
-  if (lexiconIsWheatTerm && model === "gluten_cereal" && lexicon === "wheat") return true;
-  if (lexiconIsWheatTerm && model === "wheat" && lexicon === "gluten_cereal") return true;
+const BARE_GLUTEN = /^glut(?:en|ine)$/iu;
+// Text allowed between a cereal word and a bare "gluten" that belongs to it:
+// "wheat gluten", "Weizengluten", "Wheat (Gluten)", "Weizenmehl (Gluten)", "wheat flour (gluten)".
+const CEREAL_THEN_GLUTEN = /^(?:\s*\p{L}{1,12})?\s*[([]?\s*$/u;
+// "gluten (wheat)", "Gluten (aus Weizen)", "gluten de blé", "glutine di frumento".
+const GLUTEN_THEN_CEREAL = /^\s*[([]?\s*(?:(?:from|of|de|du|des|di|del|della|von|aus)\s+)?$/iu;
+
+function isCereal(h: LexiconHit): boolean {
+  return h.group === "wheat" || (h.group === "gluten_cereal" && !BARE_GLUTEN.test(h.term));
+}
+
+/** A bare "gluten" hit and the cereal hit it belongs to (same relation, attached by the text between them). */
+function linkBareGluten(nfc: string, hits: LexiconHit[]): Map<LexiconHit, LexiconHit> {
+  const links = new Map<LexiconHit, LexiconHit>();
+  const allergenRel = (h: LexiconHit) => h.relation === "contains" || h.relation === "may_contain";
+  const cereals = hits.filter((h) => allergenRel(h) && isCereal(h));
+  for (const g of hits) {
+    if (g.group !== "gluten_cereal" || !allergenRel(g) || !BARE_GLUTEN.test(g.term)) continue;
+    let best: LexiconHit | undefined;
+    let bestGap = Infinity;
+    for (const c of cereals) {
+      if (c.relation !== g.relation) continue;
+      let gap: number;
+      if (c.end <= g.start && CEREAL_THEN_GLUTEN.test(nfc.slice(c.end, g.start))) gap = g.start - c.end;
+      else if (g.end <= c.start && GLUTEN_THEN_CEREAL.test(nfc.slice(g.end, c.start))) gap = c.start - g.end;
+      else continue;
+      if (gap < bestGap) {
+        best = c;
+        bestGap = gap;
+      }
+    }
+    if (best) links.set(g, best);
+  }
+  return links;
+}
+
+/**
+ * Whether a model span of this group and relation can be checked by a lexicon hit.
+ * `none` (the prompt's group for traps) matches any trap, rule term or free-from hit.
+ * wheat is a gluten cereal, so a model gluten_cereal span matches a lexicon wheat hit,
+ * and a model wheat span matches a bare "gluten" that belongs to a wheat word.
+ */
+function groupsCompatible(
+  model: AllergenGroup,
+  relation: SpanRelation,
+  h: LexiconHit,
+  glutenLinks: Map<LexiconHit, LexiconHit>,
+): boolean {
+  if (model === "none") return relation === "not_allergen" || relation === "free_from_claim";
+  if (model === h.group) return true;
+  if (model === "gluten_cereal" && h.group === "wheat") return true;
+  if (model === "wheat" && h.group === "gluten_cereal" && glutenLinks.get(h)?.group === "wheat") return true;
   return false;
+}
+
+function hitKey(h: LexiconHit): string {
+  return `${h.start}:${h.end}:${h.group}:${h.relation}`;
 }
 
 export function verifySpans(
@@ -352,6 +441,7 @@ export function verifySpans(
 ): { rows: AgreementRow[]; dropped: ExtractionSpan[]; droppedCount: number } {
   const nfc = text.normalize("NFC");
   const hits = lexiconScan(nfc);
+  const glutenLinks = linkBareGluten(nfc, hits);
   const dropped: ExtractionSpan[] = [];
   const rows: AgreementRow[] = [];
   const coveredHitKeys = new Set<string>();
@@ -361,30 +451,27 @@ export function verifySpans(
       dropped.push(span);
       continue;
     }
-    const loc = locateEvidence(nfc, span.evidence_text);
-    if (!loc) {
+    // The model quotes the shortest phrase, so a repeated word ("milk ... milk powder ... may contain milk")
+    // stands for every place it occurs: the span is checked against all of them.
+    const locs = locateEvidence(nfc, span.evidence_text);
+    if (locs.length === 0) {
       dropped.push(span);
       continue;
     }
 
-    const overlapping = hits.filter((h) => overlaps(loc, h));
-    // Every lexicon hit of a compatible group under this span is accounted for by this row,
-    // whether or not the relations agree, so it is not reported again as missed.
-    for (const h of overlapping) {
-      if (groupsCompatible(span.allergen_group, h.group, h.group === "wheat")) {
-        coveredHitKeys.add(`${h.start}:${h.end}:${h.group}:${h.relation}`);
-      }
-    }
-    const trapOrRule = overlapping.filter((h) => h.relation === "not_allergen");
-    const sameRelation = overlapping.filter((h) => {
-      const wheatTerm = h.group === "wheat";
-      return groupsCompatible(span.allergen_group, h.group, wheatTerm) && h.relation === span.relation;
-    });
+    const under = hits.filter((h) => locs.some((l) => overlaps(l, h)));
+    const compatible = under.filter((h) => groupsCompatible(span.allergen_group, span.relation, h, glutenLinks));
+    const sameRelation = compatible.filter((h) => h.relation === span.relation);
 
     // A real hit inside the span wins over a trap elsewhere in the same span ("cocoa butter, milk powder").
     if (sameRelation.length > 0) {
+      for (const h of sameRelation) {
+        coveredHitKeys.add(hitKey(h));
+        // wheat quoted as its "(Gluten)": the wheat word itself is covered too, but only by a wheat span.
+        const cereal = glutenLinks.get(h);
+        if (cereal && cereal.group === span.allergen_group) coveredHitKeys.add(hitKey(cereal));
+      }
       const h = sameRelation[0]!;
-      for (const s of sameRelation) coveredHitKeys.add(`${s.start}:${s.end}:${s.group}:${s.relation}`);
       rows.push({
         group: span.allergen_group,
         relation: span.relation,
@@ -399,41 +486,30 @@ export function verifySpans(
       continue;
     }
 
-    if (span.relation === "contains" && trapOrRule.some((h) => groupsCompatible(span.allergen_group, h.group, h.group === "wheat"))) {
-      const t = trapOrRule.find((h) => groupsCompatible(span.allergen_group, h.group, h.group === "wheat"))!;
-      rows.push({
-        group: span.allergen_group,
-        relation: span.relation,
-        model: true,
-        lexicon: true,
-        agree: false,
-        evidence_text: span.evidence_text,
-        grounded: true,
-        lexicon_relation: t.relation,
-        term: t.term,
-      });
-      continue;
-    }
-
-    // Model asserted something with no matching lexicon relation at this location.
-    const any = overlapping[0];
+    // No place agrees: one disagreement row, which accounts for every compatible hit under the evidence.
+    for (const h of compatible) coveredHitKeys.add(hitKey(h));
+    const trapOrRule =
+      span.relation === "contains" ? compatible.find((h) => h.relation === "not_allergen") : undefined;
+    const shown = trapOrRule ?? compatible[0] ?? under[0];
     rows.push({
       group: span.allergen_group,
       relation: span.relation,
       model: true,
-      lexicon: !!any,
+      lexicon: !!shown,
       agree: false,
       evidence_text: span.evidence_text,
       grounded: true,
-      lexicon_relation: any?.relation,
-      term: any?.term,
+      lexicon_relation: shown?.relation,
+      term: shown?.term,
     });
   }
 
   for (const h of hits) {
     if (h.relation !== "contains" && h.relation !== "may_contain") continue;
-    const key = `${h.start}:${h.end}:${h.group}:${h.relation}`;
-    if (coveredHitKeys.has(key)) continue;
+    if (coveredHitKeys.has(hitKey(h))) continue;
+    // "Wheat (Gluten)", "wheat gluten", "Weizengluten": the gluten is the wheat's, and the wheat span covers it.
+    const cereal = glutenLinks.get(h);
+    if (cereal && coveredHitKeys.has(hitKey(cereal))) continue;
     rows.push({
       group: h.group,
       relation: h.relation,
@@ -458,6 +534,11 @@ export function keywordBaseline(text: string): { group: Exclude<AllergenGroup, "
     const mode = t.match ?? (t.lang === "de" ? "compound" : "word");
     for (const m of findTermMatches(nfc, t.term, t.lang, mode)) {
       out.push({ group: t.group, term: nfc.slice(m.start, m.end), start: m.start, end: m.end });
+    }
+  }
+  for (const p of ALLERGEN_PATTERNS) {
+    for (const m of findPatternMatches(nfc, p.source)) {
+      out.push({ group: p.group, term: nfc.slice(m.start, m.end), start: m.start, end: m.end });
     }
   }
   out.sort((a, b) => a.start - b.start || a.end - b.end);

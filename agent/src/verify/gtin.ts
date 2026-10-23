@@ -131,6 +131,14 @@ function findDigitRuns(text: string): DigitRun[] {
   return runs;
 }
 
+/** The run without its first digit group. */
+function restOf(text: string, run: DigitRun): DigitRun {
+  const groups = run.groups.slice(1);
+  const start = groups[0]!.start;
+  const end = run.end;
+  return { raw: text.slice(start, end), start, end, digits: groups.map((g) => g.digits).join(""), groups };
+}
+
 function tryAccept(
   raw: string,
   start: number,
@@ -207,10 +215,24 @@ export function extractUpcs(noticeText: string): { accepted: AcceptedUpc[]; reje
   const rejected: RejectedUpc[] = [];
   const seen = new Set<string>();
 
-  for (const run of findDigitRuns(text)) {
-    // "H-1328-2026", "F-0636-2025", "L-240915": a letter and hyphen in front means an id, not a barcode.
-    if (/[A-Za-z]-$/u.test(text.slice(Math.max(0, run.start - 2), run.start))) continue;
-    const keyword = keywordBefore(text, run.start);
+  for (let run of findDigitRuns(text)) {
+    // "H-1328-2026", "F-0636-2025", "L-240915": a single letter and hyphen in front means an id, not a barcode.
+    // A word and hyphen ("UPC-816929000119", "EAN-13 4056489125846") does not.
+    if (/(?:^|[^A-Za-z])[A-Za-z]-$/u.test(text.slice(Math.max(0, run.start - 3), run.start))) continue;
+    // "10-MAY-2025": the year of a written date.
+    if (/(?:^|[^A-Za-z])(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)-$/iu.test(text.slice(Math.max(0, run.start - 5), run.start))) {
+      continue;
+    }
+    let keyword = keywordBefore(text, run.start);
+    // "EAN-13 4056489125846", "GTIN-14 00816929000119", "EAN8 12345670": the format's digit count is
+    // not part of the code. It is dropped only when the run is not a valid code as written.
+    const format = /(?:^|[^A-Za-z])(UPC|GTIN|EAN)-?$/iu.exec(text.slice(Math.max(0, run.start - 6), run.start));
+    if (format && run.groups.length >= 2 && ["8", "12", "13", "14"].includes(run.groups[0]!.digits)) {
+      if (!(lengthAllows(run.digits.length, true) && normalise(run.raw).ok)) {
+        run = restOf(text, run);
+        keyword = format[1]!.toUpperCase();
+      }
+    }
     const hasKeyword = keyword !== null;
     const len = run.digits.length;
 

@@ -193,3 +193,51 @@ describe("extractUpcs review fixes", () => {
     expect(r.rejected).toEqual([expect.objectContaining({ reason: "gtin14_case_level" })]);
   });
 });
+
+describe("extractUpcs second review fixes", () => {
+  it("reads a code written after a keyword and hyphen", () => {
+    // 816929000119: body 81692900011, from right 1*3+1+0*3+0+0*3+9+2*3+9+6*3+1+8*3 = 71 -> check 9
+    expect(extractUpcs("UPC-816929000119").accepted).toEqual([
+      expect.objectContaining({ gtin13: "0816929000119", transform: "upc12_pad13", keyword: "UPC" }),
+    ]);
+    expect(extractUpcs("barcode-816929000119").accepted).toEqual([
+      expect.objectContaining({ gtin13: "0816929000119", keyword: "barcode" }),
+    ]);
+  });
+
+  it("drops the format's digit count after EAN-, GTIN- or UPC-", () => {
+    // 4056489125846: body 405648912584, from right 4*3+8+5*3+2+1*3+9+8*3+4+6*3+5+0*3+4 = 104 -> check 6
+    expect(extractUpcs("EAN-13 4056489125846").accepted).toEqual([
+      expect.objectContaining({ raw_code: "4056489125846", gtin13: "4056489125846", transform: "ean13_exact", keyword: "EAN" }),
+    ]);
+    // 00816929000119: body 0081692900011 sums like 81692900011 (leading zeros add 0) = 71 -> check 9
+    expect(extractUpcs("GTIN-14 00816929000119").accepted).toEqual([
+      expect.objectContaining({ gtin13: "0816929000119", transform: "gtin14_strip0", keyword: "GTIN" }),
+    ]);
+    // 12345670: body 1234567, from right 7*3+6+5*3+4+3*3+2+1*3 = 60 -> check 0
+    expect(extractUpcs("EAN-8 12345670").accepted).toEqual([
+      expect.objectContaining({ gtin13: "0000012345670", transform: "ean8_pad13" }),
+    ]);
+    expect(extractUpcs("UPC-12 816929000119").accepted.map((x) => x.gtin13)).toEqual(["0816929000119"]);
+    expect(extractUpcs("EAN13 4056489125846").accepted.map((x) => x.gtin13)).toEqual(["4056489125846"]);
+  });
+
+  it("keeps a leading group that is part of a valid code", () => {
+    // 8 16929 00011 9 is 816929000119 (check 9 as above); the 8 is its number-system digit
+    expect(extractUpcs("UPC-8 16929 00011 9").accepted).toEqual([
+      expect.objectContaining({ gtin13: "0816929000119", transform: "upc12_pad13_grouped" }),
+    ]);
+  });
+
+  it("still skips recall numbers and lot ids after a single letter and hyphen", () => {
+    const r = extractUpcs("UPC-816929000119, recall F-0636-2025 and H-1328-2026, lot L-240915");
+    expect(r.accepted.map((x) => x.gtin13)).toEqual(["0816929000119"]);
+    expect(r.rejected).toEqual([]);
+  });
+
+  it("does not read the year of a written date as the start of a code", () => {
+    const r = extractUpcs("UPC 816929000119 best by 10-MAY-2025 01-03-2025");
+    expect(r.accepted.map((x) => x.gtin13)).toEqual(["0816929000119"]);
+    expect(r.rejected).toEqual([]);
+  });
+});

@@ -123,6 +123,21 @@ export function testClaim(claim: Claim, evidence: ClaimEvidence): ClaimTestResul
     };
   }
 
+  // An unverified contains span that would contradict the claim leaves a contradiction unresolved:
+  // the claim cannot be supported, and the span alone cannot refute it.
+  const unverified = evidence.spans.filter(
+    (s) => !s.verified && s.relation === "contains" && contradictingGroups.includes(s.group),
+  );
+  if (unverified.length > 0) {
+    return {
+      claim,
+      verdict: "UNTESTED",
+      contradicting: [...new Set(unverified.map((s) => s.group))],
+      evidenceIds: unverified.map((s) => s.evidenceId),
+      reason: "unverified contradiction",
+    };
+  }
+
   // Full text: may_contain → PARTLY_SUPPORTED
   for (const span of evidence.spans) {
     if (!span.verified || span.relation !== "may_contain") continue;

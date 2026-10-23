@@ -41,6 +41,21 @@ export interface FreeFromPattern {
   group?: Exclude<AllergenGroup, "none">;
 }
 
+/** An allergen word family matched by pattern (whole words only; case-insensitive, NFC text). */
+export interface AllergenPattern {
+  lang: LexLang;
+  source: string;
+  group: Exclude<AllergenGroup, "none">;
+}
+
+/** A trap matched by pattern; behaves like a TrapTerm. */
+export interface TrapPattern {
+  lang: LexLang;
+  source: string;
+  group: Exclude<AllergenGroup, "none">;
+  reason: string;
+}
+
 export const ALLERGEN_TERMS: AllergenTerm[] = [
   // ---- milk ----
   { term: "milk", lang: "en", group: "milk" },
@@ -57,6 +72,7 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "yogurt", lang: "en", group: "milk" },
   { term: "cheese", lang: "en", group: "milk" },
   { term: "Milch", lang: "de", group: "milk", match: "compound" },
+  { term: "Laktose", lang: "de", group: "milk", match: "compound" },
   { term: "Molke", lang: "de", group: "milk", match: "compound" },
   { term: "Butter", lang: "de", group: "milk", match: "compound" },
   { term: "Sahne", lang: "de", group: "milk", match: "compound" },
@@ -78,6 +94,8 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "fromage", lang: "fr", group: "milk" },
   { term: "leche", lang: "es", group: "milk" },
   { term: "suero de leche", lang: "es", group: "milk" },
+  { term: "suero", lang: "es", group: "milk" },
+  { term: "lactosa", lang: "es", group: "milk" },
   { term: "mantequilla", lang: "es", group: "milk" },
   { term: "nata", lang: "es", group: "milk" },
   { term: "caseína", lang: "es", group: "milk" },
@@ -86,6 +104,7 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "queso", lang: "es", group: "milk" },
   { term: "latte", lang: "it", group: "milk" },
   { term: "siero di latte", lang: "it", group: "milk" },
+  { term: "lattosio", lang: "it", group: "milk" },
   { term: "burro", lang: "it", group: "milk" },
   { term: "panna", lang: "it", group: "milk" },
   { term: "caseina", lang: "it", group: "milk" },
@@ -111,6 +130,7 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "Hühnerei", lang: "de", group: "egg", match: "compound" },
   { term: "Huehnerei", lang: "de", group: "egg", match: "compound" },
   { term: "Eipulver", lang: "de", group: "egg", match: "compound" },
+  { term: "Eiklar", lang: "de", group: "egg", match: "compound" },
   { term: "œuf", lang: "fr", group: "egg" },
   { term: "oeuf", lang: "fr", group: "egg" },
   { term: "œufs", lang: "fr", group: "egg" },
@@ -122,6 +142,8 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "uovo", lang: "it", group: "egg" },
   { term: "uova", lang: "it", group: "egg" },
   { term: "albume", lang: "it", group: "egg" },
+  { term: "tuorlo", lang: "it", group: "egg" },
+  { term: "tuorli", lang: "it", group: "egg" },
 
   // ---- fish ----
   { term: "fish", lang: "en", group: "fish" },
@@ -162,11 +184,15 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "homard", lang: "fr", group: "crustacean" },
   { term: "crustáceo", lang: "es", group: "crustacean" },
   { term: "gamba", lang: "es", group: "crustacean" },
+  { term: "gambas", lang: "es", group: "crustacean" },
   { term: "cangrejo", lang: "es", group: "crustacean" },
   { term: "langosta", lang: "es", group: "crustacean" },
   { term: "crostaceo", lang: "it", group: "crustacean" },
   { term: "crostacei", lang: "it", group: "crustacean" },
   { term: "gambero", lang: "it", group: "crustacean" },
+  { term: "gamberi", lang: "it", group: "crustacean" },
+  { term: "gamberetto", lang: "it", group: "crustacean" },
+  { term: "gamberetti", lang: "it", group: "crustacean" },
   { term: "granchio", lang: "it", group: "crustacean" },
 
   // ---- mollusc ----
@@ -190,6 +216,8 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "mejillón", lang: "es", group: "mollusc" },
   { term: "mejillon", lang: "es", group: "mollusc" },
   { term: "ostra", lang: "es", group: "mollusc" },
+  { term: "calamar", lang: "es", group: "mollusc" },
+  { term: "calamares", lang: "es", group: "mollusc" },
   { term: "mollusco", lang: "it", group: "mollusc" },
   { term: "cozza", lang: "it", group: "mollusc" },
   { term: "ostrica", lang: "it", group: "mollusc" },
@@ -199,6 +227,8 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "almonds", lang: "en", group: "tree_nut", species: "almond" },
   { term: "hazelnut", lang: "en", group: "tree_nut", species: "hazelnut" },
   { term: "hazelnuts", lang: "en", group: "tree_nut", species: "hazelnut" },
+  { term: "filbert", lang: "en", group: "tree_nut", species: "hazelnut" },
+  { term: "filberts", lang: "en", group: "tree_nut", species: "hazelnut" },
   { term: "walnut", lang: "en", group: "tree_nut", species: "walnut" },
   { term: "walnuts", lang: "en", group: "tree_nut", species: "walnut" },
   { term: "cashew", lang: "en", group: "tree_nut", species: "cashew" },
@@ -322,6 +352,7 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "semola", lang: "es", group: "wheat" },
   { term: "frumento", lang: "it", group: "wheat" },
   { term: "grano tenero", lang: "it", group: "wheat" },
+  { term: "grano", lang: "it", group: "wheat" },
   { term: "farro", lang: "it", group: "wheat" },
   { term: "semola", lang: "it", group: "wheat" },
 
@@ -330,6 +361,7 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "barley", lang: "en", group: "gluten_cereal" },
   { term: "oats", lang: "en", group: "gluten_cereal" },
   { term: "oat", lang: "en", group: "gluten_cereal" },
+  { term: "malt", lang: "en", group: "gluten_cereal" },
   { term: "gluten", lang: "en", group: "gluten_cereal" },
   { term: "Roggen", lang: "de", group: "gluten_cereal", match: "compound" },
   { term: "Gerste", lang: "de", group: "gluten_cereal", match: "compound" },
@@ -345,6 +377,7 @@ export const ALLERGEN_TERMS: AllergenTerm[] = [
   { term: "gluten", lang: "es", group: "gluten_cereal" },
   { term: "segale", lang: "it", group: "gluten_cereal" },
   { term: "orzo", lang: "it", group: "gluten_cereal" },
+  { term: "malto", lang: "it", group: "gluten_cereal" },
   { term: "avena", lang: "it", group: "gluten_cereal" },
   { term: "glutine", lang: "it", group: "gluten_cereal" },
 
@@ -436,23 +469,12 @@ export const TRAP_TERMS: TrapTerm[] = [
   { term: "beurre de cacao", lang: "fr", group: "milk", reason: "beurre de cacao is not milk" },
   { term: "manteca de cacao", lang: "es", group: "milk", reason: "manteca de cacao is not milk" },
   { term: "burro di cacao", lang: "it", group: "milk", reason: "burro di cacao is not milk" },
-  { term: "coconut milk", lang: "en", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "Kokosmilch", lang: "de", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "lait de coco", lang: "fr", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "leche de coco", lang: "es", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "latte di cocco", lang: "it", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "oat milk", lang: "en", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "oat drink", lang: "en", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "soy milk", lang: "en", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "soya milk", lang: "en", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "soy drink", lang: "en", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "rice milk", lang: "en", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "almond milk", lang: "en", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "almond drink", lang: "en", group: "milk", reason: "plant drink, not dairy milk" },
-  { term: "peanut butter", lang: "en", group: "milk", reason: "nut butter is not dairy butter" },
-  { term: "almond butter", lang: "en", group: "milk", reason: "nut butter is not dairy butter" },
-  { term: "cashew butter", lang: "en", group: "milk", reason: "nut butter is not dairy butter" },
-  { term: "shea butter", lang: "en", group: "milk", reason: "shea butter is not dairy butter" },
+  // Plant drinks, creams and nut or seed butters are matched by PLANT_TRAP_PATTERNS below.
+  { term: "butter bean", lang: "en", group: "milk", reason: "butter beans are lima beans, not dairy" },
+  { term: "butter beans", lang: "en", group: "milk", reason: "butter beans are lima beans, not dairy" },
+  { term: "Leberkäse", lang: "de", group: "milk", reason: "Leberkäse is a meat loaf, not cheese" },
+  { term: "Leberkaese", lang: "de", group: "milk", reason: "Leberkaese is a meat loaf, not cheese" },
+  { term: "Fleischkäse", lang: "de", group: "milk", reason: "Fleischkäse is a meat loaf, not cheese" },
   { term: "Erdnussbutter", lang: "de", group: "milk", reason: "Erdnussbutter is peanut butter, not dairy butter" },
   { term: "Mandelbutter", lang: "de", group: "milk", reason: "Mandelbutter is almond butter, not dairy butter" },
   { term: "Sheabutter", lang: "de", group: "milk", reason: "Sheabutter is not dairy butter" },
@@ -472,6 +494,7 @@ export const TRAP_TERMS: TrapTerm[] = [
   { term: "trigo sarraceno", lang: "es", group: "gluten_cereal", reason: "trigo sarraceno is not gluten cereal" },
   { term: "grano saraceno", lang: "it", group: "wheat", reason: "grano saraceno is not wheat" },
   { term: "grano saraceno", lang: "it", group: "gluten_cereal", reason: "grano saraceno is not gluten cereal" },
+  { term: "en grano", lang: "es", group: "wheat", reason: "Spanish en grano means whole grain or bean, not wheat" },
   { term: "nutmeg", lang: "en", group: "tree_nut", reason: "nutmeg is a spice, not a tree nut" },
   { term: "Muskatnuss", lang: "de", group: "tree_nut", reason: "Muskatnuss is not a tree nut" },
   { term: "noix de muscade", lang: "fr", group: "tree_nut", reason: "noix de muscade is not a tree nut" },
@@ -479,6 +502,7 @@ export const TRAP_TERMS: TrapTerm[] = [
   { term: "noce moscata", lang: "it", group: "tree_nut", reason: "noce moscata is not a tree nut" },
   { term: "butternut squash", lang: "en", group: "tree_nut", reason: "butternut squash is a squash" },
   { term: "butternut", lang: "en", group: "tree_nut", reason: "butternut squash is not a tree nut" },
+  { term: "butternut", lang: "en", group: "milk", reason: "butternut is a squash, not butter" },
   { term: "cream of tartar", lang: "en", group: "milk", reason: "cream of tartar is potassium bitartrate" },
   { term: "Weinstein", lang: "de", group: "milk", reason: "Weinstein is not cream/milk" },
   { term: "crème de tartre", lang: "fr", group: "milk", reason: "crème de tartre is not milk" },
@@ -488,6 +512,21 @@ export const TRAP_TERMS: TrapTerm[] = [
   { term: "water chestnut", lang: "en", group: "tree_nut", reason: "water chestnut is not a tree nut" },
   { term: "chestnut", lang: "en", group: "tree_nut", reason: "chestnut is excluded from major tree-nut lists" },
   { term: "chestnuts", lang: "en", group: "tree_nut", reason: "chestnut is excluded from major tree-nut lists" },
+  { term: "shea", lang: "en", group: "tree_nut", reason: "shea is excluded from major tree-nut lists" },
+  { term: "shea nut", lang: "en", group: "tree_nut", reason: "shea nut is excluded from major tree-nut lists" },
+  { term: "shea nuts", lang: "en", group: "tree_nut", reason: "shea nut is excluded from major tree-nut lists" },
+  { term: "Sheanuss", lang: "de", group: "tree_nut", reason: "Sheanuss is excluded from major tree-nut lists" },
+  { term: "cola nut", lang: "en", group: "tree_nut", reason: "cola nut is excluded from major tree-nut lists" },
+  { term: "cola nuts", lang: "en", group: "tree_nut", reason: "cola nut is excluded from major tree-nut lists" },
+  { term: "kola nut", lang: "en", group: "tree_nut", reason: "kola nut is excluded from major tree-nut lists" },
+  { term: "kola nuts", lang: "en", group: "tree_nut", reason: "kola nut is excluded from major tree-nut lists" },
+  { term: "Kolanuss", lang: "de", group: "tree_nut", reason: "Kolanuss is excluded from major tree-nut lists" },
+  { term: "tiger nut", lang: "en", group: "tree_nut", reason: "tiger nut is a tuber, not a tree nut" },
+  { term: "tiger nuts", lang: "en", group: "tree_nut", reason: "tiger nut is a tuber, not a tree nut" },
+  { term: "Tigernuss", lang: "de", group: "tree_nut", reason: "Tigernuss is a tuber, not a tree nut" },
+  { term: "Erdmandel", lang: "de", group: "tree_nut", reason: "Erdmandel is tiger nut, a tuber, not almond" },
+  { term: "sunflower lecithin", lang: "en", group: "soy", reason: "sunflower lecithin is not soy" },
+  { term: "rapeseed lecithin", lang: "en", group: "soy", reason: "rapeseed lecithin is not soy" },
   { term: "eggplant", lang: "en", group: "egg", reason: "eggplant is a vegetable, not egg" },
   { term: "aubergine", lang: "en", group: "egg", reason: "aubergine is a vegetable, not egg" },
   { term: "lactic acid", lang: "en", group: "milk", reason: "lactic acid is not milk" },
@@ -642,4 +681,65 @@ export const FREE_FROM_PATTERNS: FreeFromPattern[] = [
   { lang: "it", source: "senza\\s+latte", claim: "dairy_free", group: "milk" },
   { lang: "it", source: "senza\\s+frutta\\s+a\\s+guscio", claim: "nut_free", group: "tree_nut" },
   { lang: "it", source: "\\bvegano\\b", claim: "vegan" },
+];
+
+/** Word families matched by pattern: any word ending in sulphite/sulfite, and E220 to E228 with a space or hyphen. */
+export const ALLERGEN_PATTERNS: AllergenPattern[] = [
+  { lang: "en", source: "(?<!\\p{L})\\p{L}*sul(?:ph|f)ites?(?!\\p{L})", group: "sulphite" },
+  { lang: "fr", source: "(?<!\\p{L})\\p{L}*sulfites?(?!\\p{L})", group: "sulphite" },
+  { lang: "es", source: "(?<!\\p{L})\\p{L}*sulfitos?(?!\\p{L})", group: "sulphite" },
+  { lang: "it", source: "(?<!\\p{L})\\p{L}*solfit[oi](?!\\p{L})", group: "sulphite" },
+  { lang: "en", source: "(?<![\\p{L}\\d])E\\s?-?\\s?22[0-8](?!\\d)", group: "sulphite" },
+];
+
+const EN_PLANT =
+  "almond|cashew|hazelnut|walnut|pistachio|macadamia|pecan|brazil\\s+nut|peanut|tiger\\s+nut|nut|coconut|oat|soy|soya|soybean|rice|pea|chickpea|hemp|flax|linseed|quinoa|sunflower|sesame|seed|pumpkin\\s+seed";
+
+/**
+ * Plant drinks, plant creams and nut or seed butters in the five languages: never dairy milk.
+ * The plant word itself is still reported as its own group (the trap only covers milk).
+ * "hazelnut milk chocolate" is milk chocolate, so a following chocolate word ends the trap.
+ */
+export const PLANT_TRAP_PATTERNS: TrapPattern[] = [
+  {
+    lang: "en",
+    source: `\\b(?:${EN_PLANT})s?\\s+(?:milk|drink|beverage)s?\\b(?!\\s+choc)`,
+    group: "milk",
+    reason: "plant drink, not dairy milk",
+  },
+  {
+    lang: "en",
+    source:
+      "\\b(?:almond|cashew|hazelnut|walnut|pistachio|macadamia|pecan|peanut|tiger\\s+nut|shea\\s+nut|shea|nut|coconut|sunflower|sesame|pumpkin\\s+seed|seed|soy|soya)s?\\s+butter\\b",
+    group: "milk",
+    reason: "nut, seed or shea butter, not dairy butter",
+  },
+  { lang: "en", source: "\\b(?:coconut|oat|soy|soya|rice)\\s+cream\\b", group: "milk", reason: "plant cream, not dairy cream" },
+  {
+    lang: "de",
+    source: "(?:Kokos|Mandel|Hafer|Soja|Reis|Cashew|Haselnuss|Erbsen|Hanf|Dinkel)(?:milch|drink|sahne|rahm|creme)(?!\\s*-?\\s*schoko)",
+    group: "milk",
+    reason: "plant drink or cream, not dairy",
+  },
+  {
+    lang: "fr",
+    source:
+      "(?:lait|crème|creme|boisson)\\s+(?:végétale?\\s+|vegetale?\\s+)?(?:de\\s+|d['’]\\s*)(?:noix\\s+de\\s+coco|coco|amandes?|soja|riz|avoine|noisettes?|noix\\s+de\\s+cajou|cajou|chanvre)(?!\\p{L})",
+    group: "milk",
+    reason: "plant drink or cream, not dairy",
+  },
+  {
+    lang: "es",
+    source:
+      "(?:leche|bebida|nata|crema)\\s+(?:vegetal\\s+)?de\\s+(?:coco|almendras?|soja|arroz|avena|avellanas?|anacardos?|guisantes?|chufa)(?!\\p{L})",
+    group: "milk",
+    reason: "plant drink or cream (nata de coco is a coconut gel), not dairy",
+  },
+  {
+    lang: "it",
+    source:
+      "(?:latte|bevanda|panna|crema)\\s+(?:vegetale\\s+)?(?:di\\s+|d['’]\\s*)(?:cocco|mandorla|mandorle|soia|riso|avena|nocciol[ae]|anacardi|arachidi)(?!\\p{L})",
+    group: "milk",
+    reason: "plant drink or cream, not dairy",
+  },
 ];
