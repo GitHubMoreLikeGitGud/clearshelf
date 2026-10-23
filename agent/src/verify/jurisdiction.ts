@@ -101,6 +101,8 @@ function marketCodeBare(market: Market, group: AllergenGroup | string): string |
 export function displayName(market: Market, group: AllergenGroup | string, species?: string): string | null {
   const row = rowFor(market, group);
   if (!row) return null;
+  // Never label a species with a statutory name the market does not give it (UK pine nut, any chestnut).
+  if (!isMajorAllergen(market, group, group === "tree_nut" ? species : undefined)) return null;
   if (market === "UK" && group === "wheat") {
     return `${row.display_name} (wheat)`;
   }
@@ -122,14 +124,14 @@ export interface RuleConflict {
   handling: string;
 }
 
+// Coconut may be one item of a list ("TREE NUTS (ALMOND, COCONUT)" in openFDA product text).
 const COCONUT_AS_TREE_NUT: RegExp[] = [
-  /tree\s*nuts?\s*[:(\[]\s*coconut/iu,
-  /tree\s*nut\s*\(\s*coconut\s*\)/iu,
+  /tree\s*nuts?\s*[:(\[][^)\].;]*?\bcoconut/iu,
   /coconut\s*\(\s*tree\s*nuts?\s*\)/iu,
-  /Schalenfrüchte\s*\(\s*Kokos(?:nuss)?\s*\)/iu,
-  /fruits?\s*à\s*coque\s*\(\s*noix\s*de\s*coco\s*\)/iu,
-  /frutos\s*secos\s*\(\s*coco\s*\)/iu,
-  /frutta\s*a\s*guscio\s*\(\s*(?:noce\s*di\s*)?cocco\s*\)/iu,
+  /Schalenfrüchte\s*[:(][^).;]*?Kokos(?:nuss)?/iu,
+  /fruits?\s*à\s*coque\s*[:(][^).;]*?noix\s*de\s*coco/iu,
+  /frutos\s*(?:secos|de\s*cáscara)\s*[:(][^).;]*?\bcoco\b/iu,
+  /frutta\s*a\s*guscio\s*[:(][^).;]*?(?:noce\s*di\s*)?cocco/iu,
 ];
 
 const PINE_NUT: RegExp[] = [

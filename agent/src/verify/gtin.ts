@@ -163,6 +163,44 @@ function lengthAllows(len: number, hasKeyword: boolean): boolean {
   return false;
 }
 
+type Piece = { raw: string; start: number; end: number; digits: string };
+
+function pieceOf(text: string, groups: DigitRun["groups"], i: number, j: number): Piece {
+  const start = groups[i]!.start;
+  const end = groups[j]!.end;
+  return { raw: text.slice(start, end), start, end, digits: groups.slice(i, j + 1).map((g) => g.digits).join("") };
+}
+
+/** Split a run at group boundaries into consecutive codes that all pass normalise, or null. */
+function partitionAllValid(text: string, run: DigitRun, hasKeyword: boolean): Piece[] | null {
+  const n = run.groups.length;
+  const best: (Piece[] | null)[] = new Array(n + 1).fill(null);
+  best[n] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = i; j < n; j++) {
+      const p = pieceOf(text, run.groups, i, j);
+      if (p.digits.length > 14) break;
+      if (!lengthAllows(p.digits.length, hasKeyword) || !normalise(p.raw).ok) continue;
+      const rest = best[j + 1];
+      if (rest) {
+        best[i] = [p, ...rest];
+        break;
+      }
+    }
+  }
+  return best[0] && best[0].length >= 2 ? best[0] : null;
+}
+
+/** An ungrouped 12-14 digit code followed only by a short number ("UPC 816929000119 12 oz").
+ * Grouped prefixes are not tried: cutting digits off a grouped case code could pass a check digit by chance. */
+function validPrefix(text: string, run: DigitRun): Piece | null {
+  const first = run.groups[0]!;
+  const tail = run.digits.length - first.digits.length;
+  if (first.digits.length < 12 || first.digits.length > 14 || tail > 3) return null;
+  const p = pieceOf(text, run.groups, 0, 0);
+  return normalise(p.raw).ok ? p : null;
+}
+
 export function extractUpcs(noticeText: string): { accepted: AcceptedUpc[]; rejected: RejectedUpc[] } {
   const text = noticeText.normalize("NFC");
   const accepted: AcceptedUpc[] = [];
@@ -170,58 +208,40 @@ export function extractUpcs(noticeText: string): { accepted: AcceptedUpc[]; reje
   const seen = new Set<string>();
 
   for (const run of findDigitRuns(text)) {
+    // "H-1328-2026", "F-0636-2025", "L-240915": a letter and hyphen in front means an id, not a barcode.
+    if (/[A-Za-z]-$/u.test(text.slice(Math.max(0, run.start - 2), run.start))) continue;
     const keyword = keywordBefore(text, run.start);
     const hasKeyword = keyword !== null;
     const len = run.digits.length;
 
-    if (lengthAllows(len, hasKeyword)) {
+    // Eight digits after "UPC" are a zero-suppressed UPC-E, which is not expanded here;
+    // padding it like an EAN-8 would give a wrong GTIN.
+    if (len === 8 && keyword === "UPC") {
+      rejected.push({ raw_code: run.raw.slice(0, 40), reason: "upc_e_not_expanded", start: run.start, end: run.end });
+      continue;
+    }
+
+    if (lengthAllows(len, hasKeyword) && normalise(run.raw).ok) {
       tryAccept(run.raw, run.start, run.end, keyword, seen, accepted, rejected);
       continue;
     }
 
-    // Split at group boundaries into consecutive codes only if every piece validates.
     if (run.groups.length >= 2) {
-      const pieces: { raw: string; start: number; end: number; digits: string }[] = [];
-      let buf = run.groups[0]!;
-      for (let i = 1; i < run.groups.length; i++) {
-        const g = run.groups[i]!;
-        const combined = buf.digits + g.digits;
-        if (lengthAllows(combined.length, hasKeyword) || lengthAllows(buf.digits.length, hasKeyword)) {
-          // Prefer completing a valid-length piece ending at previous group.
-          if (lengthAllows(buf.digits.length, hasKeyword)) {
-            pieces.push(buf);
-            buf = g;
-            continue;
-          }
-        }
-        const nextCombined = buf.digits + g.digits;
-        buf = {
-          raw: text.slice(buf.start, g.end),
-          start: buf.start,
-          end: g.end,
-          digits: nextCombined,
-        };
+      const pieces = partitionAllValid(text, run, hasKeyword);
+      if (pieces) {
+        for (const p of pieces) tryAccept(p.raw, p.start, p.end, keyword, seen, accepted, rejected);
+        continue;
       }
-      pieces.push(buf);
-
-      if (
-        pieces.length >= 2 &&
-        pieces.every((p) => {
-          const n = normalise(p.raw);
-          return n.ok || (lengthAllows(p.digits.length, hasKeyword) && !n.ok);
-        }) &&
-        pieces.every((p) => lengthAllows(p.digits.length, hasKeyword))
-      ) {
-        for (const p of pieces) {
-          tryAccept(p.raw, p.start, p.end, keyword, seen, accepted, rejected);
-        }
+      const prefix = validPrefix(text, run);
+      if (prefix) {
+        tryAccept(prefix.raw, prefix.start, prefix.end, keyword, seen, accepted, rejected);
         continue;
       }
     }
 
-    // Odd length that is not a candidate: ignore short noise (dates fragments, LOT) unless
-    // it looked like a barcode run with a keyword or a long digit string.
-    if (len >= 8) {
+    if (lengthAllows(len, hasKeyword)) {
+      tryAccept(run.raw, run.start, run.end, keyword, seen, accepted, rejected);
+    } else if (len >= 8) {
       rejected.push({ raw_code: run.raw.slice(0, 40), reason: "length", start: run.start, end: run.end });
     }
   }

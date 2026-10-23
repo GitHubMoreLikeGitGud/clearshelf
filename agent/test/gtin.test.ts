@@ -159,3 +159,37 @@ describe("extractUpcs", () => {
     expect(r.accepted[0]?.gtin13).toBe("0816929000119");
   });
 });
+
+describe("extractUpcs review fixes", () => {
+  it("keeps a code followed by a short number (pack size)", () => {
+    // 816929000119: check 9 as above
+    const r = extractUpcs("UPC 816929000119 12 oz");
+    expect(r.accepted.map((x) => x.gtin13)).toEqual(["0816929000119"]);
+  });
+
+  it("splits two grouped codes written back to back", () => {
+    // 8 16929 00011 9 (check 9) and 4 056489 125846 (check 6)
+    const r = extractUpcs("UPC 8 16929 00011 9 4 056489 125846");
+    expect(r.accepted.map((x) => x.gtin13)).toEqual(["0816929000119", "4056489125846"]);
+  });
+
+  it("rejects eight digits after UPC as an unexpanded UPC-E, never as an EAN-8", () => {
+    // 0 004564 3 is UPC-E for UPC-A 000450000063; padding it as EAN-8 would give 0000000045643.
+    const r = extractUpcs("UPC: 0 004564 3");
+    expect(r.accepted).toEqual([]);
+    expect(r.rejected).toEqual([expect.objectContaining({ reason: "upc_e_not_expanded" })]);
+  });
+
+  it("never reads a recall number near a UPC as a barcode", () => {
+    const r = extractUpcs("UPC 816929000119 (recall F-0636-2025, H-1328-2026)");
+    expect(r.accepted.map((x) => x.gtin13)).toEqual(["0816929000119"]);
+    expect(r.rejected).toEqual([]);
+  });
+
+  it("keeps a GTIN-14 case code rejected rather than cutting a GTIN-13 out of it", () => {
+    // 10816929000116: indicator 1, check 6 as above
+    const r = extractUpcs("Case GTIN 1 0816929 000116");
+    expect(r.accepted).toEqual([]);
+    expect(r.rejected).toEqual([expect.objectContaining({ reason: "gtin14_case_level" })]);
+  });
+});

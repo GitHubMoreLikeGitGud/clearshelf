@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  SPECIES_REF_NAMES,
   displayName,
   isMajorAllergen,
   marketCode,
@@ -108,5 +109,30 @@ describe("ruleConflicts", () => {
       }),
     ]);
     expect(ruleConflicts("US", "contains pine nuts")).toEqual([]);
+  });
+});
+
+describe("jurisdiction review fixes", () => {
+  it("checks the module's own species table against the reference file", () => {
+    const allText = JSON.stringify(ref).toLowerCase();
+    for (const [species, names] of Object.entries(SPECIES_REF_NAMES)) {
+      for (const name of names) expect(allText.includes(name.toLowerCase()), `${species}: ${name}`).toBe(true);
+    }
+  });
+
+  it("gives no statutory display name to a species the market does not list", () => {
+    expect(displayName("UK", "tree_nut", "pine_nut")).toBeNull();
+    expect(displayName("US", "tree_nut", "pine_nut")).toBe("Tree nuts (pine nut)");
+    expect(displayName("UK", "tree_nut", "chestnut")).toBeNull();
+    expect(displayName("US", "gluten_cereal", "barley")).toBeNull();
+  });
+
+  it("finds coconut inside a tree-nut list, as openFDA product text writes it", () => {
+    const text = "ALLERGEN WARNING: CONTAINS TREE NUTS (ALMOND, COCONUT), PRODUCED ON SHARED EQUIPMENT";
+    const hits = ruleConflicts("US", text);
+    expect(hits.map((h) => h.id)).toEqual(["coconut-tree-nut"]);
+    expect(text.includes(hits[0]!.evidence_text)).toBe(true);
+    expect(ruleConflicts("UK", "frutos de cáscara (almendra, coco)").map((h) => h.id)).toEqual(["coconut-tree-nut"]);
+    expect(ruleConflicts("US", "tree nuts (almond). coconut oil")).toEqual([]);
   });
 });

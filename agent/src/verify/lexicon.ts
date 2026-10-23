@@ -89,24 +89,27 @@ function overlaps(a: { start: number; end: number }, b: { start: number; end: nu
 
 /** Sentence end: full stop not between digits, semicolon, line break, or EOS. German also ends after enthalten. */
 function scopeEnd(text: string, from: number, lang: LexLang): number {
-  if (lang === "de") {
-    const ent = text.slice(from).search(/\benthalten\b/iu);
-    if (ent >= 0) {
-      const after = from + ent + "enthalten".length;
-      return after;
-    }
-  }
+  let sentenceEnd = text.length;
   for (let i = from; i < text.length; i++) {
     const ch = text[i]!;
-    if (ch === ";" || ch === "\n" || ch === "\r") return i;
+    if (ch === ";" || ch === "\n" || ch === "\r") {
+      sentenceEnd = i;
+      break;
+    }
     if (ch === ".") {
       const prev = text[i - 1];
       const next = text[i + 1];
       if (prev && next && /\d/u.test(prev) && /\d/u.test(next)) continue;
-      return i;
+      sentenceEnd = i;
+      break;
     }
   }
-  return text.length;
+  if (lang === "de") {
+    // Only an "enthalten" inside the same sentence closes the clause early.
+    const ent = text.slice(from, sentenceEnd).search(/enthalten/iu);
+    if (ent >= 0) return from + ent + "enthalten".length;
+  }
+  return sentenceEnd;
 }
 
 function collectPrecautionaryScopes(text: string): { start: number; end: number; lang: LexLang }[] {
@@ -257,13 +260,8 @@ export function lexiconScan(text: string, lang?: LexLang): LexiconHit[] {
   for (const a of allergens) {
     const suppressedByTrap = traps.some((t) => overlaps(a, t) && t.group === a.group);
     const suppressedByRule = rules.some((r) => overlaps(a, r) && r.group === a.group);
-    // Also suppress tree_nut/peanut contains inside nut-free / peanut-free free-from spans.
-    const suppressedByFreeFrom = freeFrom.some(
-      (f) =>
-        overlaps(a, f) &&
-        (f.claim === "nut_free" || f.claim === "peanut-free" || f.claim === "nut-free") &&
-        (a.group === "tree_nut" || a.group === "peanut"),
-    );
+    // A word inside a free-from claim ("gluten" in "gluten-free", "Milch" in "milchfrei") is not an ingredient.
+    const suppressedByFreeFrom = freeFrom.some((f) => overlaps(a, f));
     if (suppressedByTrap || suppressedByRule || suppressedByFreeFrom) continue;
 
     // Prefer longer term matches at the same span (e.g. "brazil nut" over "nut").
@@ -370,31 +368,23 @@ export function verifySpans(
     }
 
     const overlapping = hits.filter((h) => overlaps(loc, h));
+    // Every lexicon hit of a compatible group under this span is accounted for by this row,
+    // whether or not the relations agree, so it is not reported again as missed.
+    for (const h of overlapping) {
+      if (groupsCompatible(span.allergen_group, h.group, h.group === "wheat")) {
+        coveredHitKeys.add(`${h.start}:${h.end}:${h.group}:${h.relation}`);
+      }
+    }
     const trapOrRule = overlapping.filter((h) => h.relation === "not_allergen");
     const sameRelation = overlapping.filter((h) => {
       const wheatTerm = h.group === "wheat";
       return groupsCompatible(span.allergen_group, h.group, wheatTerm) && h.relation === span.relation;
     });
 
-    if (span.relation === "contains" && trapOrRule.some((h) => h.group === span.allergen_group || groupsCompatible(span.allergen_group, h.group, h.group === "wheat"))) {
-      const t = trapOrRule[0]!;
-      rows.push({
-        group: span.allergen_group,
-        relation: span.relation,
-        model: true,
-        lexicon: true,
-        agree: false,
-        evidence_text: span.evidence_text,
-        grounded: true,
-        lexicon_relation: t.relation,
-        term: t.term,
-      });
-      continue;
-    }
-
+    // A real hit inside the span wins over a trap elsewhere in the same span ("cocoa butter, milk powder").
     if (sameRelation.length > 0) {
       const h = sameRelation[0]!;
-      coveredHitKeys.add(`${h.start}:${h.end}:${h.group}:${h.relation}`);
+      for (const s of sameRelation) coveredHitKeys.add(`${s.start}:${s.end}:${s.group}:${s.relation}`);
       rows.push({
         group: span.allergen_group,
         relation: span.relation,
@@ -405,6 +395,22 @@ export function verifySpans(
         grounded: true,
         lexicon_relation: h.relation,
         term: h.term,
+      });
+      continue;
+    }
+
+    if (span.relation === "contains" && trapOrRule.some((h) => groupsCompatible(span.allergen_group, h.group, h.group === "wheat"))) {
+      const t = trapOrRule.find((h) => groupsCompatible(span.allergen_group, h.group, h.group === "wheat"))!;
+      rows.push({
+        group: span.allergen_group,
+        relation: span.relation,
+        model: true,
+        lexicon: true,
+        agree: false,
+        evidence_text: span.evidence_text,
+        grounded: true,
+        lexicon_relation: t.relation,
+        term: t.term,
       });
       continue;
     }
@@ -428,17 +434,6 @@ export function verifySpans(
     if (h.relation !== "contains" && h.relation !== "may_contain") continue;
     const key = `${h.start}:${h.end}:${h.group}:${h.relation}`;
     if (coveredHitKeys.has(key)) continue;
-    // Covered if any agreeing model row already referenced this hit via overlap+compat.
-    const covered = rows.some(
-      (r) =>
-        r.model &&
-        r.agree &&
-        r.lexicon &&
-        groupsCompatible(r.group, h.group, h.group === "wheat") &&
-        r.relation === h.relation &&
-        r.term === h.term,
-    );
-    if (covered) continue;
     rows.push({
       group: h.group,
       relation: h.relation,

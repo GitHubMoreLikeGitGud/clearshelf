@@ -46,8 +46,9 @@ describe("traps", () => {
   });
 
   it("does not match egg inside Weizen or eggplant", () => {
-    expect(groups("Weizen")).not.toContain("egg");
-    expect(groups("eggplant")).not.toContain("egg");
+    // eggplant is reported as an egg trap (not_allergen); only allergen relations count here.
+    expect(groups("Weizen", "contains")).not.toContain("egg");
+    expect(groups("eggplant", "contains")).not.toContain("egg");
   });
 
   it("reads peanut butter as peanut with no milk", () => {
@@ -69,7 +70,6 @@ describe("traps", () => {
   it("keyword baseline flags cocoa butter and coconut milk as milk contains", () => {
     expect(keywordBaseline("cocoa butter").some((h) => h.group === "milk")).toBe(true);
     expect(keywordBaseline("coconut milk").some((h) => h.group === "milk")).toBe(true);
-    expect(keywordBaseline("may contain milk").every((h) => h.group !== "milk" || true)).toBe(true);
     expect(keywordBaseline("may contain milk").some((h) => h.group === "milk")).toBe(true);
   });
 });
@@ -185,5 +185,83 @@ describe("verifySpans grounding and agreement", () => {
     expect(r.rows.some((row) => row.group === "milk" && row.model === false && !row.agree)).toBe(
       true,
     );
+  });
+});
+
+describe("review fixes", () => {
+  it("reads German Eiweiß compounds as protein, not egg", () => {
+    expect(groups("Weizeneiweiß", "contains")).toEqual(["wheat"]);
+    expect(groups("Erbseneiweiß", "contains")).not.toContain("egg");
+    expect(groups("Hühnereiweiß", "contains")).toContain("egg");
+  });
+
+  it("does not read the allergen word inside a free-from claim as an ingredient", () => {
+    for (const t of ["glutenfrei", "gluten-free", "sans gluten", "milchfrei", "lactose-free", "senza latte"]) {
+      expect(groups(t, "contains")).toEqual([]);
+    }
+    expect(groups("gluten-free oats", "contains")).toEqual(["gluten_cereal"]);
+  });
+
+  it("reads Tintenfisch as mollusc, not fish", () => {
+    expect(groups("Tintenfisch", "contains")).toEqual(["mollusc"]);
+  });
+
+  it("reads nut butters in DE, FR, ES and IT as nuts, not milk", () => {
+    for (const t of ["Erdnussbutter", "beurre de cacahuète", "mantequilla de cacahuete", "burro di arachidi"]) {
+      expect(groups(t, "contains")).toContain("peanut");
+      expect(groups(t, "contains")).not.toContain("milk");
+    }
+  });
+
+  it("reads nuez de coco as coconut, not walnut", () => {
+    expect(groups("nuez de coco", "contains")).toEqual([]);
+    expect(lexiconScan("nuez de coco").some((h) => h.ruleConflict === "coconut-tree-nut")).toBe(true);
+  });
+
+  it("reads generic German nuts in a precautionary clause", () => {
+    expect(relations("Kann Spuren von Nüssen enthalten.", "tree_nut")).toEqual(["may_contain"]);
+  });
+
+  it("reads US shared-equipment wording as precautionary", () => {
+    expect(relations("Produced on equipment also handling peanuts.", "peanut")).toEqual(["may_contain"]);
+    expect(relations("Made in a facility that processes tree nuts.", "tree_nut")).toEqual(["may_contain"]);
+  });
+
+  it("does not read corn semolina as wheat", () => {
+    expect(groups("Maisgrieß", "contains")).not.toContain("wheat");
+  });
+
+  it("ends a German precautionary clause at the sentence end when enthalten comes later", () => {
+    const hits = lexiconScan("Kann Spuren von Milch. Zutaten: Haselnüsse, Soja. Kann Sesam enthalten.");
+    expect(hits.find((h) => h.group === "milk")?.relation).toBe("may_contain");
+    expect(hits.find((h) => h.group === "tree_nut")?.relation).toBe("contains");
+    expect(hits.find((h) => h.group === "soy")?.relation).toBe("contains");
+    expect(hits.find((h) => h.group === "sesame")?.relation).toBe("may_contain");
+  });
+
+  it("counts every lexicon hit under a model span as covered", () => {
+    const spans: ExtractionSpan[] = [
+      { evidence_text: "milk powder, cream", allergen_group: "milk", relation: "contains", lang: "en" },
+    ];
+    const r = verifySpans("sugar, milk powder, cream, butter", spans);
+    const missed = r.rows.filter((row) => !row.model);
+    expect(missed.map((row) => row.term)).toEqual(["butter"]);
+  });
+
+  it("records a relation disagreement once, on the model row", () => {
+    const spans: ExtractionSpan[] = [
+      { evidence_text: "may contain milk", allergen_group: "milk", relation: "contains", lang: "en" },
+    ];
+    const r = verifySpans("Sugar. May contain milk.", spans);
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0]).toMatchObject({ model: true, agree: false, lexicon_relation: "may_contain" });
+  });
+
+  it("agrees on a real milk hit even when a trap sits in the same span", () => {
+    const spans: ExtractionSpan[] = [
+      { evidence_text: "cocoa butter, milk powder", allergen_group: "milk", relation: "contains", lang: "en" },
+    ];
+    const r = verifySpans("sugar, cocoa butter, milk powder", spans);
+    expect(r.rows.some((row) => row.model && row.agree)).toBe(true);
   });
 });
