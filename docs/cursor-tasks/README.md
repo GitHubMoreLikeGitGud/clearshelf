@@ -48,7 +48,7 @@ From the repository root, in PowerShell:
 | Task | File | Scope | Status |
 |---|---|---|---|
 | C1 | C1-zetaris-preflight.md | read-only Zetaris JDBC preflight | done 2026-10-23: preflight NOT READY on Windows (path false negatives); read-only JDBC confirmed directly (see the run record) |
-| C2 | C2-lightning-sql-and-usl.md | review of the Lightning SQL pairs and manifest, static SQL tests | planned |
+| C2 | C2-lightning-sql-and-usl.md | decision write-back SQL (pair 14), per-SKU OFF template, DQ rule docs, review of pairs 00 to 13, static SQL tests | planned |
 | C3 | C3-lexicon-and-verifiers.md | multilingual lexicon, jurisdiction, GTIN normaliser, claim tester and tests | planned |
 | C4 | C4-ui-screens.md | the four UI screens | planned |
 | C5 | C5-evidence-drawer-and-ledger.md | evidence drawer and ledger trace view | planned |
