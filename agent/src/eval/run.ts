@@ -185,7 +185,7 @@ export async function runScenario(rt: Runtime, sc: Scenario, opts: { useModel: b
       }
       if (!p) out.failures.push("the poll took no action for the SKU");
       else {
-        if (e.poll.status && p.status !== e.poll.status) out.failures.push(`poll ${p.status}, expected ${e.poll.status} (SPEC 9.1)`);
+        if (e.poll.status && p.status !== e.poll.status) out.failures.push(`poll ${p.status}, expected ${e.poll.status}`);
         for (const x of e.poll.rules) if (!p.rules.includes(x)) out.failures.push(`poll rule ${x} did not fire`);
         if (!p.applied) out.failures.push("the poll's action was not applied automatically");
       }
@@ -195,7 +195,7 @@ export async function runScenario(rt: Runtime, sc: Scenario, opts: { useModel: b
         recheck_rows: poll.recheck.rows.length,
         recheck_evidence: poll.recheck.evidence_id,
       };
-      if (p && p.status === "HOLD") out.notes.push("SPEC 9.1 expects BLOCK after the poll; R1 holds (not blocks) a UK listing of a US recall distributed nationwide (the open E2 policy question)");
+      if (p && p.status === "HOLD") out.notes.push("R1 holds (does not block) a UK listing of a US-only recall of the same GTIN (decision of 2026-10-23; SPEC 9.1 first said BLOCK)");
       return done();
     }
     case "fsa_name_only": {
