@@ -137,3 +137,26 @@ Running any script against the instance (the owner of the SQL runs pair 14 and r
 ## Commit
 
 `C2: decision write-back SQL, OFF template, DQ rule docs and static SQL tests (Cursor Agent)`
+
+## Run record (2026-10-23)
+
+Cursor Agent CLI 2026.10.22, model `Auto`, headless, workspace = this repository with the getting-started clone as an extra root. Wall time 295.4 s, exit code 0; 94,992 input tokens, 17,356 output tokens. It wrote `test_sql_scripts.py` first (6 of 13 tests failing), then the deliverables, and ran the checks until the new file was green: 13 passed, every `zetaris/sql/` file passed `--dry-run`, `npm test` passed. The full gateway suite had 3 failures in `test_sqlgen.py`, from onboarding work in progress outside this task, which it left alone. It did not connect to Zetaris and did not commit.
+
+Commit `C2: decision write-back SQL, OFF template, DQ rule docs and static SQL tests (Cursor Agent)` holds Cursor Agent's files unchanged. Its manifest entry and README lines were inserted into files another task was rewriting at the same time, so only those insertions were committed.
+
+Review findings Cursor Agent reported on pairs 00 to 13 (no files changed):
+
+- The `10_` description of `decision.status` lists RELEASE, which is not one of the four decision states.
+- The `10_` description of `fda_recall.recall_number` gives only an `H-` example; openFDA also uses `F-`.
+- The Day-0 closed-loop query in `10_clearance_usl_select.sql` misses a recall reported on the day of the decision and returns CLEAR rows that a later decision superseded; pair 14 holds the corrected form.
+- `12_clearance_dq_select.sql` has no plain-SQL equivalents for `known_relation`, the `market_code` foreign key on `extracted_allergen` or the `gtin` foreign key on `recall_product_link`.
+
+Reviewer changes, in a separate commit:
+
+- `signed_clear` also covers RELEASE: a row written with that status must carry its signed contract too. `known_status` keeps the four decision states.
+- The current-decision query joins `product` with a LEFT JOIN, so a decision on a GTIN that left the catalogue is still listed.
+- The rule-coverage test no longer reads the gitignored LIST DQ file: it derives the 22 expected rules from the `10_` keys and the `12_`/`14_` registrations. A separate test compares the saved LIST DQ output with them and skips when the file is absent.
+- The REST `FROM CLEARSHELF_*` assertion now captures any database name (the first version could not fail).
+- `dq-rules.md` lists all five Day-0 DQ results.
+
+Run against the local instance afterwards (pair 14 only): both `REGISTER DQ` statements succeeded (234 ms, 151 ms); `LIST DQ USL` returned 22 rules; write-back parity 0 = 0; the current-decision and recheck queries ran (0 rows); `RUN DQ` on both rules returned 0 / 0 / 0. No decision has been written yet, so the queries have run but their logic has not yet met a real decision row.

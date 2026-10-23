@@ -77,7 +77,7 @@ plain-SQL equivalents in `12_clearance_dq_select.sql`.
 
 ### Custom (pair 14)
 
-Registered by `14_decision_writeback_create.sql`; not in the Day-0 listing.
+Registered by `14_decision_writeback_create.sql`; not in the Day-0 listing. Registered on 23 Oct 2026 (234 ms and 151 ms); `LIST DQ USL` then returned 22 rules, and `RUN DQ` on both rules returned 0 total, 0 valid, 0 invalid, because no decision had been written yet (write-back parity 0 = 0).
 
 | Name | Table | Expression | Invalid means | Gateway templates |
 |---|---|---|---|---|

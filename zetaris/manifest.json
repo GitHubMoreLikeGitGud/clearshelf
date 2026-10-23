@@ -78,7 +78,7 @@
       "id": "decision_writeback",
       "kind": "usl",
       "script": "zetaris/sql/14_decision_writeback_create.sql",
-      "status": "drafted",
+      "status": "verified",
       "requires": ["clearance_usl_activate"],
       "summary": "DQ rules and read queries for the ops decision write-back on the USL decision table"
     }

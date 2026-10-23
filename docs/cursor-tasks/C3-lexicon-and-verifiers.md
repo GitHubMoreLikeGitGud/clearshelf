@@ -111,3 +111,20 @@ Model extraction (`agent/src/extract/`), the decision policy and the statement b
 ## Commit
 
 `C3: lexicon, jurisdiction, GTIN normaliser and claim tester (Cursor Agent)`
+
+## Run record (2026-10-23)
+
+Cursor Agent CLI 2026.10.22, model `Auto`, headless, workspace = this repository. The run wrote all ten deliverables (2,339 lines: the four test suites and the fixture file first, then `gtin.ts`, `jurisdiction.ts`, `claims.ts`, `lexicon.data.ts` and `lexicon.ts`), ran `npm test` once (99 of 100 passing) and then stopped: the CLI reported that the account had reached the Cursor Free plan's usage limit. Wall time 545.7 s, exit code 1. It did not commit.
+
+Commit `C3: lexicon, jurisdiction, GTIN normaliser and claim tester (Cursor Agent)` holds Cursor Agent's files exactly as the run left them, including the one failing test. `npx tsc --noEmit` was clean on them.
+
+Reviewer changes, in a separate commit, each with a test:
+
+- The failing test counted the `eggplant` trap hit (`not_allergen`, group egg) as an egg hit; it now checks allergen relations only.
+- `extractUpcs`: a code followed by a pack size (`UPC 816929000119 12 oz`) was lost, because the size joined the run and the 14 digits failed as a case code; two grouped codes written back to back were rejected; eight digits after "UPC" (a zero-suppressed UPC-E, 9 such codes on the saved openFDA page) were padded as if they were EAN-8, which gives a wrong GTIN, and are now rejected as `upc_e_not_expanded`; a run directly after a letter and hyphen (recall numbers such as `F-0636-2025`) is no longer a candidate.
+- Lexicon: the allergen word inside a free-from claim (`gluten` in "gluten-free", `Milch` in "milchfrei", `lactose` in "lactose-free") produced a `contains` hit; German `Eiweiß` (also "protein") made `Weizeneiweiß` an egg hit; `Tintenfisch` (squid) was read as fish; nut butters in DE/FR/ES/IT were read as milk; `nuez de coco` was read as walnut; German `Nüsse` and `Grieß` were missing or too broad; a German precautionary clause could run past the end of its sentence; US shared-equipment wording ("produced on equipment also handling") was not precautionary.
+- `verifySpans`: a hit under a model span was reported again as missed when the span covered more than one hit, or when the relations disagreed.
+- `jurisdiction`: `displayName` gave a statutory name to a species the market does not list (UK pine nut); coconut inside a tree-nut list ("TREE NUTS (ALMOND, COCONUT)", as openFDA writes it) was not flagged; the Spanish Annex II term `frutos de cáscara` was missing.
+- A test now uses the synthetic fixture file, which no test imported.
+
+Checks after the review: `npm test` 122 passed (7 files); `npx tsc --noEmit` clean. On the saved openFDA page, `extractUpcs` finds every GTIN the curation script found plus 26 more, and the coconut rule conflict fires on 7 reports (5 before the review).
