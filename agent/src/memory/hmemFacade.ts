@@ -279,6 +279,8 @@ export interface DecisionLogEntry {
   state?: DecisionState;
   /** The replay's as-of date when the decision was made in an as-of replay. */
   replayAsOf?: string | null;
+  /** The replay's label when it was given ("Replay from 10 Oct 2026, polled to 23 Oct 2026"). */
+  replayLabel?: string;
 }
 
 export type DecisionState = "applied" | "proposed" | "not_applied";
@@ -603,8 +605,10 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
     evidenceFile?: string | null;
     /** applied, proposed (pending signature) or not_applied; unrecorded when not given. */
     state?: DecisionState;
-    /** As-of replay: the date the decision stood at (its srcdate, and the replay label). */
+    /** As-of replay: the date the decision stood at (its srcdate). */
     replayAsOf?: string | null;
+    /** The replay's label ("Replay from 10 Oct 2026, polled to 23 Oct 2026"); default "replay as of <date>". */
+    replayLabel?: string | null;
   }): DecisionLogEntry {
     const key = sha(`${d.gtin}|${d.market}|${d.runId ?? ""}|${d.status}|${d.decidedAt}`);
     const existing = this.decisions.find((x) => x.key === key);
@@ -618,7 +622,8 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
     // srcdate: the day the decision stands at, so an as-of replay before it never sees it; notice tags name what it cites.
     const srcdate = replayAsOf ?? isoDay(d.decidedAt.slice(0, 10)) ?? null;
     const notices = [...new Set(d.firings.flatMap((f) => f.reason.match(/\b[FH]-\d{4}-\d{4}\b/gu) ?? []))];
-    const label = `${state === "proposed" ? " (proposed, pending the officer's signed approval; not applied)" : state === "not_applied" ? " (not applied)" : ""}${replayAsOf ? ` [replay as of ${replayAsOf}]` : ""}`;
+    const replayLabel = replayAsOf ? (d.replayLabel ?? `replay as of ${replayAsOf}`) : null;
+    const label = `${state === "proposed" ? " (proposed, pending the officer's signed approval; not applied)" : state === "not_applied" ? " (not applied)" : ""}${replayLabel ? ` [${replayLabel}]` : ""}`;
     const mem = this.store.add({
       content: `Decision ${d.status}${label} for GTIN ${d.gtin} in ${d.market} (${rules.join(", ") || "no rule"}) by ${actor}${d.policyVersion ? `, policy ${d.policyVersion}` : ""}`,
       type: "factual",
@@ -658,6 +663,7 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
       evidenceFile: d.evidenceFile ?? null,
       ...(state ? { state } : {}),
       replayAsOf,
+      ...(replayLabel && d.replayLabel ? { replayLabel } : {}),
     };
     this.decisions.push(entry);
     if (this.persistDir) {
@@ -715,7 +721,7 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
   ingestClearResult(
     result: ClearResult,
     evidence: EvidenceStore,
-    o: { state?: DecisionState; replayAsOf?: string | null } = {},
+    o: { state?: DecisionState; replayAsOf?: string | null; replayLabel?: string | null } = {},
   ): {
     added: number;
     reconfirmed: number;
@@ -754,6 +760,7 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
       evidenceFile: result.evidence_file,
       state: o.state,
       replayAsOf: o.replayAsOf ?? null,
+      replayLabel: o.replayLabel ?? null,
     });
     return { added, reconfirmed, conflicts, decision, extraction };
   }
@@ -1151,7 +1158,7 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
             : decision.state === "applied"
               ? " (applied)"
               : "";
-      const replay = decision.replayAsOf ? ` [REPLAY as of ${decision.replayAsOf}; replayed events, not live]` : "";
+      const replay = decision.replayAsOf ? ` [${(decision.replayLabel ?? `Replay as of ${decision.replayAsOf}`).toUpperCase()}; replayed events, not live]` : "";
       lines.push(
         `${decision.status}${state}${replay} for ${gtin} in ${market}, decided ${decision.decidedAt} by ${decision.actor}${decision.policyVersion ? ` (policy ${decision.policyVersion})` : ""}, run ${decision.runId ?? "n/a"}, decision memory ${decision.memoryId}${decision.evidenceId ? `, evidence ${decision.evidenceId}` : ""}.`,
       );

@@ -17,6 +17,7 @@ import { EvidenceStore } from "../evidence/store.ts";
 import { HMEM } from "../memory/hmemFacade.ts";
 import { executeDecision } from "../ops/actions.ts";
 import { ContractRefused } from "../ops/store.ts";
+import { RunStore } from "../ops/runStore.ts";
 import type { Market } from "../policy/decide.ts";
 import { investigate, openRuntime, type Runtime } from "../runtime.ts";
 import { brandCandidates, type SweepResult } from "../watch/recallWatch.ts";
@@ -118,7 +119,7 @@ function syntheticGateway(gtin: string): GatewayClient {
 
 // ---------- the run ----------
 
-export async function runScenario(rt: Runtime, sc: Scenario, opts: { useModel: boolean }): Promise<ScenarioResult> {
+export async function runScenario(rt: Runtime, sc: Scenario, opts: { useModel: boolean; runs?: RunStore | null }): Promise<ScenarioResult> {
   const t0 = performance.now();
   const out: ScenarioResult = { id: sc.id, kind: sc.kind, ran: false, pass: null, expected: sc.expect, got: {}, failures: [], notes: [], wall_ms: 0 };
   const done = () => {
@@ -134,6 +135,8 @@ export async function runScenario(rt: Runtime, sc: Scenario, opts: { useModel: b
   switch (sc.kind) {
     case "clear": {
       const { result } = await investigate(rt, { gtin: sc.gtin!, market: sc.market! });
+      // The card shows the scenario's run too, labelled as an eval run that applied nothing.
+      opts.runs?.save(result, { source: "eval", applied: false, note: `eval ${sc.id}: investigation only, no decision written or queued` });
       out.ran = true;
       out.got = checkClear(sc.expect, result, out.failures);
       return done();
@@ -242,13 +245,14 @@ export async function runEval(flags: Record<string, string | boolean>): Promise<
   const only = typeof flags.only === "string" ? new Set(flags.only.split(",").map((x) => x.trim().toUpperCase())) : null;
   const scenarios = doc.scenarios.filter((s) => !only || only.has(s.id));
   const rt = openRuntime({ command: `eval ${only ? [...only].join(",") : "all"}` });
+  const runs = new RunStore();
   const results: ScenarioResult[] = [];
   const t0 = performance.now();
   try {
     for (const sc of scenarios) {
       process.stderr.write(`[${sc.id}] ${sc.kind}${sc.gtin ? ` ${sc.gtin} ${sc.market ?? ""}` : ""}\n`);
       try {
-        results.push(await runScenario(rt, sc, { useModel: !flags["no-model"] }));
+        results.push(await runScenario(rt, sc, { useModel: !flags["no-model"], runs }));
       } catch (e) {
         results.push({ id: sc.id, kind: sc.kind, ran: false, pass: false, expected: sc.expect, got: {}, failures: [`error: ${(e as Error).message.slice(0, 300)}`], notes: [], wall_ms: 0 });
       }

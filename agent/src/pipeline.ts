@@ -36,7 +36,7 @@ import {
   type PolicyResult,
   type RecallFact,
 } from "./policy/decide.ts";
-import { buildStatement, statementCovers, type Statement } from "./policy/statement.ts";
+import { buildStatement, statementCovers, verifierFindsToConfirm, type Statement } from "./policy/statement.ts";
 import { notChecked, type NotCheckedItem } from "./policy/notChecked.ts";
 import { SKU_CHECKLIST } from "./llm/schemas.ts";
 
@@ -616,6 +616,7 @@ export async function clearSku(gtin: string, market: Market, deps: PipelineDeps,
           market,
           verified.map((v) => ({ ...v, evidenceIds: verifiedEvIds })),
           text,
+          verifierFindsToConfirm(market, verified, disagreements.flatMap((d) => d.readings), verifiedEvIds),
         )
       : null;
 

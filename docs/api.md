@@ -9,7 +9,7 @@ The officer UI talks to the agent server (`agent/src/server.ts`, `npm run dev` i
 - **Errors.** Every error is `{ "error": "<message>", "code": "<code>" }` with a 4xx/5xx status. The UI shows `error` as text. A 403 is a refusal (no contract, bad signature, cross-origin) and is shown as a refusal, never retried. A 409 is a state conflict (`stale_proposal`, `stale_release`, `release_blocked`, `not_pending`).
 - **Jobs.** Model work runs one job at a time. Endpoints that start one answer `202 { job_id }`; follow it with `GET /api/jobs/:id` or the `job.*` events.
 - **The UI never decides.** CLEAR, CLEAR_WITH_STATEMENT and RELEASE run only through `POST /api/execute` with a contract from `POST /api/approvals/sign`. The UI forwards the contract it was given; it never builds, edits or signs one.
-- **Replays.** Whenever `banner` is a string (for example `"Replay as of 10 Oct 2026"`), the data comes from an as-of replay and the UI shows that banner.
+- **Replays.** Whenever `banner` is a string, the data comes from an as-of replay and the UI shows that banner. It is `"Replay as of 10 Oct 2026"` until a poll moves the as-of date on, then `"Replay from 10 Oct 2026, polled to 23 Oct 2026"`; the decision rows' reasons, the why trace, H-MEM and the World Model carry the same label.
 
 ## Read endpoints (GET)
 
@@ -19,6 +19,8 @@ The officer UI talks to the agent server (`agent/src/server.ts`, `npm run dev` i
 | `/api/catalogue` | `{ source, banner, skus: [{ gtin, name, brand, markets, scenarios, decisions: { UK?: DecisionRow\|null, US?: … }, latest_runs: { UK?: runId\|null, … }, pending: [{ id, kind, market, status }] }] }` |
 | `/api/sku/:gtin` (13 digits) | `{ gtin, sku, banner, markets: { UK?: { decision: DecisionRow\|null, run: Run\|null, pending: QueueItem[] }, US?: … } }` |
 | `/api/runs/:runId` | `Run`: the full clearance result (see below). 404 when the run is not kept. |
+
+`latest_runs` and `run` are the newest saved clearance of the SKU in that market, whichever path ran it: intake through this server, the command line (`npm run clear`), a recall-watch sweep or the scenario eval (`npm run eval`). `null` means the SKU has not been cleared in that market yet.
 | `/api/evidence/:runId` | `{ run_id, records: EvidenceRecord[] }` |
 | `/api/evidence/:runId/:evidenceId` | one `EvidenceRecord` |
 | `/api/jobs/:jobId` | `Job`: `{ id, kind, state: queued\|running\|done\|failed, input, created_at, started_at, finished_at, result, error }` |
@@ -41,18 +43,20 @@ The memory, why and World Model endpoints answer 404 `not_wired` on a server sta
 
 ### Run (a clearance result)
 
-`ClearResult & { loop: LoopReport }` (`agent/src/pipeline.ts`, `agent/src/loop/investigate.ts`). The fields the card uses:
+`ClearResult & { loop: LoopReport, saved }` (`agent/src/pipeline.ts`, `agent/src/loop/investigate.ts`, `agent/src/ops/runStore.ts`). The fields the card uses:
+
+- `saved { source: "server"|"cli"|"watch"|"eval", applied: true|false|null, decision_id?, queue_id?, sweep_id?, replay?, note, at }`: where the run came from and what was done with its decision. `applied: false` with `source: "eval"` is an investigation that wrote nothing; the card says so next to the current decision.
 
 - `run_id`, `gtin`, `market`, `as_of`, `product { found, name, brand, lang, has_text, text_field, labels }`. The ingredient text itself is not in the run: it is in the evidence record whose `template_id` is `product` (`columns` + `rows`).
 - `decision` (`PolicyResult`, `agent/src/policy/decide.ts`): `status` (CLEAR, CLEAR_WITH_STATEMENT, HOLD, BLOCK), `firings` / `review` / `notes` (each `{ rule, effect, reason, evidenceIds }`), `autoExecutable`, `pendingSignature`, `policyVersion`.
-- `statement { text, excluded[] } | null`, `claim_tests [{ claim, verdict, contradicting, evidenceIds }]` (verdicts SUPPORTED, PARTLY_SUPPORTED, NOT_SUPPORTED, UNTESTED), `contradictions [{ kind, text, evidenceIds }]`, `not_checked [{ id, text }]`, `card [{ text, evidenceIds }]` (every claim on the card with its evidence ids).
+- `statement { text, contains[], mayContain[], toConfirm[], excluded[] } | null`. `toConfirm` holds the contains-level allergens the deterministic verifier found that no verified span states (the model missed or contradicted them); `text` lists them under "Contains" marked "(to confirm)", so the draft never under-declares. Such a run is always held (R4), and `POST /api/approvals/sign` refuses a statement that still has "(to confirm)" in it (400 `unconfirmed_statement`). `claim_tests [{ claim, verdict, contradicting, evidenceIds }]` (verdicts SUPPORTED, PARTLY_SUPPORTED, NOT_SUPPORTED, UNTESTED), `contradictions [{ kind, text, evidenceIds }]`, `not_checked [{ id, text }]`, `card [{ text, evidenceIds }]` (every claim on the card with its evidence ids).
 - `extraction { ran, reused, ok, spans, ungrounded, agreed, disagreed, verified: [{ group, relation, evidence_text, term, species? }], keyword_contains, model, wall_ms }`; the verifier record (`kind: "verifier"`) has `details.agreement: [{ group, relation, model, lexicon, agree, evidence_text }]`.
 - `notices`, `name_matches`, `dq [{ rule, table, source, invalid, … }]`, `checklist`, `gaps`, `evidence_ids`, `quality { e_cov, claims, e_complete, records, incomplete_records }`.
 - `loop`: `status`, `chunks`, `timeline [{ chunk, seq, source: model|fallback, tool, thought, fallback_reason, ok, fact, evidence_ids }]`, `chunk_telemetry`, `chart: [{ chunk, markovian_prompt_tokens_measured, markovian_prompt_tokens_estimated, naive_prompt_tokens_estimated, carryover_tokens_estimated }]`, `summary` (`TelemetrySummary`, `agent/src/loop/telemetry.ts`: planner calls, fallback steps, tokens with their labels, `median_planner_tokens_per_s`).
 
 ### EvidenceRecord
 
-`agent/src/evidence/store.ts`. `id`, `run_id`, `kind` (zetaris_sql, model_extraction, verifier, memory, world_model, policy, dq), `claim`, `queried_at`; for Zetaris records `template_id`, `params`, `sql`, `sql_sha256`, `zetaris_object`, `zetaris_objects`, `raw_objects`, `source_url`, `licence`, `source_cached_at`, `sources [{ object, url, licence, cached_at }]`, `columns`, `rows` (at most 20), `row_count`, `elapsed_ms`, `cache_state`; `dq_source` (`zetaris_dq` or `dq_equivalent_sql`) on dq records; `model { name, think, prompt_sha256, tokens_in, tokens_out, attempts, eval_ms, tokens_per_s, label: "measured" }` on model records; `derived_from`, `reused`, `details`.
+`agent/src/evidence/store.ts`. `id`, `run_id`, `kind` (zetaris_sql, model_extraction, verifier, memory, world_model, policy, dq), `claim`, `queried_at`; for Zetaris records `template_id`, `params`, `sql`, `sql_sha256`, `zetaris_object`, `zetaris_objects`, `raw_objects`, `source_url`, `licence`, `source_cached_at`, `sources [{ object, url, licence, cached_at }]`, `columns`, `rows` (at most 20), `row_count`, `elapsed_ms`, `cache_state`; `dq_source` (`zetaris_dq` or `dq_equivalent_sql`) on dq records. `source_cached_at` is when the gateway logged the source's CACHE TABLE; a table-wide DQ read over every Open Food Facts table carries the oldest CACHE time of those tables. It is `null` for records that read only ops tables (`raw_objects` all `clearshelf_ops.*`): those are never cached and are read live, so the drawer shows "live read (ops table)"; `model { name, think, prompt_sha256, tokens_in, tokens_out, attempts, eval_ms, tokens_per_s, label: "measured" }` on model records; `derived_from`, `reused`, `details`.
 
 ## Write endpoints (POST, JSON body)
 
@@ -75,7 +79,7 @@ Every officer reason (approve, edit, reject, confirm, manual HOLD/BLOCK) is mine
 
 ## Server-sent events (`GET /api/events`)
 
-One `EventSource('/api/events')` per page. Each event has an `id`, a `type` (the SSE event name) and a JSON `data` object that always includes `at`. On reconnect the browser sends `Last-Event-ID` and the server replays the events it still holds (the last 500); `?since=<id>` does the same on a fresh connection.
+One `EventSource('/api/events')` per page. Each event has an `id`, a `type` (the SSE event name) and a JSON `data` object that always includes `at`. A new connection receives only events from then on. On reconnect the browser sends `Last-Event-ID` and the server replays the events after it that it still holds (the last 500); `?since=<id>` does the same on a fresh connection.
 
 | Event | Data (main fields) |
 |---|---|

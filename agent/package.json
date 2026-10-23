@@ -16,7 +16,12 @@
     "watch": "tsx src/cli.ts watch",
     "replay": "tsx src/cli.ts replay",
     "eval": "tsx src/cli.ts eval",
+    "eval:extraction": "tsx src/eval/measure/extraction.ts",
+    "eval:evidence": "tsx src/eval/measure/evidence-quality.ts",
+    "eval:cold-warm": "tsx src/eval/measure/cold-warm.ts",
     "warmup": "tsx src/cli.ts warmup",
+    "demo:snapshot": "tsx src/cli.ts demo-snapshot",
+    "demo:reset": "tsx src/cli.ts demo-reset",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

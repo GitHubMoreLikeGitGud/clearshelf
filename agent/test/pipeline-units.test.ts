@@ -184,7 +184,25 @@ describe("evidence store", () => {
     expect(rec.raw_objects).toEqual(["clearshelf_off.off_0816929000119"]);
     expect(rec.source_url).toContain("/api/v2/product/0816929000119.json");
     expect(rec.licence).toBe("Open Food Facts, ODbL 1.0");
+    expect(rec.source_cached_at).toBeNull();
     expect(missingFields(rec)).toEqual([]);
+  });
+
+  it("gives a DQ record filtered to one GTIN the wildcard's cache time when its own table has none", async () => {
+    const store = new EvidenceStore("rtest", null);
+    const body = templateBody({
+      template_id: "dq_invalid_has_ingredients",
+      rows: [["0816929000119", null]],
+      row_count: 1,
+      source_cached_at: { "clearshelf_off.off_*": "2026-10-23T07:05:00+0800" },
+    });
+    const client = new GatewayClient({ fetchImpl: gatewayFetch(() => ({ status: 200, body })) });
+    const rec = store.fromTemplate(await client.template("dq_invalid_has_ingredients", {}), "claim", { kind: "dq", gtin: "0816929000119" });
+    expect(rec.source_cached_at).toBe("2026-10-23T07:05:00+0800");
+    // Its own table's time wins when the gateway reports one.
+    const own = templateBody({ source_cached_at: { "clearshelf_off.off_*": "2026-10-23T07:05:00+0800", "clearshelf_off.off_0816929000119": "2026-10-23T07:10:00+0800" } });
+    const c2 = new GatewayClient({ fetchImpl: gatewayFetch(() => ({ status: 200, body: own })) });
+    expect(store.fromTemplate(await c2.template("product", { gtin: "0816929000119" }), "claim", { gtin: "0816929000119" }).source_cached_at).toBe("2026-10-23T07:10:00+0800");
   });
 
   it("names missing fields", () => {

@@ -31,11 +31,12 @@ import { knownAsOf, makeWordingFn, memoryPort, openMemory, readEvidenceRecord, t
 import { AGENT_ACTOR, applyAutomatic, overDecision } from "./ops/actions.ts";
 import { ApprovalQueue } from "./ops/queue.ts";
 import { OpsStore, type DecisionRow, type ExtractionRow } from "./ops/store.ts";
+import type { RunOrigin } from "./ops/runStore.ts";
 import type { clearSku, ClearResult } from "./pipeline.ts";
 import type { Market } from "./policy/decide.ts";
 import { keywordBaseline, verifySpans } from "./verify/lexicon.ts";
 import { loadCatalogue, RecallWatch, type Catalogue, type WatchDeps, type WatchHooks } from "./watch/recallWatch.ts";
-import { AsOfGateway, replayBanner, ReplayEvidenceStore } from "./watch/asOf.ts";
+import { AsOfGateway, parseReplayLabel, replayBanner, replayLabel, ReplayEvidenceStore } from "./watch/asOf.ts";
 import { brandKey, CatalogueWorld, worldPort, type FsaBundle, type SourceMeta } from "./world/world.ts";
 import { DqGate, GatewayClient, rowsAsObjects } from "./zetaris/client.ts";
 
@@ -457,7 +458,7 @@ export async function recordOutcome(
   rt: Runtime,
   result: ClearResult,
   evidence: EvidenceStore,
-  o: { decisionId: string; status?: string; contractId?: string; onEvent?: AgentEvent; state?: DecisionState; replayAsOf?: string | null },
+  o: { decisionId: string; status?: string; contractId?: string; onEvent?: AgentEvent; state?: DecisionState; replayAsOf?: string | null; replayLabel?: string | null },
 ): Promise<Recorded> {
   const gaps: string[] = [];
   const policyEv = [...result.evidence_ids].reverse().find((id) => evidence.get(id)?.kind === "policy") ?? null;
@@ -469,10 +470,10 @@ export async function recordOutcome(
     result.quality.e_complete = (result.quality.records - Object.keys(result.quality.incomplete_records).length) / result.quality.records;
   };
 
-  const h = rt.hmem.ingestClearResult(result, evidence, { state: o.state, replayAsOf: o.replayAsOf ?? null });
+  const h = rt.hmem.ingestClearResult(result, evidence, { state: o.state, replayAsOf: o.replayAsOf ?? null, replayLabel: o.replayLabel ?? null });
   const mev = evidence.add({
     kind: "memory",
-    claim: `H-MEM recorded the run: ${h.added} new fact(s), ${h.reconfirmed} reconfirmed, ${h.conflicts.length} new allergen conflict(s); decision logged as ${h.decision.memoryId} (${h.decision.state ?? "applied"}${h.decision.replayAsOf ? `, replay as of ${h.decision.replayAsOf}` : ""})${h.extraction ? `; verified extraction remembered as ${h.extraction.id} (keyed by the label text's sha256)` : ""}`,
+    claim: `H-MEM recorded the run: ${h.added} new fact(s), ${h.reconfirmed} reconfirmed, ${h.conflicts.length} new allergen conflict(s); decision logged as ${h.decision.memoryId} (${h.decision.state ?? "applied"}${h.decision.replayAsOf ? `, ${h.decision.replayLabel ?? `replay as of ${h.decision.replayAsOf}`}` : ""})${h.extraction ? `; verified extraction remembered as ${h.extraction.id} (keyed by the label text's sha256)` : ""}`,
     derived_from: policyEv ? [policyEv] : [],
     details: { decision_memory: h.decision.memoryId, extraction_memory: h.extraction?.id ?? null, conflicts: h.conflicts.map((c) => c.id) },
   });
@@ -557,9 +558,9 @@ export interface ClearOutcome {
 }
 
 /** The World Model's status text: applied, proposed or not applied, with the replay label. */
-export function worldStatus(status: string, state: DecisionState, replayAsOf: string | null): string {
+export function worldStatus(status: string, state: DecisionState, replayAsOf: string | null, replayLabel: string | null = null): string {
   const s = state === "applied" ? status : state === "proposed" ? `${status} (proposed, pending signature)` : `${status} (not applied)`;
-  return replayAsOf ? `${s} [replay as of ${replayAsOf}]` : s;
+  return replayLabel ? `${s} [${replayLabel}]` : replayAsOf ? `${s} [replay as of ${replayAsOf}]` : s;
 }
 
 /**
@@ -590,8 +591,9 @@ export async function clearWithAgent(rt: Runtime, request: ClearRequest): Promis
     const decisionId = applied?.decision_id ?? (queued ? `proposal:${queued.queue_id}` : `run:${result.run_id}:${result.market}`);
     const state: DecisionState = applied ? "applied" : queued ? "proposed" : "not_applied";
     const replayAsOf = req.replay?.asOf ?? null;
-    const status = worldStatus(applied ? applied.status : (queued?.status ?? result.decision.status), state, replayAsOf);
-    recorded = await recordOutcome(rt, result, evidence, { decisionId, status, contractId: applied?.contract_id, onEvent: req.onEvent, state, replayAsOf });
+    const replayLabel = req.replay?.banner ?? null;
+    const status = worldStatus(applied ? applied.status : (queued?.status ?? result.decision.status), state, replayAsOf, replayLabel);
+    recorded = await recordOutcome(rt, result, evidence, { decisionId, status, contractId: applied?.contract_id, onEvent: req.onEvent, state, replayAsOf, replayLabel });
   } else {
     result.gaps.push("dry run (apply false): no decision row, queue item, decision memory, World Model decision or extraction rows were written");
   }
@@ -626,6 +628,12 @@ export async function recordExecuted(rt: Runtime, row: DecisionRow): Promise<{ s
   return { snapshot_id: snap.id, decision_memory_id: d.memoryId };
 }
 
+/** The replay label a replay row carries (its reason starts with the banner), else its as-of date. */
+export function replayLabelOfRow(row: Pick<DecisionRow, "reason" | "decided_date">): string {
+  const p = parseReplayLabel(row.reason.split(" | ")[0] ?? "");
+  return p ? replayLabel(p.origin, p.asOf ?? row.decided_date) : `as of ${row.decided_date}`;
+}
+
 /** "Why was this held?": the H-MEM trace (decision log merged with ledger history) plus the current ops row and the World Model timeline. */
 export async function whyTrace(rt: Runtime, gtin: string, market: Market): Promise<{ lines: string[]; hmem: WhyTrace; current: DecisionRow | null; zetaris: Record<string, unknown>[] | null }> {
   const t = rt.hmem.why(gtin, market);
@@ -651,7 +659,7 @@ export async function whyTrace(rt: Runtime, gtin: string, market: Market): Promi
     );
   }
   if (current) {
-    const replayRow = current.decision_id.startsWith("rp-") ? ` [REPLAY row, as of ${current.decided_date}]` : "";
+    const replayRow = current.decision_id.startsWith("rp-") ? ` [REPLAY row: ${replayLabelOfRow(current)}]` : "";
     lines.push(`Ops store (federated as clearance_usl.decision): ${current.status}${replayRow} ${current.decision_id} by ${current.actor} at ${current.decided_at}, contract ${current.contract_id}.`);
   }
   if (zetaris) lines.push(`Zetaris prior_decisions: ${zetaris.length} row(s) for ${market}${zetaris[0] ? `, latest ${String(zetaris[0].status)} on ${String(zetaris[0].decided_date)}` : ""}.`);
@@ -682,8 +690,11 @@ function metaOf(rec: EvidenceRecord | undefined): SourceMeta {
   };
 }
 
+/** Saves a finished clearance for its SKU card (the server's run store). */
+export type OnRun = (r: ClearResult, origin: RunOrigin) => void;
+
 /** H-MEM per notice, the World Model for new FSA alerts, decision recording after each action, dreaming after the sweep. */
-export function watchHooks(rt: Runtime, onEvent?: AgentEvent): WatchHooks {
+export function watchHooks(rt: Runtime, onEvent?: AgentEvent, onRun?: OnRun): WatchHooks {
   return {
     noticeMemory(n, ev) {
       const brandKeys = [...new Set(n.brands.map((b) => brandKey(b)).filter((b): b is string => !!b))];
@@ -731,16 +742,31 @@ export function watchHooks(rt: Runtime, onEvent?: AgentEvent): WatchHooks {
     },
     async actionTaken(a, r, ev) {
       const state: DecisionState = a.applied ? "applied" : a.queue_id ? "proposed" : "not_applied";
-      const replayAsOf = ev instanceof ReplayEvidenceStore ? (ev.replay?.as_of ?? null) : null;
-      const rec = await recordOutcome(rt, r, ev, {
-        decisionId: a.decision_id ?? (a.queue_id ? `proposal:${a.queue_id}` : `run:${r.run_id}:${a.market}`),
-        status: worldStatus(a.status, state, replayAsOf),
-        contractId: a.contract_id ?? undefined,
-        onEvent,
-        state,
-        replayAsOf,
-      });
-      a.evidence_ids.push(rec.memory.evidence_id, ...(rec.world ? [rec.world.evidence_id] : []));
+      const replay = ev instanceof ReplayEvidenceStore ? ev.replay : null;
+      const replayAsOf = replay?.as_of ?? null;
+      try {
+        const rec = await recordOutcome(rt, r, ev, {
+          decisionId: a.decision_id ?? (a.queue_id ? `proposal:${a.queue_id}` : `run:${r.run_id}:${a.market}`),
+          status: worldStatus(a.status, state, replayAsOf, replay?.banner ?? null),
+          contractId: a.contract_id ?? undefined,
+          onEvent,
+          state,
+          replayAsOf,
+          replayLabel: replay?.banner ?? null,
+        });
+        a.evidence_ids.push(rec.memory.evidence_id, ...(rec.world ? [rec.world.evidence_id] : []));
+      } finally {
+        // The sweep's clearance is the SKU's latest run, whether or not memory recorded it.
+        onRun?.(r, {
+          source: "watch",
+          applied: a.applied,
+          decision_id: a.decision_id,
+          queue_id: a.queue_id,
+          sweep_id: ev.runId,
+          replay: replay?.banner ?? null,
+          note: `${a.trigger}: ${a.applied ? `${a.status} applied automatically` : a.queue_id ? `${a.status} queued for the officer's signed approval` : `${a.status} not applied`}`,
+        });
+      }
     },
     async sweepDone(res) {
       const d = await rt.hmem.dream(makeWordingFn(rt.ollama, rt.hmem.modelCalls));
@@ -750,7 +776,10 @@ export function watchHooks(rt: Runtime, onEvent?: AgentEvent): WatchHooks {
 }
 
 /** The recall watch on this runtime: Markovian clearances, H-MEM and the World Model wired. */
-export function agentWatch(rt: Runtime, o: { emit?: AgentEvent; useModel?: boolean; log?: (l: string) => void; deps?: Pick<WatchDeps, "stateStore" | "sweepDir" | "evidenceDir" | "today"> } = {}): RecallWatch {
+export function agentWatch(
+  rt: Runtime,
+  o: { emit?: AgentEvent; useModel?: boolean; log?: (l: string) => void; onRun?: OnRun; deps?: Pick<WatchDeps, "stateStore" | "sweepDir" | "evidenceDir" | "today"> } = {},
+): RecallWatch {
   return new RecallWatch({
     ...o.deps,
     gateway: rt.gateway,
@@ -762,6 +791,6 @@ export function agentWatch(rt: Runtime, o: { emit?: AgentEvent; useModel?: boole
     log: o.log ?? rt.log,
     useModel: o.useModel ?? true,
     clear: watchClear(rt, o.emit),
-    hooks: watchHooks(rt, o.emit),
+    hooks: watchHooks(rt, o.emit, o.onRun),
   });
 }

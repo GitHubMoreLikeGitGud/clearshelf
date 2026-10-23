@@ -33,7 +33,7 @@ import { scanFields, type GuardReport } from "../contract/guard.ts";
 import { applyAutomatic, overDecision } from "../ops/actions.ts";
 import type { ApprovalQueue } from "../ops/queue.ts";
 import type { LinkRow, OpsStore } from "../ops/store.ts";
-import { AsOfGateway, replayBanner, ReplayEvidenceStore, type AsOfResult } from "./asOf.ts";
+import { AsOfGateway, replayBanner, replayLabel, ReplayEvidenceStore, type AsOfResult } from "./asOf.ts";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 
@@ -300,8 +300,10 @@ export class RecallWatch {
     return this.d.stateStore.load();
   }
 
+  /** The replay label for the current as-of date ("Replay as of …", or "Replay from …, polled to …"). */
   banner(): string | null {
-    return this.state()?.replay?.banner ?? null;
+    const st = this.state();
+    return st?.replay ? replayLabel(st.replay.origin, st.as_of) : null;
   }
 
   private exclusive(fn: () => Promise<SweepResult>): Promise<SweepResult> {
@@ -383,7 +385,7 @@ export class RecallWatch {
         updated_at: new Date().toISOString(),
       });
       this.d.stateStore.save(st);
-      this.d.emit("watch.state", { state: st, banner: st.replay?.banner ?? null });
+      this.d.emit("watch.state", { state: st, banner: st.replay ? replayLabel(st.replay.origin, st.as_of) : null });
       return res;
     });
   }
@@ -416,8 +418,9 @@ export class RecallWatch {
   private async sweep(kind: "baseline" | "poll", st: WatchState, after: string, upTo: string, scope: string[]): Promise<SweepResult> {
     const t0 = performance.now();
     const sweepId = newSweepId();
-    const replay = st.replay ? { as_of: upTo, banner: st.replay.banner } : null;
-    const banner = st.replay?.banner ?? null;
+    // One label for the whole sweep: its rows, evidence, memories and World Model status.
+    const banner = st.replay ? replayLabel(st.replay.origin, upTo) : null;
+    const replay = st.replay ? { as_of: upTo, banner: banner! } : null;
     const gw = new AsOfGateway(this.d.gateway, st.mode === "replay" ? upTo : null, banner);
     const ev = new ReplayEvidenceStore(replay, sweepId, this.d.evidenceDir);
     const res: SweepResult = {
@@ -789,7 +792,7 @@ export class RecallWatch {
           source: "sweep",
           notice_id: notice.notice_id,
           similarity,
-          replay: res.replay ? { as_of: res.window.up_to, banner: res.replay.banner } : null,
+          replay: res.replay ? { as_of: res.window.up_to, banner: res.banner ?? res.replay.banner } : null,
         });
         const m: NameMatch = {
           notice_id: notice.notice_id,

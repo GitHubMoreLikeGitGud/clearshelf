@@ -247,9 +247,14 @@ describe("runtime: one clearance through every lane", () => {
     const e = await env();
     e.w.fda[0] = fda("H-0001-2026", "2026-09-01", { reason: `Product contains undeclared milk. ${NOTICE_INJECTION}` });
     const rt = e.open();
-    const watch = agentWatch(rt, { deps: { stateStore: new WatchStateStore(join(e.root, "watch")), sweepDir: null, evidenceDir: null, today: () => "2026-10-23" } });
+    const saved: { run: string; origin: Record<string, unknown> }[] = [];
+    const watch = agentWatch(rt, { onRun: (r, o) => saved.push({ run: r.run_id, origin: o as unknown as Record<string, unknown> }), deps: { stateStore: new WatchStateStore(join(e.root, "watch")), sweepDir: null, evidenceDir: null, today: () => "2026-10-23" } });
     await watch.startReplay("2026-08-15", { scope: "none" });
     const poll = await watch.poll({ until: "2026-10-23" });
+    // The sweep's clearance is saved for the SKU card, labelled with the sweep and the replay.
+    expect(saved).toHaveLength(1);
+    expect(saved[0]!.run).toBe(poll.actions[0]!.run_id);
+    expect(saved[0]!.origin).toMatchObject({ source: "watch", applied: true, decision_id: poll.actions[0]!.decision_id, sweep_id: poll.sweep_id, replay: "Replay from 15 Aug 2026, polled to 23 Oct 2026" });
     expect(poll.notices.find((n) => n.notice_id === "H-0001-2026")).toMatchObject({ guard: { hit: true }, parsed_by: ["gs1_scan"], allergens: ["milk"] });
     expect(poll.actions).toHaveLength(1);
     expect(poll.actions[0]).toMatchObject({ gtin: G, status: "HOLD", applied: true });
@@ -267,9 +272,10 @@ describe("runtime: one clearance through every lane", () => {
     expect(row.reason.startsWith("REPLAY AS OF 15 SEP 2026 | ")).toBe(true);
     expect(rt.hmem.decisionLog(G, "UK")[0]).toMatchObject({ state: "applied", replayAsOf: "2026-09-15" });
     const why = await whyTrace(rt, G, "UK");
-    expect(why.lines[0]).toMatch(/^HOLD [(]applied[)] \[REPLAY as of 2026-09-15; replayed events, not live\] for 0012345678905 in UK/u);
-    expect(why.lines.some((l) => /^Ops store .*: HOLD \[REPLAY row, as of 2026-09-15\] rp-/u.test(l))).toBe(true);
-    expect(rt.world.snapshotsFor(G).at(-1)!.reason).toMatch(/replay as of 2026-09-15/u);
+    // One replay label everywhere: H-MEM, the why trace, the ops row and the World Model.
+    expect(why.lines[0]).toMatch(/^HOLD [(]applied[)] \[REPLAY AS OF 15 SEP 2026; replayed events, not live\] for 0012345678905 in UK/u);
+    expect(why.lines.some((l) => /^Ops store .*: HOLD \[REPLAY row: Replay as of 15 Sep 2026\] rp-/u.test(l))).toBe(true);
+    expect(rt.world.snapshotsFor(G).at(-1)!.reason).toMatch(/\[Replay as of 15 Sep 2026\]/u);
   });
 
   it("a proposal is logged as proposed, not applied; a later automatic HOLD supersedes it in the queue", async () => {

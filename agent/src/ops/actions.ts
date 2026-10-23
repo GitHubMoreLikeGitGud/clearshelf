@@ -13,6 +13,7 @@
 import { officerApproval, OFFICER, type ExecutionContract } from "../contract/scout.ts";
 import { rowsAsObjects, type GatewayClient, type TemplateResult } from "../zetaris/client.ts";
 import type { Decision, Market } from "../policy/decide.ts";
+import { TO_CONFIRM } from "../policy/statement.ts";
 import { confirmDecisionVisible, ContractRefused, decisionContractParams, OpsError, OpsStore, type DecisionRow, type Visibility } from "./store.ts";
 import type { ApprovalQueue, QueueItem } from "./queue.ts";
 
@@ -100,6 +101,9 @@ export function signApproval(ops: OpsStore, queue: ApprovalQueue, r: SignRequest
   if (r.officer !== OFFICER) throw new OpsError(`unknown approver ${r.officer}; the local demo identity is "${OFFICER}"`, 403, "not_officer");
   if (!r.reason || !r.reason.trim()) throw new OpsError("an approval needs the officer's reason", 400, "reason_missing");
   if (r.status === "CLEAR_WITH_STATEMENT" && !(r.statement ?? "").trim()) throw new OpsError("CLEAR_WITH_STATEMENT needs the statement", 400, "bad_statement");
+  if ((r.statement ?? "").includes(TO_CONFIRM)) {
+    throw new OpsError(`the statement still has entries marked "${TO_CONFIRM}" (verifier finds no verified span states); confirm or remove them first`, 400, "unconfirmed_statement");
+  }
   let item: QueueItem | null = null;
   if (r.action === "RELEASE") {
     const cur = ops.current().get(`${r.gtin}|${r.market}`);

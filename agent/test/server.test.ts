@@ -155,8 +155,12 @@ describe("server: E10 and the signed-approval path", () => {
     expect(ev.body.records).toHaveLength(1);
     const sku = await call(base, `/api/sku/${B}`);
     expect(sku.body.markets.UK.decision.status).toBe("HOLD");
+    // The run is saved for the card, labelled with where it came from and what was done.
+    expect(sku.body.markets.UK.run.run_id).toBe(done.result.run_id);
+    expect(sku.body.markets.UK.run.saved).toMatchObject({ source: "server", applied: true, decision_id: done.result.decision_id });
     const cat = await call(base, "/api/catalogue");
     expect(cat.body.skus.find((s: any) => s.gtin === B).decisions.UK.status).toBe("HOLD");
+    expect(cat.body.skus.find((s: any) => s.gtin === B).latest_runs.UK).toBe(done.result.run_id);
   });
 
   it("rejecting a proposal holds the listing with the officer's reason", async () => {
@@ -191,11 +195,26 @@ describe("server: transport safety", () => {
     expect((await fetch(`${base}/api/nope`)).status).toBe(404);
   });
 
-  it("streams events over SSE, with replay of recent events", async () => {
+  it("streams events over SSE; only a reconnect (Last-Event-ID) or ?since replays missed events", async () => {
     const { base, port } = await start();
     await waitJob(base, (await call(base, "/api/clear", { gtin: B, market: "UK" })).body.job_id);
-    const text = await new Promise<string>((ok, fail) => {
+    // A new connection gets no history: only the retry line, then live events.
+    const fresh = await new Promise<string>((ok, fail) => {
       const req = http.request({ host: "127.0.0.1", port, path: "/api/events", headers: { host: `127.0.0.1:${port}` } }, (res) => {
+        let buf = "";
+        res.on("data", (c) => (buf += String(c)));
+        setTimeout(() => {
+          req.destroy();
+          ok(buf);
+        }, 300);
+      });
+      req.on("error", (e) => (String(e).includes("socket hang up") ? undefined : fail(e)));
+      req.end();
+    });
+    expect(fresh).toContain("retry: 3000");
+    expect(fresh).not.toMatch(/^id: /mu);
+    const text = await new Promise<string>((ok, fail) => {
+      const req = http.request({ host: "127.0.0.1", port, path: "/api/events", headers: { host: `127.0.0.1:${port}`, "last-event-id": "0" } }, (res) => {
         expect(res.headers["content-type"]).toContain("text/event-stream");
         let buf = "";
         res.on("data", (c) => {
@@ -212,5 +231,19 @@ describe("server: transport safety", () => {
     expect(text).toContain("event: job.queued");
     expect(text).toContain("event: decision.written");
     expect(text).toMatch(/id: \d+/u);
+    const since = await new Promise<string>((ok, fail) => {
+      const req = http.request({ host: "127.0.0.1", port, path: "/api/events?since=1", headers: { host: `127.0.0.1:${port}` } }, (res) => {
+        let buf = "";
+        res.on("data", (c) => (buf += String(c)));
+        setTimeout(() => {
+          req.destroy();
+          ok(buf);
+        }, 300);
+      });
+      req.on("error", (e) => (String(e).includes("socket hang up") ? undefined : fail(e)));
+      req.end();
+    });
+    expect(since).toMatch(/^id: 2$/mu);
+    expect(since).not.toMatch(/^id: 1$/mu);
   });
 });

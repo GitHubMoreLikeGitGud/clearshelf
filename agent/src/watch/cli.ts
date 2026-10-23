@@ -15,6 +15,7 @@ import { loadConfig } from "../config.ts";
 import { loadContractSecret, ContractVerifier } from "../contract/scout.ts";
 import { OllamaClient } from "../llm/ollama.ts";
 import { ApprovalQueue } from "../ops/queue.ts";
+import { RunStore } from "../ops/runStore.ts";
 import { OpsStore } from "../ops/store.ts";
 import { GatewayClient } from "../zetaris/client.ts";
 import { RecallWatch, type SweepResult } from "./recallWatch.ts";
@@ -54,7 +55,9 @@ export function printSweep(r: SweepResult): string {
 /** The Day-2 watch: Markovian clearances with H-MEM and the World Model (runtime.ts). Takes data/agent.lock. */
 export function makeAgentWatch(opts: { useModel?: boolean; log?: (l: string) => void; emit?: (type: string, data: Record<string, unknown>) => void } = {}): { watch: RecallWatch; runtime: Runtime } {
   const runtime = openRuntime({ command: `watch ${process.argv.slice(2).join(" ")}`.trim(), log: opts.log });
-  return { watch: agentWatch(runtime, { useModel: opts.useModel, emit: opts.emit, log: opts.log }), runtime };
+  // Each sweep clearance is saved for its SKU card, as in the server.
+  const runs = new RunStore();
+  return { watch: agentWatch(runtime, { useModel: opts.useModel, emit: opts.emit, log: opts.log, onRun: (r, o) => runs.save(r, o) }), runtime };
 }
 
 /** The straight-pipeline watch (Day 1 clearance, no memory or World Model); --straight. */

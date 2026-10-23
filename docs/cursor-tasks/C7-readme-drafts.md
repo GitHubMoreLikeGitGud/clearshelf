@@ -31,9 +31,14 @@ This repository.
 12. Limitations and safety: decision support only, not legal advice; never auto-publishes free-from claims; Open Food Facts is crowd-sourced; the officer identity is a local demo identity and a real deployment needs SSO.
 13. Pre-existing code: the Meterless reference engines and the adapted Zetaris getting-started `zetaris_sql.py`, both Apache-2.0.
 
-The Cursor statement, used only for the parts that the task records show actually happened (drop any clause that is not yet true and list it as TODO):
+The Cursor statement says only what the task records prove: a Cursor Agent transcript in the run record and a commit marked "(Cursor Agent)". Today that is G9, C1, C2 and C3, so the statement is:
 
-> ClearShelf was developed in Cursor. The repository is a Cursor workspace with project rules in `.cursor/rules`. Cursor Agent ran the Zetaris getting-started JDBC preflight against our local instance, reviewed the Lightning SQL onboarding scripts and the clearance_usl model against sample API responses and wrote their static tests, drafted the multilingual allergen lexicon and its tests, built the four UI screens and the evidence drawer, and wrote the evaluation runner. Each task, its commits and the reviewer's corrections are listed in docs/how-cursor-was-used.md.
+> ClearShelf was developed in Cursor. The repository is a Cursor workspace with project rules in `.cursor/rules`. Cursor Agent ran the Zetaris getting-started JDBC preflight against our local instance, reviewed the Lightning SQL onboarding scripts and the clearance_usl model against sample API responses and wrote their static tests, and drafted the multilingual allergen lexicon and its tests. Each task, its commits and the reviewer's corrections are listed in docs/how-cursor-was-used.md.
+
+Add a clause, before "Each task", only for a task that has run in Cursor Agent and has its "(Cursor Agent)" commit; otherwise list it as TODO and leave it out:
+
+- C4 and C5 both done: "built the officer UI screens, the evidence drawer and the ledger-trace view". Only C4: "built the officer UI screens". Never claim a screen that is not in `ui/`, and never claim the UI if it was built outside Cursor Agent.
+- C6 done: "extended the evaluation runner". Never "wrote the evaluation runner": the scenario runner (`agent/src/eval/run.ts`) and the measurement scripts (`agent/src/eval/measure/`) were written before C6, not by Cursor Agent.
 
 Cursor Agent did not draft the Lightning SQL scripts or the clearance_usl model: they were written and run during the Day-0 gates (pairs 00 to 13 and the USL, commit `c65d57f`), before C2. Its C2 work was pair 14, the Open Food Facts template, `zetaris/dq-rules.md` and the static tests. Never write "drafted the Lightning SQL onboarding scripts and the clearance_usl model". The lexicon was drafted by Cursor Agent and corrected in reviewer commits, so the statement says "drafted", never "wrote". The C2 clause above is used only if a C2 commit exists; otherwise it is dropped and listed as TODO.
 

@@ -39,7 +39,7 @@ import {
   type PolicyResult,
   type RecallFact,
 } from "../policy/decide.ts";
-import { buildStatement, statementCovers, type Statement } from "../policy/statement.ts";
+import { buildStatement, statementCovers, verifierFindsToConfirm, type Statement } from "../policy/statement.ts";
 import { notChecked, type NotCheckedItem } from "../policy/notChecked.ts";
 import { bestNameSimilarity, describeDisagreement, type CardClaim, type ClearResult } from "../pipeline.ts";
 import { Checklist, NOTICES_PARSED } from "./checklist.ts";
@@ -1213,7 +1213,15 @@ export function proposePolicy(ctx: SkuContext, deps: ToolDeps, extraIncomplete: 
     escalations: ctx.escalations,
   });
 
-  const statement = hasText && extraction?.ok ? buildStatement(market, verified.map((v) => ({ ...v, evidenceIds: verifiedEvIds })), ctx.text) : null;
+  const statement =
+    hasText && extraction?.ok
+      ? buildStatement(
+          market,
+          verified.map((v) => ({ ...v, evidenceIds: verifiedEvIds })),
+          ctx.text,
+          verifierFindsToConfirm(market, verified, ctx.disagreements.flatMap((d) => d.readings), verifiedEvIds),
+        )
+      : null;
   const nc = notChecked({
     market,
     hasIngredientText: hasText,

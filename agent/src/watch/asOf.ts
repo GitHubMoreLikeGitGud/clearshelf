@@ -32,10 +32,44 @@ export type AsOfResult = TemplateResult & { as_of_filter?: AsOfFilter; replay_ba
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+function dayLabel(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${d} ${MONTHS[(m ?? 1) - 1]} ${y}`;
+}
+
 /** "Replay as of 10 Oct 2026". */
 export function replayBanner(asOf: string): string {
-  const [y, m, d] = asOf.split("-").map(Number);
-  return `Replay as of ${d} ${MONTHS[(m ?? 1) - 1]} ${y}`;
+  return `Replay as of ${dayLabel(asOf)}`;
+}
+
+/**
+ * The one label a replay carries everywhere (banner, ops reason, why trace, H-MEM, World
+ * Model): "Replay as of 10 Oct 2026" until a poll moves the as-of date past the replay's
+ * start, then "Replay from 10 Oct 2026, polled to 23 Oct 2026".
+ */
+export function replayLabel(origin: string, asOf: string | null | undefined): string {
+  return asOf && asOf > origin ? `Replay from ${dayLabel(origin)}, polled to ${dayLabel(asOf)}` : replayBanner(origin);
+}
+
+const DAY_TEXT = /(\d{1,2}) ([A-Za-z]{3}) (\d{4})/u;
+
+function isoOf(m: RegExpExecArray | null): string | null {
+  if (!m) return null;
+  const mi = MONTHS.findIndex((x) => x.toLowerCase() === m[2]!.toLowerCase());
+  return mi < 0 ? null : `${m[3]}-${String(mi + 1).padStart(2, "0")}-${m[1]!.padStart(2, "0")}`;
+}
+
+/** Reads a replay label (any letter case, e.g. an ops row's reason prefix) back into its dates. */
+export function parseReplayLabel(text: string): { origin: string; asOf: string | null } | null {
+  const from = /^replay from (.+?), polled to (.+)$/iu.exec(text.trim());
+  if (from) {
+    const origin = isoOf(DAY_TEXT.exec(from[1]!));
+    const asOf = isoOf(DAY_TEXT.exec(from[2]!));
+    return origin ? { origin, asOf } : null;
+  }
+  const at = /^replay as of (.+)$/iu.exec(text.trim());
+  const origin = at ? isoOf(DAY_TEXT.exec(at[1]!)) : null;
+  return origin ? { origin, asOf: null } : null;
 }
 
 /** Rows whose date column is empty or later than as-of are dropped (an undated notice cannot be placed in time). */

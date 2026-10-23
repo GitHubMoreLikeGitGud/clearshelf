@@ -11,6 +11,8 @@
 //   npm run eval -- [--only E1,E10] [--no-model]                         SPEC 9.1 scenarios through the agent
 //   npm run warmup -- [--no-model] [--wait-s 180]                        gateway cache, model load, memory seed check
 //   npm run onboard -- [--dry-run] [--skip-exists] [--gtin <GTIN>]...     runs gateway.onboard (Python) with these flags
+//   npm run demo:snapshot -- --name post-warmup [--force]               save the demo stores (after npm run warmup)
+//   npm run demo:reset -- --name post-warmup | --fresh                  put them back (the current state is saved first)
 //
 // The commands that open data/hmem and data/world (clear, watch, replay, why, eval, warmup)
 // take data/agent.lock, so they refuse to run while the server or another command holds it.
@@ -20,14 +22,17 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { loadConfig, REPO_ROOT, REPO_ROOT_URL } from "./config.ts";
-import { clearWithAgent, openRuntime, whyTrace, type ClearOutcome } from "./runtime.ts";
+import { acquireLock, clearWithAgent, openRuntime, whyTrace, type ClearOutcome } from "./runtime.ts";
+import { DEMO_DIR, DEMO_PATHS, listSnapshots, resetDemo, snapshotDemo } from "./ops/demoState.ts";
 import { runEval } from "./eval/run.ts";
 import { seedMemory } from "./memory/seed.ts";
 import { DEFAULT_OPTIONS, OllamaClient } from "./llm/ollama.ts";
 import { DqGate, GatewayClient, validateParam } from "./zetaris/client.ts";
 import { EvidenceStore, newRunId, type EvidenceRecord } from "./evidence/store.ts";
 import { clearSku, type ClearResult, type PipelineDeps } from "./pipeline.ts";
+import { RunStore } from "./ops/runStore.ts";
 import type { Market } from "./policy/decide.ts";
+import { TO_CONFIRM } from "./policy/statement.ts";
 import { AsOfGateway, replayBanner, ReplayEvidenceStore } from "./watch/asOf.ts";
 
 interface Args {
@@ -71,7 +76,9 @@ function printResult(r: ClearResult, records: readonly EvidenceRecord[]): void {
   for (const f of r.decision.notes) out.push(`  ${f.rule} note: ${f.reason}  [${f.evidenceIds.join(", ")}]`);
   if (r.statement) {
     out.push("");
-    out.push(`Statement draft (${r.market}, from verified spans only): ${r.statement.text}`);
+    out.push(
+      `Statement draft (${r.market}, from verified spans${r.statement.toConfirm?.length ? `; "${TO_CONFIRM}" marks a contains-level verifier find no verified span states, held under R4` : " only"}): ${r.statement.text}`,
+    );
     for (const x of r.statement.excluded) out.push(`  left out: ${x.group}${x.species ? ` (${x.species})` : ""} "${x.evidence_text}": ${x.reason}`);
   }
   if (r.claim_tests.length) {
@@ -144,6 +151,7 @@ async function cmdClear(flags: Record<string, string | boolean>): Promise<number
   if (flags.straight) {
     const evidence = new EvidenceStore();
     const result = await clearSku(gtin, market as Market, deps(evidence), asOf);
+    new RunStore().save(result, { source: "cli", applied: false, replay: asOf ? replayBanner(asOf) : null, note: "straight pipeline (--straight): nothing written" });
     if (flags.json) console.log(JSON.stringify(result, null, 2));
     else printResult(result, evidence.all());
     return 0;
@@ -167,6 +175,15 @@ async function cmdClear(flags: Record<string, string | boolean>): Promise<number
       onEvent: (type, data) => {
         if (type === "loop.tool") process.stderr.write(`  chunk ${String(data.chunk)} ${String(data.tool)} (${String(data.source)}) ${data.ok ? "ok" : "FAILED"} ${String(data.latency_ms)} ms: ${shorten(String(data.fact), 150)}\n`);
       },
+    });
+    // Saved for the SKU card, as the server saves its clearances.
+    new RunStore().save(o.result, {
+      source: "cli",
+      applied: !!o.applied,
+      decision_id: o.applied?.decision_id ?? null,
+      queue_id: o.queued?.queue_id ?? null,
+      replay: banner,
+      note: o.applied ? `${o.applied.status} applied automatically` : o.queued ? `${o.queued.status} queued for the officer's signed approval` : "dry run (--no-apply): nothing written",
     });
     if (flags.json) console.log(JSON.stringify({ ...o.result, applied: o.applied, queued: o.queued, recorded: o.recorded }, null, 2));
     else {
@@ -216,6 +233,30 @@ async function cmdWhy(flags: Record<string, string | boolean>): Promise<number> 
   }
 }
 
+/** demo-snapshot and demo-reset (ops/demoState.ts), under data/agent.lock so no server or command has the stores open. */
+function cmdDemo(cmd: "demo-snapshot" | "demo-reset", flags: Record<string, string | boolean>): number {
+  const root = fileURLToPath(REPO_ROOT_URL);
+  const lock = acquireLock(cmd);
+  try {
+    if (cmd === "demo-snapshot") {
+      if (typeof flags.name !== "string") throw new Error("demo-snapshot needs --name <name> (for example post-warmup)");
+      const m = snapshotDemo(root, flags.name, { force: !!flags.force, note: typeof flags.note === "string" ? flags.note : undefined });
+      console.log(`snapshot "${m.name}": ${Object.keys(m.files).length} file(s) from ${DEMO_PATHS.length - m.absent.length} store path(s)${m.absent.length ? `; absent: ${m.absent.join(", ")}` : ""} -> ${DEMO_DIR}/${m.name}/`);
+      return 0;
+    }
+    if (typeof flags.name !== "string" && !flags.fresh) {
+      const all = listSnapshots(root);
+      console.log(["demo-reset needs --name <snapshot> or --fresh. Snapshots:", ...all.map((m) => `  ${m.name}  ${m.created_at}  ${Object.keys(m.files).length} file(s)${m.note ? `  (${m.note})` : ""}`)].join("\n"));
+      return 2;
+    }
+    const r = resetDemo(root, typeof flags.name === "string" ? { name: flags.name } : { fresh: true });
+    console.log(`reset to ${r.from === "fresh" ? "fresh (empty) stores; run npm run warmup next" : `snapshot "${r.from}"`}: ${r.restored} file(s) written, ${r.removed.length} store path(s) replaced; the state before the reset is saved as "${r.archived}"${r.mismatched.length ? `; sha256 MISMATCH: ${r.mismatched.join(", ")}` : "; every restored file matches the snapshot's sha256"}`);
+    return r.mismatched.length ? 1 : 0;
+  } finally {
+    lock.release();
+  }
+}
+
 async function cmdWarmup(flags: Record<string, string | boolean>): Promise<number> {
   const cfg = loadConfig();
   const gateway = new GatewayClient({ baseUrl: cfg.gatewayUrl });
@@ -231,7 +272,8 @@ async function cmdWarmup(flags: Record<string, string | boolean>): Promise<numbe
       h = { ok: false, error: (e as Error).message.slice(0, 200) };
     }
     const lw = (h.last_warmup ?? null) as Record<string, unknown> | null;
-    const warm = !!h.ok && !!lw && !lw.failed && !(Array.isArray(lw.cached_now) && lw.skipped === "warm-up already running");
+    const failed = !!lw?.failed && Object.keys(lw.failed as object).length > 0;
+    const warm = !!h.ok && !!lw && !failed && !(Array.isArray(lw.cached_now) && lw.skipped === "warm-up already running");
     if (warm || performance.now() - t0 > waitS * 1000) break;
     await new Promise((r) => setTimeout(r, 5000));
   }
@@ -398,6 +440,9 @@ async function main(): Promise<number> {
       return runEval(flags);
     case "warmup":
       return cmdWarmup(flags);
+    case "demo-snapshot":
+    case "demo-reset":
+      return cmdDemo(cmd, flags);
     default:
       console.log(
         [
@@ -409,6 +454,8 @@ async function main(): Promise<number> {
           "       cli.ts eval [--only E1,E10] [--no-model]",
           "       cli.ts warmup [--no-model] [--wait-s 180]",
           "       cli.ts onboard [gateway.onboard flags: --dry-run --skip-exists --gtin ...]",
+          "       cli.ts demo-snapshot --name <name> [--force] [--note <text>]",
+          "       cli.ts demo-reset --name <name> | --fresh",
         ].join("\n"),
       );
       return cmd === "help" ? 0 : 2;

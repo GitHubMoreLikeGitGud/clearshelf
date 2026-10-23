@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decide, distributionCoversUk, monthsBetween, type PolicyInput } from "../src/policy/decide.ts";
-import { buildStatement, markIngredients, statementCovers, type StatementSpan } from "../src/policy/statement.ts";
+import { buildStatement, markIngredients, statementCovers, verifierFindsToConfirm, type StatementSpan } from "../src/policy/statement.ts";
 import { notChecked } from "../src/policy/notChecked.ts";
 
 // All inputs below are synthetic.
@@ -199,6 +199,38 @@ describe("statement builder", () => {
     const s = buildStatement("US", [sp("tree_nut", "contains", "coconut", { species: "coconut" })], null);
     expect(s.contains).toHaveLength(0);
     expect(s.excluded[0]!.reason).toMatch(/Table 1/u);
+  });
+
+  it("adds the verifier's contains finds no verified span states, marked (to confirm), in statutory order", () => {
+    const verified = [sp("wheat", "contains", "wheat flour", { term: "wheat" }), sp("soy", "contains", "soya lecithin")];
+    const readings = [
+      { group: "milk", relation: "contains" as const, evidence_text: "whole milk powder", term: "milk", by: "verifier" as const },
+      // the model's own unconfirmed reading is not the verifier's find
+      { group: "egg", relation: "contains" as const, evidence_text: "egg", by: "model" as const },
+      // already stated by the verified spans
+      { group: "wheat", relation: "contains" as const, evidence_text: "wheat", term: "wheat", by: "verifier" as const },
+      // may contain is not a contains-level find
+      { group: "sesame", relation: "may_contain" as const, evidence_text: "sesame", by: "verifier" as const },
+    ];
+    const extra = verifierFindsToConfirm("UK", verified, readings, ["ev-v"]);
+    expect(extra.map((x) => x.group)).toEqual(["milk"]);
+    const s = buildStatement("UK", verified, "wheat flour, soya lecithin, whole milk powder", extra);
+    expect(s.text).toBe("Contains: Cereals containing gluten (wheat), Soybeans, Milk (to confirm).");
+    expect(s.toConfirm.map((e) => e.label)).toEqual(["Milk"]);
+    expect(s.contains.map((e) => e.label)).toEqual(["Cereals containing gluten (wheat)", "Soybeans"]);
+    // only verified phrases are bolded
+    expect(s.ingredientsMarked).toBe("**wheat flour**, **soya lecithin**, whole milk powder");
+  });
+
+  it("a to-confirm find moves its allergen out of May contain and only finds of its own entry are skipped", () => {
+    const verified = [sp("tree_nut", "contains", "almonds", { species: "almond" }), sp("egg", "may_contain", "egg")];
+    const readings = [
+      { group: "tree_nut", relation: "contains" as const, evidence_text: "hazelnuts", species: "hazelnut", by: "verifier" as const },
+      { group: "egg", relation: "contains" as const, evidence_text: "egg yolk", term: "egg", by: "verifier" as const },
+    ];
+    const s = buildStatement("UK", verified, null, verifierFindsToConfirm("UK", verified, readings, ["ev-v"]));
+    expect(s.text).toBe("Contains: Eggs (to confirm), Nuts (almond), Nuts (hazelnut) (to confirm).");
+    expect(s.mayContain).toHaveLength(0);
   });
 
   it("names spelt and other wheat words by their own cereal", () => {

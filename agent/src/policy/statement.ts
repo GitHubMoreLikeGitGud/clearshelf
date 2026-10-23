@@ -38,6 +38,12 @@ export interface Statement {
   market: Market;
   contains: StatementEntry[];
   mayContain: StatementEntry[];
+  /**
+   * Contains-level allergens the deterministic verifier found and no verified span states (the
+   * model missed or contradicted them). They are in the draft marked "(to confirm)", so a draft
+   * never under-declares; the disagreement holds the SKU (R4) until the officer resolves it.
+   */
+  toConfirm: StatementEntry[];
   excluded: ExcludedEntry[];
   text: string;
   /** The ingredient list with each verified contains phrase in **bold**; null without text. */
@@ -192,18 +198,49 @@ export function markIngredients(text: string, phrases: string[]): string {
   return out + text.slice(at);
 }
 
-export function buildStatement(market: Market, spans: StatementSpan[], ingredientsText: string | null): Statement {
+export const TO_CONFIRM = "(to confirm)";
+
+/**
+ * The verifier's contains-level readings that the verified spans do not already state in this
+ * market: the entries a draft adds marked "(to confirm)". Model-only readings are left out (the
+ * deterministic verifier did not find them); so are readings the verified statement covers.
+ */
+export function verifierFindsToConfirm(
+  market: Market,
+  verified: (EntrySpan & { relation: "contains" | "may_contain" })[],
+  readings: (EntrySpan & { relation: "contains" | "may_contain"; by?: "model" | "verifier" })[],
+  evidenceIds: string[],
+): StatementSpan[] {
+  const out: StatementSpan[] = [];
+  const seen = new Set<string>();
+  for (const r of readings) {
+    if (r.by !== "verifier" || r.relation !== "contains" || statementCovers(market, verified, r)) continue;
+    const k = `${r.group}|${r.species ?? ""}|${r.term ?? r.evidence_text}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({ group: r.group, relation: "contains", evidence_text: r.evidence_text, ...(r.term ? { term: r.term } : {}), ...(r.species ? { species: r.species } : {}), evidenceIds });
+  }
+  return out;
+}
+
+export function buildStatement(market: Market, spans: StatementSpan[], ingredientsText: string | null, toConfirmSpans: StatementSpan[] = []): Statement {
   const excluded: ExcludedEntry[] = [];
   const containsSpans = spans.filter((s) => s.relation === "contains");
-  const containsFamilies = new Set(containsSpans.map((s) => familyKey(s.group)));
-  // An allergen the label already contains is not repeated under "May contain".
+  const containsFamilies = new Set([...containsSpans, ...toConfirmSpans].map((s) => familyKey(s.group)));
+  // An allergen the label already contains (or may contain, to confirm) is not repeated under "May contain".
   const maySpans = spans.filter((s) => s.relation === "may_contain" && !containsFamilies.has(familyKey(s.group)));
   const contains = entriesFor(market, containsSpans, excluded);
   const mayContain = entriesFor(market, maySpans, excluded);
+  // A to-confirm entry whose label the verified "Contains" already shows adds nothing.
+  const shown = new Set(contains.map((e) => e.label));
+  const toConfirm = entriesFor(market, toConfirmSpans, excluded).filter((e) => !shown.has(e.label));
+  const order = ORDER[market];
+  const rank = (e: StatementEntry) => Math.min(...e.groups.map((g) => order.indexOf(familyKey(g)) >= 0 ? order.indexOf(familyKey(g)) : order.indexOf(g)));
+  const containsShown = [...contains.map((e) => ({ e, label: e.label })), ...toConfirm.map((e) => ({ e, label: `${e.label} ${TO_CONFIRM}` }))].sort((a, b) => rank(a.e) - rank(b.e));
   const parts: string[] = [];
-  if (contains.length) parts.push(`Contains: ${contains.map((e) => e.label).join(", ")}.`);
+  if (containsShown.length) parts.push(`Contains: ${containsShown.map((x) => x.label).join(", ")}.`);
   if (mayContain.length) parts.push(`May contain: ${mayContain.map((e) => e.label).join(", ")}.`);
   const text = parts.join(" ") || "No allergens declared.";
   const ingredientsMarked = ingredientsText ? markIngredients(ingredientsText, containsSpans.map((s) => s.evidence_text)) : null;
-  return { market, contains, mayContain, excluded, text, ingredientsMarked };
+  return { market, contains, mayContain, toConfirm, excluded, text, ingredientsMarked };
 }

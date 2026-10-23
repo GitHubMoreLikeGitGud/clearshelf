@@ -203,10 +203,16 @@ export class EvidenceStore {
       details.table_row_count = res.row_count;
     }
     // A table-wide statement (SHOW DQ INVALID RECORD) names the OFF tables by wildcard; when the
-    // record is filtered to one GTIN, its own OFF table is the source. The gateway reports no
-    // cache time for a wildcard, so cached_at stays null there.
+    // record is filtered to one GTIN, its own OFF table is the source. For a wildcard the gateway
+    // reports the oldest CACHE time of the OFF tables it read; it stands in when the GTIN's own
+    // table has no time of its own (never fresher than the table read).
     const raw = res.raw_objects.map((o) => (o === "clearshelf_off.off_*" && opts.gtin ? `clearshelf_off.off_${opts.gtin}` : o));
-    const sources: SourceRef[] = raw.map((o) => ({ object: o, ...sourceFor(o), cached_at: res.source_cached_at[o] ?? null }));
+    const wildcardCachedAt = res.source_cached_at?.["clearshelf_off.off_*"] ?? null;
+    const sources: SourceRef[] = raw.map((o) => ({
+      object: o,
+      ...sourceFor(o),
+      cached_at: res.source_cached_at?.[o] ?? (o.startsWith("clearshelf_off.off_") ? wildcardCachedAt : null),
+    }));
     const primaryIndex = Math.max(0, sources.findIndex((s) => !s.object.startsWith("clearshelf_ops.")));
     const primary = sources[primaryIndex];
     // The template lists its USL objects in the same order as their raw sources.

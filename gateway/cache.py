@@ -119,6 +119,14 @@ def cache_state(raw_objects: tuple[str, ...], params: dict, storage: dict | None
     state = "hit" if all(s == "hit" for s in states) else "miss"
     events = last_cache_events(storage.get("started_at_ms"))
     cached_at = {o: events[o.lower()] for o in cacheable if o.lower() in events}
+    for o in cacheable:
+        if o.endswith("off_*") and o not in cached_at:
+            # A table-wide read over every OFF table: the oldest CACHE time among them, so the
+            # freshness shown is never better than the stalest table read.
+            tables = [t.lower() for t in off_targets] if off_targets is not None else                 [k for k in events if k.startswith("clearshelf_off.off_")]
+            times = [events[t] for t in tables if t in events]
+            if tables and len(times) == len(tables):
+                cached_at[o] = min(times, key=lambda t: _parse_ts(t) or datetime.max.replace(tzinfo=timezone.utc))
     return state, detail, cached_at
 
 

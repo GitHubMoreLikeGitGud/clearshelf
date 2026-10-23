@@ -13,7 +13,7 @@
 //
 //   npx tsx src/server.ts            (npm run dev)
 
-import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -23,6 +23,7 @@ import { EvidenceStore, type EvidenceRecord } from "./evidence/store.ts";
 import type { OllamaClient } from "./llm/ollama.ts";
 import { AGENT_ACTOR, applyAutomatic, executeDecision, overDecision, signApproval, supersedeBy } from "./ops/actions.ts";
 import type { ApprovalQueue } from "./ops/queue.ts";
+import { RunStore } from "./ops/runStore.ts";
 import { ContractRefused, decisionContractParams, OpsError, type OpsStore } from "./ops/store.ts";
 import { clearSku, type ClearResult, type PipelineDeps } from "./pipeline.ts";
 import type { Decision, Market } from "./policy/decide.ts";
@@ -67,8 +68,13 @@ export class EventBus {
   attach(req: IncomingMessage, res: ServerResponse): void {
     res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive", "x-accel-buffering": "no" });
     res.write("retry: 3000\n\n");
-    const last = Number(req.headers["last-event-id"] ?? new URL(req.url ?? "/", "http://x").searchParams.get("since") ?? 0);
-    for (const e of this.recent(Number.isFinite(last) ? last : 0)) EventBus.write(res, e);
+    // Only a reconnect (Last-Event-ID) or an explicit ?since gets the missed events; a new
+    // connection starts with what happens from now on.
+    const since = req.headers["last-event-id"] ?? new URL(req.url ?? "/", "http://x").searchParams.get("since");
+    if (since !== undefined && since !== null && since !== "") {
+      const last = Number(since);
+      for (const e of this.recent(Number.isFinite(last) ? last : 0)) EventBus.write(res, e);
+    }
     this.clients.add(res);
     const beat = setInterval(() => res.write(`: keep-alive ${Date.now()}\n\n`), 15_000);
     req.on("close", () => {
@@ -155,6 +161,8 @@ export interface ServerDeps {
   uiDir?: string | null;
   /** data/runs/ for clearance results; null keeps them in memory. */
   runsDir?: string | null;
+  /** The run store to save clearances in (default one on runsDir); main() shares it with the recall watch. */
+  runStore?: RunStore;
   /** data/evidence/ for evidence files; null keeps evidence in memory. */
   evidenceDir?: string | null;
   /** data/watch/sweeps/ to read sweep records from. */
@@ -259,6 +267,7 @@ export interface ClearShelfServer {
   bus: EventBus;
   jobs: JobQueue;
   runs: Map<string, ClearResult>;
+  runStore: RunStore;
   listen(port: number, host?: string): Promise<number>;
   close(): Promise<void>;
 }
@@ -266,11 +275,9 @@ export interface ClearShelfServer {
 export function createServer(deps: ServerDeps): ClearShelfServer {
   const bus = deps.bus ?? new EventBus();
   const jobs = new JobQueue(bus);
-  const runs = new Map<string, ClearResult>();
-  const runIndex = new Map<string, string>(); // gtin|market -> latest run id
   const log = deps.log ?? (() => {});
   const clear = deps.clear ?? clearSku;
-  const runsDir = deps.runsDir === undefined ? fileURLToPath(new URL("data/runs/", REPO_ROOT_URL)) : deps.runsDir;
+  const runStore = deps.runStore ?? new RunStore(deps.runsDir === undefined ? fileURLToPath(new URL("data/runs/", REPO_ROOT_URL)) : deps.runsDir);
   const evidenceDir = deps.evidenceDir === undefined ? fileURLToPath(new URL("data/evidence/", REPO_ROOT_URL)) : deps.evidenceDir;
   const sweepDir = deps.sweepDir === undefined ? fileURLToPath(new URL("data/watch/sweeps/", REPO_ROOT_URL)) : deps.sweepDir;
   const uiDir = deps.uiDir === undefined ? fileURLToPath(new URL("ui/", REPO_ROOT_URL)) : deps.uiDir;
@@ -302,28 +309,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
   };
   let port = 0;
 
-  if (runsDir) {
-    mkdirSync(runsDir, { recursive: true });
-    const idx = `${runsDir.replace(/[\\/]$/u, "")}/index.json`;
-    if (existsSync(idx)) for (const [k, v] of Object.entries(JSON.parse(readFileSync(idx, "utf8")) as Record<string, string>)) runIndex.set(k, v);
-  }
-
-  function saveRun(r: ClearResult): void {
-    runs.set(r.run_id, r);
-    runIndex.set(`${r.gtin}|${r.market}`, r.run_id);
-    if (runsDir) {
-      const base = runsDir.replace(/[\\/]$/u, "");
-      writeFileSync(`${base}/${r.run_id}.json`, `${JSON.stringify(r)}\n`, "utf8");
-      writeFileSync(`${base}/index.json`, `${JSON.stringify(Object.fromEntries(runIndex), null, 1)}\n`, "utf8");
-    }
-  }
-
-  function loadRun(id: string): ClearResult | null {
-    if (runs.has(id)) return runs.get(id)!;
-    if (!runsDir) return null;
-    const p = `${runsDir.replace(/[\\/]$/u, "")}/${id}.json`;
-    return existsSync(p) ? (JSON.parse(readFileSync(p, "utf8")) as ClearResult) : null;
-  }
+  const loadRun = (id: string): ClearResult | null => runStore.load(id);
 
   function evidenceOf(runId: string): EvidenceRecord[] {
     if (!evidenceDir) return [];
@@ -364,7 +350,14 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
         onEvent: (type, data) => bus.publish(type, { ...data, banner }),
         log: (l) => bus.publish("clear.log", { gtin, market, line: l.trim() }),
       });
-      saveRun(o.result);
+      runStore.save(o.result, {
+        source: "server",
+        applied: !!o.applied,
+        decision_id: o.applied?.decision_id ?? null,
+        queue_id: o.queued?.queue_id ?? null,
+        replay: banner,
+        note: o.applied ? `${o.applied.status} applied automatically` : o.queued ? `${o.queued.status} queued for the officer's signed approval` : "not applied",
+      });
       return {
         run_id: o.result.run_id,
         gtin,
@@ -390,15 +383,18 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
     };
     bus.publish("clear.started", { gtin, market, as_of: asOf ?? null, banner, run_id: evidence.runId });
     const r = await clear(gtin, market, pdeps, asOf);
-    saveRun(r);
     const out: Record<string, unknown> = { run_id: r.run_id, gtin, market, status: r.decision.status, rules: [...new Set(r.decision.firings.map((f) => f.rule))], banner };
     if (r.decision.status === "HOLD" || r.decision.status === "BLOCK") {
       const reason = `auto ${r.decision.status} at intake (policy ${r.decision.policyVersion}): ${r.decision.firings
         .filter((f) => f.effect === "HOLD" || f.effect === "BLOCK")
         .map((f) => `${f.rule} ${f.reason}`)
         .join("; ")}`.slice(0, 900);
-      const applied = await applyAutomatic(deps.ops, deps.gateway, { gtin, market, status: r.decision.status, reason, runId: r.run_id, replay: asOf ? { asOf, banner: banner! } : null }, deps.queue);
+      const applied = await applyAutomatic(deps.ops, deps.gateway, { gtin, market, status: r.decision.status, reason, runId: r.run_id, replay: asOf ? { asOf, banner: banner! } : null }, deps.queue).catch((e: unknown) => {
+        runStore.save(r, { source: "server", applied: false, replay: banner, note: `auto ${r.decision.status} not written: ${(e as Error).message.slice(0, 200)}` });
+        throw e;
+      });
       Object.assign(out, { applied: true, decision_id: applied.row.decision_id, contract_id: applied.contract.contractId, visible_in_zetaris: applied.visibility.visible, superseded: applied.superseded });
+      runStore.save(r, { source: "server", applied: true, decision_id: applied.row.decision_id, replay: banner, note: `${r.decision.status} applied automatically (straight pipeline)` });
       bus.publish("decision.written", { ...out, auto: true });
     } else {
       const item = deps.queue.add({
@@ -416,6 +412,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
         over_decision: overDecision(deps.ops, gtin, market),
       });
       Object.assign(out, { applied: false, queue_id: item.id });
+      runStore.save(r, { source: "server", applied: false, queue_id: item.id, replay: banner, note: `${r.decision.status} queued for the officer's signed approval (straight pipeline)` });
       bus.publish("approval.queued", { ...out });
     }
     bus.publish("clear.done", out);
@@ -434,8 +431,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
       const queued = rt.hmem.queuedConflicts(gtin, brand);
       if (queued.length) out.push(`the queued allergen conflict(s) ${queued.map((c) => `${c.id} (${c.allergen})`).join(", ")} are resolved`);
     }
-    const id = runIndex.get(`${gtin}|${market}`);
-    const run = id ? loadRun(id) : null;
+    const run = runStore.latest(gtin, market);
     if (run?.contradictions.some((c) => c.kind === "untrusted_text")) out.push(`the untrusted text found by run ${run.run_id} is corrected at the source and the SKU re-cleared`);
     return out;
   }
@@ -465,7 +461,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
         service: "clearshelf-agent",
         model: deps.ollama.model,
         gateway: deps.gateway.baseUrl,
-        watch: { mode: st?.mode ?? "off", as_of: st?.as_of ?? null, banner: st?.replay?.banner ?? null, busy: deps.watch.busy },
+        watch: { mode: st?.mode ?? "off", as_of: st?.as_of ?? null, banner: deps.watch.banner(), busy: deps.watch.busy },
         jobs_pending: jobs.pending,
         sse_listeners: bus.listeners,
       };
@@ -493,7 +489,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
           markets: k.markets,
           scenarios: k.scenarios,
           decisions: Object.fromEntries(k.markets.map((mk) => [mk, cur.get(`${k.gtin}|${mk}`) ?? null])),
-          latest_runs: Object.fromEntries(k.markets.map((mk) => [mk, runIndex.get(`${k.gtin}|${mk}`) ?? null])),
+          latest_runs: Object.fromEntries(k.markets.map((mk) => [mk, runStore.latestId(k.gtin, mk)])),
           pending: pending.filter((q) => q.gtin === k.gtin).map((q) => ({ id: q.id, kind: q.kind, market: q.market, status: q.status })),
         })),
       });
@@ -535,8 +531,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
         banner: deps.watch.banner(),
         markets: Object.fromEntries(
           markets.map((mk) => {
-            const id = runIndex.get(`${gtin}|${mk}`);
-            return [mk, { decision: cur.get(`${gtin}|${mk}`) ?? null, run: id ? loadRun(id) : null, pending: deps.queue.pending().filter((q) => q.gtin === gtin && q.market === mk) }];
+            return [mk, { decision: cur.get(`${gtin}|${mk}`) ?? null, run: runStore.latest(gtin, mk), pending: deps.queue.pending().filter((q) => q.gtin === gtin && q.market === mk) }];
           }),
         ),
       });
@@ -858,7 +853,8 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
     server,
     bus,
     jobs,
-    runs,
+    runs: runStore.runs,
+    runStore,
     listen(p: number, host = "127.0.0.1"): Promise<number> {
       if (host !== "127.0.0.1" && host !== "localhost") throw new Error("ClearShelf listens on 127.0.0.1 only");
       return new Promise((ok, fail) => {
@@ -884,8 +880,10 @@ export async function main(): Promise<void> {
   const log = (l: string) => process.stderr.write(`${l}\n`);
   // One process holds data/hmem and data/world: the server takes data/agent.lock.
   const rt = openRuntime({ command: "server", log });
-  const watch = agentWatch(rt, { emit: (type, data) => bus.publish(type, data), log });
-  const app = createServer({ gateway: rt.gateway, ollama: rt.ollama, ops: rt.ops, queue: rt.queue, watch, catalogue: rt.catalogue, bus, log, runtime: rt });
+  // One run store for intake and the watch: every clearance a sweep makes is saved for its card too.
+  const runStore = new RunStore();
+  const watch = agentWatch(rt, { emit: (type, data) => bus.publish(type, data), log, onRun: (r, o) => runStore.save(r, o) });
+  const app = createServer({ gateway: rt.gateway, ollama: rt.ollama, ops: rt.ops, queue: rt.queue, watch, catalogue: rt.catalogue, bus, log, runtime: rt, runStore });
   const bound = await app.listen(port);
   log(`ClearShelf agent server on http://127.0.0.1:${bound} (gateway ${rt.gateway.baseUrl}, model ${rt.ollama.model}, actor ${AGENT_ACTOR}, Markovian clearances with H-MEM and the World Model)`);
   const stop = () => {

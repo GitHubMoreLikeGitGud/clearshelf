@@ -7,7 +7,8 @@ import { ApprovalQueue } from "../src/ops/queue.ts";
 import { OpsStore } from "../src/ops/store.ts";
 import type { ClearResult, PipelineDeps } from "../src/pipeline.ts";
 import type { Decision, Market } from "../src/policy/decide.ts";
-import { AsOfGateway, filterAsOf, replayBanner, type AsOfResult } from "../src/watch/asOf.ts";
+import { AsOfGateway, filterAsOf, parseReplayLabel, replayBanner, replayLabel, type AsOfResult } from "../src/watch/asOf.ts";
+import { replayLabelOfRow } from "../src/runtime.ts";
 import { brandCandidates, RecallWatch, WatchStateStore, type Catalogue } from "../src/watch/recallWatch.ts";
 import { rowsAsObjects } from "../src/zetaris/client.ts";
 import { VECTOR_SECRET } from "./fixtures/contract-vector.ts";
@@ -136,6 +137,17 @@ describe("as-of filter", () => {
     expect(replayBanner("2026-10-10")).toBe("Replay as of 10 Oct 2026");
   });
 
+  it("labels a polled replay with both dates, and reads its own labels back", () => {
+    expect(replayLabel("2026-10-10", "2026-10-10")).toBe("Replay as of 10 Oct 2026");
+    expect(replayLabel("2026-10-10", null)).toBe("Replay as of 10 Oct 2026");
+    expect(replayLabel("2026-10-10", "2026-10-23")).toBe("Replay from 10 Oct 2026, polled to 23 Oct 2026");
+    expect(parseReplayLabel("REPLAY FROM 10 OCT 2026, POLLED TO 23 OCT 2026")).toEqual({ origin: "2026-10-10", asOf: "2026-10-23" });
+    expect(parseReplayLabel("REPLAY AS OF 1 OCT 2026")).toEqual({ origin: "2026-10-01", asOf: null });
+    expect(parseReplayLabel("intake. auto HOLD")).toBeNull();
+    expect(replayLabelOfRow({ reason: "REPLAY AS OF 10 OCT 2026 | new FDA notice", decided_date: "2026-10-23" })).toBe("Replay from 10 Oct 2026, polled to 23 Oct 2026");
+    expect(replayLabelOfRow({ reason: "REPLAY AS OF 10 OCT 2026 | baseline", decided_date: "2026-10-10" })).toBe("Replay as of 10 Oct 2026");
+  });
+
   it("filters dated templates through the gateway and leaves others alone", async () => {
     const { w } = world();
     const gw = new AsOfGateway(fakeGateway(w), "2026-10-10", replayBanner("2026-10-10"));
@@ -187,7 +199,10 @@ describe("RecallWatch replay", () => {
     const applied = poll.actions.filter((a) => a.applied).map((a) => `${a.gtin}:${a.market}:${a.status}:${a.visible_in_zetaris}`).sort();
     expect(applied).toEqual([`${A}:UK:HOLD:true`, `${B}:UK:HOLD:true`, `${B}:US:HOLD:true`]);
     const rows = ops.decisions();
-    expect(rows.every((r) => r.decision_id.startsWith("rp-") && r.decided_date === "2026-10-23" && r.reason.startsWith("REPLAY AS OF 10 OCT 2026"))).toBe(true);
+    // One label for the polled replay everywhere: start date and the date the poll moved to.
+    expect(rows.every((r) => r.decision_id.startsWith("rp-") && r.decided_date === "2026-10-23" && r.reason.startsWith("REPLAY FROM 10 OCT 2026, POLLED TO 23 OCT 2026 | "))).toBe(true);
+    expect(poll.banner).toBe("Replay from 10 Oct 2026, polled to 23 Oct 2026");
+    expect(watch.banner()).toBe("Replay from 10 Oct 2026, polled to 23 Oct 2026");
     // The injected notice was guarded: the model never saw it.
     const inj = poll.notices.find((n) => n.notice_id === "H-0005-2027")!;
     expect(inj.guard.hit).toBe(true);
@@ -196,7 +211,8 @@ describe("RecallWatch replay", () => {
     expect(poll.gaps.some((g) => g.includes("FSA-AA-45-2026-update-1"))).toBe(true);
     expect(poll.checklist).toMatchObject({ notice_parsed: true, gtin_matches_checked: true, name_candidates_checked: true, actions_proposed: true, recheck_cleared_vs_new_recalls: true });
     expect(events.map((e) => e.type)).toEqual(expect.arrayContaining(["watch.sweep_started", "watch.notice", "watch.exact_match", "watch.name_match", "watch.action", "watch.recheck", "watch.sweep_done"]));
-    expect(events.every((e) => e.data.banner === "Replay as of 10 Oct 2026" || e.type === "watch.state")).toBe(true);
+    expect(events.every((e) => e.data.banner === "Replay as of 10 Oct 2026" || e.data.banner === "Replay from 10 Oct 2026, polled to 23 Oct 2026" || e.type === "watch.state")).toBe(true);
+    expect(events.filter((e) => e.data.sweep_id === poll.sweep_id).every((e) => e.data.banner === "Replay from 10 Oct 2026, polled to 23 Oct 2026")).toBe(true);
 
     // State moved on: a second poll finds nothing new.
     const again = await watch.poll();

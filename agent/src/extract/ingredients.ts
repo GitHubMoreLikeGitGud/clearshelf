@@ -139,6 +139,8 @@ export interface AllergenReading {
   term?: string;
   /** Tree-nut species from the lexicon, when the text names one. */
   species?: string;
+  /** Who reads the allergen here: the model's quote, or the deterministic verifier (lexicon). */
+  by?: "model" | "verifier";
 }
 
 export interface ExtractionDisagreement {
@@ -178,11 +180,11 @@ function hitFor(hits: LexiconHit[], term: string | undefined, relation: SpanRela
 function modelReading(r: AgreementRow & { group: Exclude<AllergenGroup, "none">; relation: "contains" | "may_contain" }): AllergenReading {
   const hit = lexiconScan(r.evidence_text).find((h) => isAllergenRelation(h.relation) && compatibleGroups(r.group, h.group));
   const group = r.group === "gluten_cereal" && hit?.group === "wheat" ? "wheat" : r.group;
-  return { group, relation: r.relation, evidence_text: r.evidence_text, ...(hit ? { term: hit.term } : {}), ...(hit?.species ? { species: hit.species } : {}) };
+  return { group, relation: r.relation, evidence_text: r.evidence_text, ...(hit ? { term: hit.term } : {}), ...(hit?.species ? { species: hit.species } : {}), by: "model" };
 }
 
 function hitReading(h: LexiconHit & { relation: "contains" | "may_contain" }): AllergenReading {
-  return { group: h.group, relation: h.relation, evidence_text: h.term, term: h.term, ...(h.species ? { species: h.species } : {}) };
+  return { group: h.group, relation: h.relation, evidence_text: h.term, term: h.term, ...(h.species ? { species: h.species } : {}), by: "verifier" };
 }
 
 /**
@@ -215,6 +217,7 @@ export function allergenDisagreements(rows: AgreementRow[], text: string): Extra
               evidence_text: r.term ?? r.evidence_text,
               ...(r.term ? { term: r.term } : {}),
               ...(h?.species ? { species: h.species } : {}),
+              by: "verifier",
             });
           } else {
             unresolved = true;
@@ -230,6 +233,7 @@ export function allergenDisagreements(rows: AgreementRow[], text: string): Extra
         evidence_text: r.evidence_text,
         ...(r.term ? { term: r.term } : {}),
         ...(h?.species ? { species: h.species } : {}),
+        by: "verifier",
       });
     }
     if (readings.length === 0 && !unresolved) continue;

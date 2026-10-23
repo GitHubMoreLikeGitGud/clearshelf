@@ -139,6 +139,9 @@ describe("actions", () => {
     expect(() => signApproval(ops, queue, { gtin: A, market: "UK", action: "CLEAR", status: "CLEAR", statement: null, reason: "ok", officer: "officer" })).toThrow(/never relaxes|no pending CLEAR/);
     expect(() => signApproval(ops, queue, { gtin: A, market: "UK", action: "CLEAR_WITH_STATEMENT", status: "CLEAR_WITH_STATEMENT", statement: "May contain: Milk.", reason: " ", officer: "officer" })).toThrow(/reason/);
     expect(() => signApproval(ops, queue, { gtin: A, market: "UK", action: "CLEAR_WITH_STATEMENT", status: "CLEAR_WITH_STATEMENT", statement: "May contain: Milk.", reason: "ok", officer: "mallory" })).toThrow(/approver/);
+    expect(() =>
+      signApproval(ops, queue, { gtin: A, market: "UK", action: "CLEAR_WITH_STATEMENT", status: "CLEAR_WITH_STATEMENT", statement: "Contains: Milk (to confirm).", reason: "ok", officer: "officer" }),
+    ).toThrow(/to confirm/);
     const { contract } = signApproval(ops, queue, { gtin: A, market: "UK", action: "CLEAR_WITH_STATEMENT", status: "CLEAR_WITH_STATEMENT", statement: "May contain: Milk.", reason: "label checked", officer: "officer" });
     const ex = await executeDecision(ops, gateway, queue, { gtin: A, market: "UK", status: "CLEAR_WITH_STATEMENT", statement: "May contain: Milk.", reason: "label checked", contract });
     expect(ex.visibility.visible).toBe(true);
