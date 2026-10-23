@@ -51,7 +51,7 @@ From the repository root, in PowerShell:
 | C2 | C2-lightning-sql-and-usl.md | decision write-back SQL (pair 14), per-SKU OFF template, DQ rule docs, review of pairs 00 to 13, static SQL tests | done 2026-10-23, reviewer fixes in a separate commit (see the run record) |
 | C3 | C3-lexicon-and-verifiers.md | multilingual lexicon, jurisdiction, GTIN normaliser, claim tester and tests | done 2026-10-23; the run stopped at the Free plan usage limit after its first test run (99 of 100 passing); reviewer fixes in a separate commit (see the run record) |
 | C4 | C4-ui-screens.md | the four UI screens | planned |
-| C5 | C5-evidence-drawer-and-ledger.md | evidence drawer and ledger trace view | planned |
-| C6 | C6-eval-runner.md | eval runner and report | planned |
+| C5 | C5-evidence-drawer-and-ledger.md | evidence drawer, ledger trace view, telemetry footer and tokens-per-chunk chart (three read-only endpoints) | planned |
+| C6 | C6-eval-runner.md | eval runner (scenarios, extraction, evidence quality, cold vs warm) and report | planned |
 | C7 | C7-readme-drafts.md | README and how-cursor-was-used drafts | planned |
 | C8 | C8-rehearsal-fixes.md | interactive fixes during rehearsal | planned (file not yet written) |

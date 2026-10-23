@@ -1,0 +1,100 @@
+# ClearShelf agent API
+
+The officer UI talks to the agent server (`agent/src/server.ts`, `npm run dev` in `agent/`) on `http://127.0.0.1:8790`. The server also serves the files in `ui/` (`/` is `ui/index.html`). This page is the contract the UI is built against; the TypeScript types named below are the exact shapes.
+
+## Rules every client follows
+
+- **Host.** The server answers only requests whose `Host` is `127.0.0.1:<port>` or `localhost:<port>` (421 otherwise).
+- **Writes.** Every `POST` carries `content-type: application/json` and a JSON object body (415 / 400 otherwise), and no foreign `Origin` (403 `origin`). A page served by the server itself passes these checks.
+- **Errors.** Every error is `{ "error": "<message>", "code": "<code>" }` with a 4xx/5xx status. The UI shows `error` as text. A 403 is a refusal (no contract, bad signature, cross-origin) and is shown as a refusal, never retried. A 409 is a state conflict (`stale_proposal`, `stale_release`, `release_blocked`, `not_pending`).
+- **Jobs.** Model work runs one job at a time. Endpoints that start one answer `202 { job_id }`; follow it with `GET /api/jobs/:id` or the `job.*` events.
+- **The UI never decides.** CLEAR, CLEAR_WITH_STATEMENT and RELEASE run only through `POST /api/execute` with a contract from `POST /api/approvals/sign`. The UI forwards the contract it was given; it never builds, edits or signs one.
+- **Replays.** Whenever `banner` is a string (for example `"Replay as of 10 Oct 2026"`), the data comes from an as-of replay and the UI shows that banner.
+
+## Read endpoints (GET)
+
+| Path | Returns |
+|---|---|
+| `/api/health[?deep=1]` | `{ ok, service, model, gateway, watch: { mode: "off"\|"live"\|"replay", as_of, banner, busy }, jobs_pending, sse_listeners, gateway_health? }`. `model` is the local Ollama model name. |
+| `/api/catalogue` | `{ source, banner, skus: [{ gtin, name, brand, markets, scenarios, decisions: { UK?: DecisionRow\|null, US?: … }, latest_runs: { UK?: runId\|null, … }, pending: [{ id, kind, market, status }] }] }` |
+| `/api/sku/:gtin` (13 digits) | `{ gtin, sku, banner, markets: { UK?: { decision: DecisionRow\|null, run: Run\|null, pending: QueueItem[] }, US?: … } }` |
+| `/api/runs/:runId` | `Run`: the full clearance result (see below). 404 when the run is not kept. |
+| `/api/evidence/:runId` | `{ run_id, records: EvidenceRecord[] }` |
+| `/api/evidence/:runId/:evidenceId` | one `EvidenceRecord` |
+| `/api/jobs/:jobId` | `Job`: `{ id, kind, state: queued\|running\|done\|failed, input, created_at, started_at, finished_at, result, error }` |
+| `/api/approvals[?state=pending]` | `{ items: QueueItem[] }` (`agent/src/ops/queue.ts`): proposals (`kind: "proposal"`) and name-only matches (`kind: "name_match"`, with `notice_id`, `similarity`). |
+| `/api/ops/decisions` | `{ rows, current: DecisionRow[] }`, the current decision per GTIN and market. |
+| `/api/recheck` | the closed-loop recheck through Zetaris: `{ rows, sql, sql_sha256, objects, executed_at, elapsed_ms, cache_state }` |
+| `/api/join-map` | the join map through Zetaris, same envelope as `/api/recheck`; rows are `{ transform, links, in_catalogue }` per GTIN transform (orphans = links − in_catalogue). |
+| `/api/contracts/log[?limit=50]` | `{ entries }`, the contract verifier log (issued, verified, refused). |
+| `/api/watch/state` | `{ state: WatchState\|null, banner, busy }` (`agent/src/watch/recallWatch.ts`) |
+| `/api/watch/sweeps` | `{ sweeps: sweepId[] }`, newest first |
+| `/api/watch/sweeps/:sweepId` | `SweepResult` (`agent/src/watch/recallWatch.ts`): `notices`, `exact_matches`, `name_matches`, `actions` (each with `status`, `rules`, `applied`, `decision_id`, `visible_in_zetaris`, `run_id`, `evidence_ids`), `recheck { rows, evidence_id }`, `checklist`, `gaps`, `model { calls, tokens_in, tokens_out, label }`, `replay`, `banner`, `window`. |
+| `/api/why/:gtin/:market` | `{ lines: string[], hmem: WhyTrace, current: DecisionRow\|null, zetaris: rows\|null }`. `lines` is the plain "why was this held?" trace; `hmem` (`agent/src/memory/hmemFacade.ts`) has `decision` (the decision-log entry, with `state` applied/proposed/not_applied and `replayAsOf`), `conflicts`, `invariants` and `ledger: [{ memoryId, entries: [{ memoryId, action, actor, timestamp (ms), details? }] }]` (officer reasons and rule labels are in `details`). |
+| `/api/memory/conflicts[?state=queued]` | `{ conflicts: AllergenConflict[] }` (`agent/src/memory/allergenConflicts.ts`) |
+| `/api/memory/dreams` | `{ proposals: InvariantProposal[] }`; `wording: { text, by, label }` says the wording is by Nemotron and derived from `derivedFrom` memories. |
+| `/api/world/timeline/:gtin` | `{ gtin, timeline, snapshots }` |
+| `/api/world/merges` | `{ proposals }`, the World Model merge queue |
+| `/api/world/export` | the World Model graph |
+
+The memory, why and World Model endpoints answer 404 `not_wired` on a server started without the runtime (tests).
+
+### Run (a clearance result)
+
+`ClearResult & { loop: LoopReport }` (`agent/src/pipeline.ts`, `agent/src/loop/investigate.ts`). The fields the card uses:
+
+- `run_id`, `gtin`, `market`, `as_of`, `product { found, name, brand, lang, has_text, text_field, labels }`. The ingredient text itself is not in the run: it is in the evidence record whose `template_id` is `product` (`columns` + `rows`).
+- `decision` (`PolicyResult`, `agent/src/policy/decide.ts`): `status` (CLEAR, CLEAR_WITH_STATEMENT, HOLD, BLOCK), `firings` / `review` / `notes` (each `{ rule, effect, reason, evidenceIds }`), `autoExecutable`, `pendingSignature`, `policyVersion`.
+- `statement { text, excluded[] } | null`, `claim_tests [{ claim, verdict, contradicting, evidenceIds }]` (verdicts SUPPORTED, PARTLY_SUPPORTED, NOT_SUPPORTED, UNTESTED), `contradictions [{ kind, text, evidenceIds }]`, `not_checked [{ id, text }]`, `card [{ text, evidenceIds }]` (every claim on the card with its evidence ids).
+- `extraction { ran, reused, ok, spans, ungrounded, agreed, disagreed, verified: [{ group, relation, evidence_text, term, species? }], keyword_contains, model, wall_ms }`; the verifier record (`kind: "verifier"`) has `details.agreement: [{ group, relation, model, lexicon, agree, evidence_text }]`.
+- `notices`, `name_matches`, `dq [{ rule, table, source, invalid, … }]`, `checklist`, `gaps`, `evidence_ids`, `quality { e_cov, claims, e_complete, records, incomplete_records }`.
+- `loop`: `status`, `chunks`, `timeline [{ chunk, seq, source: model|fallback, tool, thought, fallback_reason, ok, fact, evidence_ids }]`, `chunk_telemetry`, `chart: [{ chunk, markovian_prompt_tokens_measured, markovian_prompt_tokens_estimated, naive_prompt_tokens_estimated, carryover_tokens_estimated }]`, `summary` (`TelemetrySummary`, `agent/src/loop/telemetry.ts`: planner calls, fallback steps, tokens with their labels, `median_planner_tokens_per_s`).
+
+### EvidenceRecord
+
+`agent/src/evidence/store.ts`. `id`, `run_id`, `kind` (zetaris_sql, model_extraction, verifier, memory, world_model, policy, dq), `claim`, `queried_at`; for Zetaris records `template_id`, `params`, `sql`, `sql_sha256`, `zetaris_object`, `zetaris_objects`, `raw_objects`, `source_url`, `licence`, `source_cached_at`, `sources [{ object, url, licence, cached_at }]`, `columns`, `rows` (at most 20), `row_count`, `elapsed_ms`, `cache_state`; `dq_source` (`zetaris_dq` or `dq_equivalent_sql`) on dq records; `model { name, think, prompt_sha256, tokens_in, tokens_out, attempts, eval_ms, tokens_per_s, label: "measured" }` on model records; `derived_from`, `reused`, `details`.
+
+## Write endpoints (POST, JSON body)
+
+| Path | Body | Reply |
+|---|---|---|
+| `/api/clear` | `{ gtin, market: "UK"\|"US", as_of? }` | `202 { job_id, state }`. The job result is `{ run_id, gtin, market, status, rules, banner, applied, decision_id?, contract_id?, visible_in_zetaris?, queue_id?, chunks, memory, world }`. HOLD/BLOCK are applied automatically; CLEAR proposals go to the approval queue. |
+| `/api/approvals/sign` | `{ gtin, market, action: "CLEAR"\|"CLEAR_WITH_STATEMENT"\|"RELEASE", status?, statement?, reason, officer: "officer", queue_id? }` (`status` is required for RELEASE) | `{ contract, queue_id }`. 409 `stale_proposal` when a newer HOLD/BLOCK exists; 409 `release_blocked` with the blockers. |
+| `/api/execute` | `{ gtin, market, status, statement?, action?: "RELEASE", reason, contract }` | `{ decision_id, contract_id, row, visible_in_zetaris, closed_loop_sql, recorded }`. 403 without a valid contract (logged, nothing written). |
+| `/api/decisions` | `{ gtin, market, status: "HOLD"\|"BLOCK", reason }` | `{ decision_id, row, visible_in_zetaris, superseded }`. Any other status is refused with 403. |
+| `/api/approvals/reject` | `{ queue_id, reason, officer: "officer" }` | rejecting a proposal holds the listing; rejecting a name match dismisses it. `{ item, decision_id?, visible_in_zetaris?, superseded? }` |
+| `/api/approvals/confirm` | `{ queue_id, reason, officer: "officer" }` | confirms a name-only match: the listing is held (R2). |
+| `/api/watch/replay` | `{ as_of, scope?: "scenario"\|"all"\|"none", poll?: boolean, until? }` | `202 { job_id, banner }`; job result `{ baseline, banner, actions, poll?, notices?, poll_actions?, name_matches? }` |
+| `/api/watch/poll` | `{ until? }` | `202 { job_id }`; job result `{ sweep_id, banner, window, notices, exact_matches, name_matches, actions, recheck_rows, gaps }` |
+| `/api/watch/live` | `{ since? }` | `{ state }`, leaves replay mode |
+| `/api/memory/conflicts/resolve` | `{ id, winner, rule, reason, officer: "officer" }` | `202 { job_id }` (400 `bad_resolution` when the rule label or winner is not accepted) |
+| `/api/memory/dreams/approve`, `/reject` | `{ id, reason, officer: "officer" }` | `{ id, memory? }` |
+| `/api/world/merges/approve`, `/reject` | `{ id, officer: "officer" }` | `{ id }` |
+
+Every officer reason (approve, edit, reject, confirm, manual HOLD/BLOCK) is mined into H-MEM as a job and announced as `officer.reason` and `memory.officer_reason`.
+
+## Server-sent events (`GET /api/events`)
+
+One `EventSource('/api/events')` per page. Each event has an `id`, a `type` (the SSE event name) and a JSON `data` object that always includes `at`. On reconnect the browser sends `Last-Event-ID` and the server replays the events it still holds (the last 500); `?since=<id>` does the same on a fresh connection.
+
+| Event | Data (main fields) |
+|---|---|
+| `job.queued`, `job.started`, `job.done`, `job.failed` | `job_id`, `kind`, `input` / `result` / `error` |
+| `clear.started`, `clear.log`, `clear.done` | `gtin`, `market`, `run_id`, `line` (log), `banner` |
+| `loop.chunk_start` | `gtin`, `market`, `run_id`, `chunk`, `carryover_tokens` |
+| `loop.planner` | `chunk`, `call`, `valid`, `attempts`, `tool`, `thought`, `prompt_tokens`, `eval_tokens` (measured) |
+| `loop.tool` | `chunk`, `seq`, `tool`, `source` (model or fallback), `fallback_reason`, `ok`, `fact`, `evidence_ids`, `latency_ms` |
+| `loop.chunk_end` | `chunk`, `state_tokens`, `complete` |
+| `decision.written` | `gtin`, `market`, `status`, `auto`, `decision_id`, `visible_in_zetaris` |
+| `approval.queued`, `approval.resolved`, `approval.superseded` | `gtin`, `market`, `queue_id` / `queue_ids` |
+| `contract.signed`, `contract.refused` | `contract_id` / `code`, `reason`, `action` |
+| `memory.recorded`, `memory.officer_reason`, `memory.conflict_resolved`, `memory.dream_approved`, `memory.dream_rejected`, `memory.dreamed` | ids of the memories, conflicts or proposals |
+| `world.recorded`, `world.merge_resolved`, `world.fsa_ingested` | snapshot and event ids |
+| `officer.reason` | `kind`, `gtin`, `market`, `reason` |
+| `watch.state`, `watch.sweep_started`, `watch.notice`, `watch.exact_match`, `watch.name_match`, `watch.clear_started`, `watch.action`, `watch.approval_queued`, `watch.approval_superseded`, `watch.recheck`, `watch.world`, `watch.feeds_refresh`, `watch.sweep_done` | the sweep's progress; `watch.sweep_done` carries the `sweep_id` |
+
+Intake progress maps the `loop.tool` tool names to the stages shown to the officer: `registrar.register_off` registering in Zetaris; `zetaris.product`, `zetaris.declared`, `zetaris.recalls_by_gtin`, `zetaris.recalls_by_name`, `zetaris.market_list`, `world.lookup` fetching; `extract.ingredients`, `extract.notice` reading; `zetaris.dq_gate`, `memory.recall` verifying; `policy.propose` deciding.
+
+## Zetaris links
+
+The Zetaris GUI runs at `http://localhost:3000/` (login required). Deep links to the Data Explorer and the `clearance_usl` ERD are not known; the UI links the home page with the path written next to it: Data Explorer, Lightning databases `CLEARSHELF_*`; USL `lightning.metastore.clearshelf.clearance_usl`, ERD view.
