@@ -17,7 +17,7 @@ The officer UI talks to the agent server (`agent/src/server.ts`, `npm run dev` i
 |---|---|
 | `/api/health[?deep=1]` | `{ ok, service, model, gateway, watch: { mode: "off"\|"live"\|"replay", as_of, banner, busy }, jobs_pending, sse_listeners, gateway_health? }`. `model` is the local Ollama model name. |
 | `/api/catalogue` | `{ source, banner, skus: [{ gtin, name, brand, markets, scenarios, decisions: { UK?: DecisionRow\|null, US?: … }, latest_runs: { UK?: runId\|null, … }, pending: [{ id, kind, market, status }] }] }` |
-| `/api/sku/:gtin` (13 digits) | `{ gtin, sku, banner, markets: { UK?: { decision: DecisionRow\|null, run: Run\|null, pending: QueueItem[] }, US?: … } }` |
+| `/api/sku/:gtin` (13 digits) | `{ gtin, sku, banner, markets: { UK?: { decision: DecisionRow\|null, run: Run\|null, pending: QueueItem[], label_checks }, US?: … } }`. `label_checks` is `{ text_field, keyword: [{ group, term, start, end }], traps: [{ group, term, start, end, reason }] } | null`: deterministic checks over the run's label text (the text in its `product` evidence record): what the keyword baseline flags (comparison only) and the verifier's trap readings, such as "cocoa butter is not milk fat". Offsets index that text. |
 | `/api/runs/:runId` | `Run`: the full clearance result (see below). 404 when the run is not kept. |
 
 `latest_runs` and `run` are the newest saved clearance of the SKU in that market, whichever path ran it: intake through this server, the command line (`npm run clear`), a recall-watch sweep or the scenario eval (`npm run eval`). `null` means the SKU has not been cleared in that market yet.
@@ -32,14 +32,18 @@ The officer UI talks to the agent server (`agent/src/server.ts`, `npm run dev` i
 | `/api/watch/state` | `{ state: WatchState\|null, banner, busy }` (`agent/src/watch/recallWatch.ts`) |
 | `/api/watch/sweeps` | `{ sweeps: sweepId[] }`, newest first |
 | `/api/watch/sweeps/:sweepId` | `SweepResult` (`agent/src/watch/recallWatch.ts`): `notices`, `exact_matches`, `name_matches`, `actions` (each with `status`, `rules`, `applied`, `decision_id`, `visible_in_zetaris`, `run_id`, `evidence_ids`), `recheck { rows, evidence_id }`, `checklist`, `gaps`, `model { calls, tokens_in, tokens_out, label }`, `replay`, `banner`, `window`. |
-| `/api/why/:gtin/:market` | `{ lines: string[], hmem: WhyTrace, current: DecisionRow\|null, zetaris: rows\|null }`. `lines` is the plain "why was this held?" trace; `hmem` (`agent/src/memory/hmemFacade.ts`) has `decision` (the decision-log entry, with `state` applied/proposed/not_applied and `replayAsOf`), `conflicts`, `invariants` and `ledger: [{ memoryId, entries: [{ memoryId, action, actor, timestamp (ms), details? }] }]` (officer reasons and rule labels are in `details`). |
-| `/api/memory/conflicts[?state=queued]` | `{ conflicts: AllergenConflict[] }` (`agent/src/memory/allergenConflicts.ts`) |
-| `/api/memory/dreams` | `{ proposals: InvariantProposal[] }`; `wording: { text, by, label }` says the wording is by Nemotron and derived from `derivedFrom` memories. |
+| `/api/why/:gtin/:market` | `{ lines: string[], hmem: WhyTrace, current: DecisionRow\|null, zetaris: rows\|null, citations: { prior_decisions: evidenceId\|null } }`. `lines` is the plain "why was this held?" trace; `hmem` (`agent/src/memory/hmemFacade.ts`) has `decision` (the decision-log entry, with `state` applied/proposed/not_applied and `replayAsOf`), `conflicts`, `invariants` and `ledger: [{ memoryId, entries: [{ memoryId, action, actor, timestamp (ms), details? }] }]` (officer reasons and rule labels are in `details`). The Zetaris read-back (`prior_decisions`) is cited like any other claim: an evidence record with its Lightning SQL, named in `citations.prior_decisions` and in the ops-store and prior_decisions lines; a re-opened trace with the same result reuses the record. An officer-signed decision carries its run, firings, policy evidence and the officer's reason (`decision.reason`, `decision.contractId`; `decision.releasedOver` lists the rules a RELEASE overrode). |
+| `/api/memory/conflicts[?state=queued]` | `{ conflicts: (AllergenConflict & { product: { name, brand, markets }\|null, sides: { a, b } })[] }` (`agent/src/memory/allergenConflicts.ts`). Each side is `{ id, content, source, label, refs }`, read straight from the store (no ledger reads). |
+| `/api/memory/dreams` | `{ proposals: InvariantProposal[], officer_rulings, runs_after }`; `officer_rulings` counts the separate officer actions in memory (dreaming needs two pointing the same way, and runs after each recall-watch sweep); `wording: { text, by, label }` says the wording is by Nemotron and derived from `derivedFrom` memories. |
 | `/api/world/timeline/:gtin` | `{ gtin, timeline, snapshots }` |
 | `/api/world/merges` | `{ proposals }`, the World Model merge queue |
 | `/api/world/export` | the World Model graph |
+| `/api/telemetry` | The footer figures, each copied from a measured file: `{ model, model_host, cloud_model_calls: 0, refused_non_local_model_hosts, planner_tokens_per_s: { value, label: "measured", runs } \| null, latest_loop: { file, run_id, gtin, market, chunks, chart, summary } \| null, vram \| null, cold_warm \| null, eval_file: { vram, cold_warm } }`. `planner_tokens_per_s` is the median of `loop.summary.median_planner_tokens_per_s` over the newest 5 loop reports in `data/markovian/` that have it; `latest_loop` is the newest loop report. `vram` is copied as stored from the newest `data/eval/*.json` with a `vram` object, and `cold_warm` from the newest one with a `cold_warm` key or the newest `cold-warm-*.json` measurement. A figure that was not measured is `null`, never 0. |
+| `/api/eval/report` | `{ file: "docs/eval-report.md", updated_at, markdown }`: the measured evaluation report, for the UI's Evaluation page (`GET /eval` redirects to it). 404 when there is no report. |
+| `/api/loops/:runId/:gtin/:market` | The loop report `data/markovian/<runId>-<gtin>-<market>.loop.json`, or `<runId>.loop.json` when its `gtin` and `market` match: `{ run_id, gtin, market, as_of, decision, rules, evidence_file, loop }`. The watch draws one tokens-per-chunk chart per sweep action from it (`runId` is the sweep id). 400 for a bad run id (`bad_id`), GTIN (`bad_gtin`) or market (`bad_market`); 404 when there is no such report. |
+| `/api/memory/sources` | `{ memories: [{ id, content, tags, label, learned_at, superseded_by }] }`: the source-access memories (tagged `kind:source_note`, or tagged `document` and `source:<x>`), read straight from the store, so listing them logs no ledger reads. |
 
-The memory, why and World Model endpoints answer 404 `not_wired` on a server started without the runtime (tests).
+The memory, why, sources and World Model endpoints answer 404 `not_wired` on a server started without the runtime (tests).
 
 ### Run (a clearance result)
 
@@ -73,7 +77,7 @@ The memory, why and World Model endpoints answer 404 `not_wired` on a server sta
 | `/api/watch/live` | `{ since? }` | `{ state }`, leaves replay mode |
 | `/api/memory/conflicts/resolve` | `{ id, winner, rule, reason, officer: "officer" }` | `202 { job_id }` (400 `bad_resolution` when the rule label or winner is not accepted) |
 | `/api/memory/dreams/approve`, `/reject` | `{ id, reason, officer: "officer" }` | `{ id, memory? }` |
-| `/api/world/merges/approve`, `/reject` | `{ id, officer: "officer" }` | `{ id }` |
+| `/api/world/merges/approve`, `/reject` | `{ id, officer: "officer", reason? }` | `{ id, reason }`; a reason is mined into H-MEM like every officer reason |
 
 Every officer reason (approve, edit, reject, confirm, manual HOLD/BLOCK) is mined into H-MEM as a job and announced as `officer.reason` and `memory.officer_reason`.
 

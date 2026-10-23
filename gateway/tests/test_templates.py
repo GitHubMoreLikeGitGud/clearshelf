@@ -78,3 +78,22 @@ def templates_dir():
 def test_substitution():
     _, sql = render("product", {"gtin": "4056489125846"})
     assert sql.endswith("WHERE gtin = '4056489125846'")
+
+
+@pytest.mark.parametrize("tid,col", [("recalls_by_name", "title"), ("recalls_by_gtin", "product_description"), ("fda_notice", "product_description")])
+def test_fda_descriptions_never_select_a_street_address(tid, col):
+    t = templates.TEMPLATES[tid]
+    params = {name: SAMPLES[kind] for name, kind in t.params.items()}
+    _, sql = render(tid, params)
+    assert "regexp_replace(" in sql and "'[address removed]'" in sql
+    assert "\\" not in sql
+
+
+def test_address_pattern_matches_a_firm_address_and_leaves_the_rest():
+    import re
+
+    pat = re.compile(templates.ADDRESS_RE)
+    text = "MAY CONTAIN WHEAT. DISTRIBUTED BY EXAMPLE FOODS, LLC. 1200 N. MAIN STREET, SPRINGFIELD, IL 62701 UPC 4 056489 122876"
+    assert pat.sub("[address removed]", text) == "MAY CONTAIN WHEAT. DISTRIBUTED BY EXAMPLE FOODS, LLC. [address removed] UPC 4 056489 122876"
+    assert pat.sub("[address removed]", "100 Example Rd, Suite D7  Springfield, IL 62701-1234") == "[address removed]"
+    assert pat.sub("x", "Shortbread Cookies, 330 g (weight), UPC: 4056489125846.") == "Shortbread Cookies, 330 g (weight), UPC: 4056489125846."

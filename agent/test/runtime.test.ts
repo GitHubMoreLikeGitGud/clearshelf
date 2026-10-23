@@ -503,8 +503,21 @@ describe("runtime: the server on the wired agent", () => {
       const why = await call(`/api/why/${G}/UK`);
       expect(why.status).toBe(200);
       expect(why.body.lines[0]).toMatch(/^HOLD [(]applied[)] for 0012345678905 in UK/u);
+      // The Zetaris read-back of the decision row is cited like every other claim.
+      if (why.body.zetaris) {
+        expect(why.body.citations.prior_decisions).toMatch(/^ev-r\d{8}T\d{6}[0-9a-f]{4}-\d{2,4}$/u);
+        expect(why.body.lines.join("\n")).toContain(`[${why.body.citations.prior_decisions}]`);
+        const again = await call(`/api/why/${G}/UK`);
+        expect(again.body.citations.prior_decisions).toBe(why.body.citations.prior_decisions);
+      }
+      const sku = await call(`/api/sku/${G}`);
+      expect(sku.body.markets.UK.label_checks).toMatchObject({ keyword: expect.any(Array), traps: expect.any(Array) });
       const conflicts = await call("/api/memory/conflicts?state=queued");
       expect(conflicts.body.conflicts.length).toBeGreaterThan(0);
+      // Each side says what the memory holds, and the conflict names its product.
+      expect(typeof conflicts.body.conflicts[0].sides.a.content).toBe("string");
+      expect(conflicts.body.conflicts[0].product).toMatchObject({ markets: ["UK"] });
+      expect(typeof (await call("/api/memory/dreams")).body.officer_rulings).toBe("number");
       const tl = await call(`/api/world/timeline/${G}`);
       expect(tl.body.snapshots).toHaveLength(1);
       expect((await call("/api/world/export")).body.events).toBeGreaterThan(0);
@@ -530,6 +543,15 @@ describe("runtime: the server on the wired agent", () => {
         ["HOLD", "clearshelf-policy"],
         ["CLEAR", "officer"],
       ]);
+      // The signed release keeps what it rests on: the run, the rules it overrode and the officer's reason.
+      const rel = rt.hmem.decisionLog(G, "UK")[1]!;
+      expect(rel.runId).toBe(job.result.run_id);
+      expect(rel.releasedOver?.length).toBeGreaterThan(0);
+      expect(rel.reason).toBe("synthetic: lot codes checked");
+      expect(rel.contractId).toBe(signed.body.contract.contractId);
+      const relWhy = await call(`/api/why/${G}/UK`);
+      expect(relWhy.body.lines.join("\n")).toMatch(/Released by officer over the hold \(R/u);
+      expect(relWhy.body.lines.join("\n")).toContain(`Officer's reason (signed contract ${signed.body.contract.contractId}): "synthetic: lot codes checked"`);
       await app.jobs.idle();
       expect(rt.hmem.store.all().some((m) => m.tags.includes("actor:officer") && m.tags.includes(`gtin:${G}`))).toBe(true);
       // RELEASE without a contract stays refused with the runtime wired.

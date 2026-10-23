@@ -23,6 +23,22 @@ OPS_RAW = {
 }
 OFF_RAW = "clearshelf_off.off_*"
 
+# A US street address ("123 EXAMPLE STREET, ANYTOWN, VA 00000") inside free text such as an
+# FDA product description. Firm street addresses are never selected, so every template that
+# reads the description replaces one with "[address removed]". Java regex (regexp_replace),
+# written without backslashes (no SQL string-escaping rule can change it) and without braces
+# (a rendered template never contains "{").
+ADDRESS_RE = (
+    "(?i)[0-9][0-9]* [A-Z0-9 .-]+? "
+    "(STREET|ST|AVENUE|AVE|ROAD|RD|BOULEVARD|BLVD|DRIVE|DR|LANE|LN|WAY|PARKWAY|PKWY|HIGHWAY|HWY|COURT|CT|PLACE|PL|CIRCLE|CIR|PLAZA|TERRACE|TRAIL|PIKE)[.]?"
+    "(,? (SUITE|STE|UNIT|BLDG|BUILDING|#) ?[A-Z0-9-]+)?,? *[A-Z][A-Z .-]+, *[A-Z][A-Z] *[0-9][0-9][0-9][0-9][0-9](-[0-9][0-9][0-9][0-9])?"
+)
+
+
+def _no_address(col: str) -> str:
+    return f"regexp_replace({col}, '{ADDRESS_RE}', '[address removed]')"
+
+
 PARAM_PATTERNS = {
     "gtin": re.compile(r"^\d{13}$"),
     "fda_notice": re.compile(r"^[FH]-\d{4}-\d{4}$"),  # openFDA food recall numbers use both prefixes
@@ -70,7 +86,7 @@ TEMPLATES: dict[str, Template] = {
         _t(
             "recalls_by_gtin",
             f"SELECT l.link_key, l.raw_code, l.transform, l.extracted_by, f.recall_number, f.report_date, f.classification, f.status, f.firm, "
-            f"f.distribution, f.product_description, f.reason, f.code_info FROM {U}.recall_product_link l "
+            f"f.distribution, {_no_address('f.product_description')} AS product_description, f.reason, f.code_info FROM {U}.recall_product_link l "
             f"JOIN {U}.fda_recall f ON l.recall_number = f.recall_number WHERE l.gtin = '{{gtin}}' ORDER BY f.report_date DESC",
             {"gtin": "gtin"}, (f"{U}.recall_product_link", f"{U}.fda_recall"), (OPS_RAW["recall_product_link"], FDA_RAW),
             "FDA recalls linked to a GTIN.",
@@ -78,7 +94,7 @@ TEMPLATES: dict[str, Template] = {
         _t(
             "recalls_by_name",
             f"SELECT 'fda' AS source, f.recall_number AS notice_id, f.report_date AS notice_date, f.firm AS business, "
-            f"substr(f.product_description, 1, 400) AS title FROM {U}.fda_recall f "
+            f"substr({_no_address('f.product_description')}, 1, 400) AS title FROM {U}.fda_recall f "
             f"WHERE lower(f.firm) LIKE '%{{brand}}%' OR lower(f.product_description) LIKE '%{{brand}}%' "
             f"UNION ALL SELECT 'fsa' AS source, a.notation AS notice_id, a.created AS notice_date, a.business, a.title "
             f"FROM {U}.fsa_alert a WHERE lower(a.title) LIKE '%{{brand}}%' OR lower(a.business) LIKE '%{{brand}}%'",
@@ -87,7 +103,7 @@ TEMPLATES: dict[str, Template] = {
         ),
         _t(
             "fda_notice",
-            f"SELECT recall_number, report_date, classification, status, firm, distribution, product_description, reason, code_info "
+            f"SELECT recall_number, report_date, classification, status, firm, distribution, {_no_address('product_description')} AS product_description, reason, code_info "
             f"FROM {U}.fda_recall WHERE recall_number = '{{recall_number}}'",
             {"recall_number": "fda_notice"}, (f"{U}.fda_recall",), (FDA_RAW,), "One FDA recall.",
         ),

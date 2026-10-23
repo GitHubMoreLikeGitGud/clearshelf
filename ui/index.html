@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClearShelf</title>
+<meta name="description" content="Allergen clearance and recall watch for a UK online grocer's product-compliance officer. Every decision is cited and every release is signed.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%2315222C'/%3E%3Crect x='3' y='4' width='10' height='2' fill='%23F3C969'/%3E%3Crect x='3' y='8' width='7' height='2' fill='%23ffffff'/%3E%3Crect x='3' y='12' width='4' height='1.5' fill='%23ffffff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+<script type="module" src="/app.js"></script>
+</head>
+<body>
+<a class="skip" href="#main" data-skip>Skip to the content</a>
+<header class="top">
+  <div class="brand">
+    <span class="brand__mark" aria-hidden="true"></span>
+    <span class="brand__name">ClearShelf</span>
+    <span class="brand__sub">Allergen clearance and recall watch</span>
+  </div>
+  <nav class="tabs" aria-label="Screens">
+    <a href="#/intake" data-tab="intake">Intake and catalogue</a>
+    <a href="#/sku" data-tab="sku">SKU card</a>
+    <a href="#/watch" data-tab="watch">Recall watch</a>
+    <a href="#/memory" data-tab="memory">Memory and why</a>
+    <a href="#/eval" data-tab="eval">Evaluation</a>
+  </nav>
+  <div class="who">
+    <span id="conn" class="conn" data-state="connecting" role="status">Live updates connecting</span>
+    <span class="officer">Signed in as <strong>officer</strong> <span class="officer__note">local demo identity</span></span>
+  </div>
+</header>
+<div id="banner"></div>
+<main id="main" tabindex="-1"><div id="view"></div></main>
+<footer id="telemetry" aria-label="Telemetry"></footer>
+<div id="drawer-scrim" class="scrim" hidden></div>
+<aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden>
+  <header class="drawer__head">
+    <button type="button" class="btn btn--ghost btn--small" data-drawer-back hidden>Back</button>
+    <div class="drawer__titles"><p id="drawer-kicker" class="drawer__kicker"></p><h2 id="drawer-title">Evidence</h2></div>
+    <button type="button" class="btn btn--ghost btn--small" data-drawer-close>Close</button>
+  </header>
+  <p id="drawer-replay" class="drawer__replay" hidden></p>
+  <div id="drawer-body" class="drawer__body" tabindex="-1"></div>
+</aside>
+<div id="announcer" class="sr-only" aria-live="polite"></div>
+</body>
+</html>

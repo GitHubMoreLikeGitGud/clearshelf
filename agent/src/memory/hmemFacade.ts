@@ -78,6 +78,8 @@ export const TOOL_SOURCES: Readonly<Record<string, string[]>> = {
 export const AGENT_ACTOR = "clearshelf-agent";
 /** Who a policy decision is attributed to (the same name the World Model uses). */
 export const POLICY_ACTOR = "clearshelf-policy";
+/** Firing effects that decide (REVIEW and INFO do not). */
+const DECIDING_EFFECTS = new Set(["HOLD", "BLOCK", "CLEAR", "CLEAR_WITH_STATEMENT"]);
 export const OFFICER = "officer";
 
 const sha = (s: string, n = 12) => createHash("sha256").update(s, "utf8").digest("hex").slice(0, n);
@@ -281,6 +283,14 @@ export interface DecisionLogEntry {
   replayAsOf?: string | null;
   /** The replay's label when it was given ("Replay from 10 Oct 2026, polled to 23 Oct 2026"). */
   replayLabel?: string;
+  /** The officer's reason on an officer-signed or manual decision. */
+  reason?: string;
+  /** The execution contract the decision was written under. */
+  contractId?: string;
+  /** The ops-store decision row id. */
+  decisionId?: string;
+  /** A RELEASE: the rules of the hold it overrode. */
+  releasedOver?: string[];
 }
 
 export type DecisionState = "applied" | "proposed" | "not_applied";
@@ -609,6 +619,12 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
     replayAsOf?: string | null;
     /** The replay's label ("Replay from 10 Oct 2026, polled to 23 Oct 2026"); default "replay as of <date>". */
     replayLabel?: string | null;
+    /** The officer's reason, contract and decision row on an officer decision. */
+    reason?: string | null;
+    contractId?: string | null;
+    decisionId?: string | null;
+    /** A RELEASE: the rules of the hold it overrode. */
+    releasedOver?: string[] | null;
   }): DecisionLogEntry {
     const key = sha(`${d.gtin}|${d.market}|${d.runId ?? ""}|${d.status}|${d.decidedAt}`);
     const existing = this.decisions.find((x) => x.key === key);
@@ -624,8 +640,11 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
     const notices = [...new Set(d.firings.flatMap((f) => f.reason.match(/\b[FH]-\d{4}-\d{4}\b/gu) ?? []))];
     const replayLabel = replayAsOf ? (d.replayLabel ?? `replay as of ${replayAsOf}`) : null;
     const label = `${state === "proposed" ? " (proposed, pending the officer's signed approval; not applied)" : state === "not_applied" ? " (not applied)" : ""}${replayLabel ? ` [${replayLabel}]` : ""}`;
-    const mem = this.store.add({
-      content: `Decision ${d.status}${label} for GTIN ${d.gtin} in ${d.market} (${rules.join(", ") || "no rule"}) by ${actor}${d.policyVersion ? `, policy ${d.policyVersion}` : ""}`,
+    const ruleText = rules.join(", ") || (d.releasedOver?.length ? `release over ${d.releasedOver.join(", ")}` : "no rule");
+    // An officer decision is written to the ledger as the officer's, not the agent's.
+    const write = <T>(fn: () => T): T => (actor === OFFICER ? this.withActor(OFFICER, fn) : fn());
+    const mem = write(() => this.store.add({
+      content: `Decision ${d.status}${label} for GTIN ${d.gtin} in ${d.market} (${ruleText}) by ${actor}${d.policyVersion ? `, policy ${d.policyVersion}` : ""}${d.reason ? `; reason: ${d.reason.slice(0, 300)}` : ""}`,
       type: "factual",
       layer: "working",
       tags: [
@@ -644,8 +663,8 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
       ],
       confidence: 1,
       source: actor === OFFICER ? "officer" : "clearshelf:policy",
-      provenance: { origin: "plan_completion", learnedAt: this.clock(), label: `decision ${d.status} (${d.decidedAt})`, refs: [...new Set(refs)].slice(0, 12) },
-    });
+      provenance: { origin: "plan_completion", learnedAt: this.clock(), label: `decision ${d.status} (${d.decidedAt})`, refs: [...new Set([...refs, ...(d.contractId ? [d.contractId] : []), ...(d.decisionId ? [d.decisionId] : [])])].slice(0, 12) },
+    }));
     const entry: DecisionLogEntry = {
       memoryId: mem.id,
       key,
@@ -664,6 +683,10 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
       ...(state ? { state } : {}),
       replayAsOf,
       ...(replayLabel && d.replayLabel ? { replayLabel } : {}),
+      ...(d.reason ? { reason: d.reason.slice(0, 600) } : {}),
+      ...(d.contractId ? { contractId: d.contractId } : {}),
+      ...(d.decisionId ? { decisionId: d.decisionId } : {}),
+      ...(d.releasedOver?.length ? { releasedOver: [...d.releasedOver] } : {}),
     };
     this.decisions.push(entry);
     if (this.persistDir) {
@@ -1165,7 +1188,7 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
       const facts = this.store.all().filter((m) => m.tags.includes("kind:fact") && m.tags.includes(`gtin:${gtin}`));
       const byRule = new Map<string, Firing[]>();
       for (const f of decision.firings) {
-        if (f.effect !== "HOLD" && f.effect !== "BLOCK") continue;
+        if (!DECIDING_EFFECTS.has(f.effect)) continue;
         byRule.set(f.rule, [...(byRule.get(f.rule) ?? []), f as Firing]);
       }
       for (const [rule, fs] of byRule) {
@@ -1176,6 +1199,14 @@ export class HMEM extends ReferenceHMEM implements ConflictHost {
         lines.push(
           `${rule} → ${fs[0]!.effect}: ${reasons.length > 220 ? `${reasons.slice(0, 220)}…` : reasons} [${ev.slice(0, 4).join(", ")}${ev.length > 4 ? ", …" : ""}]${backing.length ? `; memory ${backing.map((b) => `${b.id} (${b.source}, ${b.provenance.origin})`).join(", ")}` : ""}.`,
         );
+      }
+      if (decision.releasedOver?.length) lines.push(`Released by ${decision.actor} over the hold (${decision.releasedOver.join(", ")}).`);
+      if (decision.reason && decision.actor === OFFICER) {
+        lines.push(`Officer's reason${decision.contractId ? ` (signed contract ${decision.contractId})` : ""}: "${decision.reason}".`);
+      }
+      // The officer's reasons, mined into memory for this decision row.
+      if (decision.decisionId) {
+        for (const m of this.store.all()) if (m.tags.includes("actor:officer") && m.tags.includes(`decision:${decision.decisionId}`)) ledgerIds.push(m.id);
       }
     }
     for (const c of conflicts) {

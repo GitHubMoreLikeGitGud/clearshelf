@@ -33,7 +33,7 @@ import { ApprovalQueue } from "./ops/queue.ts";
 import { OpsStore, type DecisionRow, type ExtractionRow } from "./ops/store.ts";
 import type { RunOrigin } from "./ops/runStore.ts";
 import type { clearSku, ClearResult } from "./pipeline.ts";
-import type { Market } from "./policy/decide.ts";
+import type { Firing, Market } from "./policy/decide.ts";
 import { keywordBaseline, verifySpans } from "./verify/lexicon.ts";
 import { loadCatalogue, RecallWatch, type Catalogue, type WatchDeps, type WatchHooks } from "./watch/recallWatch.ts";
 import { AsOfGateway, parseReplayLabel, replayBanner, replayLabel, ReplayEvidenceStore } from "./watch/asOf.ts";
@@ -611,20 +611,50 @@ export async function clearWithAgent(rt: Runtime, request: ClearRequest): Promis
   return { result, evidence, applied, queued, recorded };
 }
 
+/**
+ * What an executed officer decision rests on: the run whose proposal was signed (its firings,
+ * policy version and policy evidence), or for a RELEASE the hold it overrode, plus the
+ * officer's reason. Without it the trace of a signed clearance would show no run or rule.
+ */
+export interface ExecutedContext {
+  runId?: string | null;
+  firings?: Firing[];
+  policyVersion?: string | null;
+  evidenceId?: string | null;
+  reason?: string | null;
+  releasedOver?: string[] | null;
+}
+
 /** An executed officer decision (CLEAR, RELEASE, manual HOLD/BLOCK) into the World Model and the H-MEM decision log. */
-export async function recordExecuted(rt: Runtime, row: DecisionRow): Promise<{ snapshot_id: string; decision_memory_id: string }> {
+export async function recordExecuted(rt: Runtime, row: DecisionRow, ctx: ExecutedContext = {}): Promise<{ snapshot_id: string; decision_memory_id: string }> {
+  const firings = ctx.firings ?? [];
   const snap = await rt.world.recordDecision({
     decisionId: row.decision_id,
     gtin: row.gtin,
     market: row.market as Market,
     status: row.status,
-    rules: [],
+    rules: [...new Set(firings.filter((f) => f.effect !== "INFO" && f.effect !== "REVIEW").map((f) => f.rule))],
     decidedAt: row.decided_at,
     actor: row.actor,
     contractId: row.contract_id,
     statement: row.statement || null,
   });
-  const d = rt.hmem.recordDecision({ gtin: row.gtin, market: row.market as Market, status: row.status, firings: [], decidedAt: row.decided_at, actor: row.actor, runId: null, evidenceId: null, state: "applied" });
+  const d = rt.hmem.recordDecision({
+    gtin: row.gtin,
+    market: row.market as Market,
+    status: row.status,
+    firings,
+    policyVersion: ctx.policyVersion ?? null,
+    decidedAt: row.decided_at,
+    actor: row.actor,
+    runId: ctx.runId ?? null,
+    evidenceId: ctx.evidenceId ?? null,
+    state: "applied",
+    reason: ctx.reason ?? null,
+    contractId: row.contract_id || null,
+    decisionId: row.decision_id,
+    releasedOver: ctx.releasedOver ?? null,
+  });
   return { snapshot_id: snap.id, decision_memory_id: d.memoryId };
 }
 
@@ -634,13 +664,37 @@ export function replayLabelOfRow(row: Pick<DecisionRow, "reason" | "decided_date
   return p ? replayLabel(p.origin, p.asOf ?? row.decided_date) : `as of ${row.decided_date}`;
 }
 
+/** The prior_decisions read behind a why trace, cited once per distinct result (a re-opened trace reuses its record). */
+const whyCitations = new Map<string, string>();
+
 /** "Why was this held?": the H-MEM trace (decision log merged with ledger history) plus the current ops row and the World Model timeline. */
-export async function whyTrace(rt: Runtime, gtin: string, market: Market): Promise<{ lines: string[]; hmem: WhyTrace; current: DecisionRow | null; zetaris: Record<string, unknown>[] | null }> {
+export async function whyTrace(
+  rt: Runtime,
+  gtin: string,
+  market: Market,
+  opts: { evidenceDir?: string | null } = {},
+): Promise<{ lines: string[]; hmem: WhyTrace; current: DecisionRow | null; zetaris: Record<string, unknown>[] | null; citations: { prior_decisions: string | null } }> {
   const t = rt.hmem.why(gtin, market);
   const current = rt.ops.current().get(`${gtin}|${market}`) ?? null;
   let zetaris: Record<string, unknown>[] | null = null;
+  let priorEv: string | null = null;
   try {
-    zetaris = rowsAsObjects(await rt.gateway.template("prior_decisions", { gtin })).filter((r) => r.market === market);
+    const res = await rt.gateway.template("prior_decisions", { gtin });
+    zetaris = rowsAsObjects(res).filter((r) => r.market === market);
+    // The read-back is cited like any other claim: an evidence record with the Lightning SQL.
+    const key = `${gtin}|${market}|${current?.decision_id ?? ""}|${JSON.stringify(zetaris)}`;
+    priorEv = whyCitations.get(key) ?? null;
+    if (!priorEv) {
+      const dir = opts.evidenceDir === undefined ? (rt.evidenceDir === undefined ? undefined : rt.evidenceDir) : opts.evidenceDir;
+      const store = new EvidenceStore(undefined, dir);
+      const rec = store.fromTemplate(
+        res,
+        `Zetaris prior_decisions for ${gtin}: ${zetaris.length} row(s) in ${market}${zetaris[0] ? `, latest ${String(zetaris[0].status)} ${String(zetaris[0].decision_id ?? "")} on ${String(zetaris[0].decided_date)}` : ""} (read back through clearance_usl.decision for the why trace)`,
+        { filter: (r) => r.market === market },
+      );
+      priorEv = rec.id;
+      whyCitations.set(key, priorEv);
+    }
   } catch {
     zetaris = null;
   }
@@ -660,15 +714,18 @@ export async function whyTrace(rt: Runtime, gtin: string, market: Market): Promi
   }
   if (current) {
     const replayRow = current.decision_id.startsWith("rp-") ? ` [REPLAY row: ${replayLabelOfRow(current)}]` : "";
-    lines.push(`Ops store (federated as clearance_usl.decision): ${current.status}${replayRow} ${current.decision_id} by ${current.actor} at ${current.decided_at}, contract ${current.contract_id}.`);
+    const seen = zetaris?.some((r) => r.decision_id === current.decision_id) ?? false;
+    lines.push(
+      `Ops store (federated as clearance_usl.decision): ${current.status}${replayRow} ${current.decision_id} by ${current.actor} at ${current.decided_at}, contract ${current.contract_id}${seen && priorEv ? `; read back through Zetaris [${priorEv}]` : ""}.`,
+    );
   }
-  if (zetaris) lines.push(`Zetaris prior_decisions: ${zetaris.length} row(s) for ${market}${zetaris[0] ? `, latest ${String(zetaris[0].status)} on ${String(zetaris[0].decided_date)}` : ""}.`);
+  if (zetaris) lines.push(`Zetaris prior_decisions: ${zetaris.length} row(s) for ${market}${zetaris[0] ? `, latest ${String(zetaris[0].status)} on ${String(zetaris[0].decided_date)}` : ""}${priorEv ? ` [${priorEv}]` : ""}.`);
   const snaps = rt.world.snapshotsFor(gtin).filter((s) => s.market === market);
   if (snaps.length) {
     const s = snaps[snaps.length - 1]!;
     lines.push(`World Model: ${snaps.length} snapshot(s); latest ${s.id} at ${s.at} (${s.reason}), ${s.edges.length} edge(s), ${s.notices.length} notice(s).`);
   }
-  return { lines, hmem: t, current, zetaris };
+  return { lines, hmem: t, current, zetaris, citations: { prior_decisions: priorEv } };
 }
 
 // ---------- the recall watch on the same runtime ----------

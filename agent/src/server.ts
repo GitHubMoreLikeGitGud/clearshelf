@@ -20,7 +20,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig, REPO_ROOT_URL } from "./config.ts";
 import { OFFICER } from "./contract/scout.ts";
 import { EvidenceStore, type EvidenceRecord } from "./evidence/store.ts";
-import type { OllamaClient } from "./llm/ollama.ts";
+import { refusedModelHostAttempts, type OllamaClient } from "./llm/ollama.ts";
 import { AGENT_ACTOR, applyAutomatic, executeDecision, overDecision, signApproval, supersedeBy } from "./ops/actions.ts";
 import type { ApprovalQueue } from "./ops/queue.ts";
 import { RunStore } from "./ops/runStore.ts";
@@ -30,7 +30,8 @@ import type { Decision, Market } from "./policy/decide.ts";
 import { AsOfGateway, replayBanner, ReplayEvidenceStore } from "./watch/asOf.ts";
 import type { Catalogue, RecallWatch } from "./watch/recallWatch.ts";
 import { DqGate, GatewayError, rowsAsObjects, validateParam, type GatewayClient } from "./zetaris/client.ts";
-import { agentWatch, clearWithAgent, openRuntime, recordExecuted, whyTrace, type Runtime } from "./runtime.ts";
+import { keywordBaseline, lexiconScan } from "./verify/lexicon.ts";
+import { agentWatch, clearWithAgent, openRuntime, recordExecuted, whyTrace, type ExecutedContext, type Runtime } from "./runtime.ts";
 import type { DecisionRow } from "./ops/store.ts";
 
 // ---------- events ----------
@@ -167,6 +168,12 @@ export interface ServerDeps {
   evidenceDir?: string | null;
   /** data/watch/sweeps/ to read sweep records from. */
   sweepDir?: string | null;
+  /** data/markovian/ loop reports for /api/loops and the telemetry footer; null serves none. */
+  loopDir?: string | null;
+  /** data/eval/ results (VRAM, cold vs warm) for the telemetry footer; null serves none. */
+  evalDir?: string | null;
+  /** docs/eval-report.md for the /eval page; null serves none. */
+  evalReport?: string | null;
   clear?: typeof clearSku;
   /**
    * The wired runtime (runtime.ts): clearances run as Markovian investigations with H-MEM and
@@ -176,7 +183,7 @@ export interface ServerDeps {
    */
   runtime?: Runtime;
   /** Officer reasons (approve, edit, reject, confirm): the memory lane mines these into H-MEM. */
-  onOfficerReason?: (r: { kind: string; gtin: string; market: string; reason: string; contract_id?: string; decision_id?: string }) => void;
+  onOfficerReason?: (r: { kind: string; gtin: string | null; market: string | null; reason: string; contract_id?: string; decision_id?: string }) => void;
   log?: (line: string) => void;
 }
 
@@ -281,6 +288,9 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
   const evidenceDir = deps.evidenceDir === undefined ? fileURLToPath(new URL("data/evidence/", REPO_ROOT_URL)) : deps.evidenceDir;
   const sweepDir = deps.sweepDir === undefined ? fileURLToPath(new URL("data/watch/sweeps/", REPO_ROOT_URL)) : deps.sweepDir;
   const uiDir = deps.uiDir === undefined ? fileURLToPath(new URL("ui/", REPO_ROOT_URL)) : deps.uiDir;
+  const loopDir = deps.loopDir === undefined ? fileURLToPath(new URL("data/markovian/", REPO_ROOT_URL)) : deps.loopDir;
+  const evalDir = deps.evalDir === undefined ? fileURLToPath(new URL("data/eval/", REPO_ROOT_URL)) : deps.evalDir;
+  const evalReport = deps.evalReport === undefined ? fileURLToPath(new URL("docs/eval-report.md", REPO_ROOT_URL)) : deps.evalReport;
   const rt = deps.runtime ?? null;
   const officerReason = (r: Parameters<NonNullable<ServerDeps["onOfficerReason"]>>[0]) => {
     bus.publish("officer.reason", r);
@@ -295,11 +305,26 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
       });
     }
   };
+  /**
+   * What an executed decision rests on, for the trace: the signed proposal's run (firings,
+   * policy version, policy evidence) or, for a RELEASE, the hold it overrode; plus the reason.
+   */
+  const executedContext = (row: DecisionRow, reason: string, release: boolean): ExecutedContext => {
+    const item = release ? null : (deps.queue.all().find((i) => i.kind === "proposal" && i.resolution?.decision_id === row.decision_id) ?? null);
+    const run = item?.run_id ? loadRun(item.run_id) : release ? runStore.latest(row.gtin, row.market as Market) : null;
+    if (!run) return { reason };
+    const policyEv = [...evidenceOf(run.run_id)].reverse().find((r) => r.kind === "policy")?.id ?? null;
+    if (release) {
+      const over = [...new Set(run.decision.firings.filter((f) => f.effect === "HOLD" || f.effect === "BLOCK").map((f) => f.rule))];
+      return { reason, runId: run.run_id, evidenceId: policyEv, policyVersion: run.decision.policyVersion ?? null, releasedOver: over };
+    }
+    return { reason, runId: run.run_id, firings: run.decision.firings, evidenceId: policyEv, policyVersion: run.decision.policyVersion ?? null };
+  };
   /** An executed decision into the World Model and the H-MEM decision log. */
-  const recordRow = async (row: DecisionRow) => {
+  const recordRow = async (row: DecisionRow, ctx: ExecutedContext = {}) => {
     if (!rt) return null;
     try {
-      const r = await recordExecuted(rt, row);
+      const r = await recordExecuted(rt, row, ctx);
       bus.publish("world.recorded", { gtin: row.gtin, market: row.market, decision_id: row.decision_id, snapshot_id: r.snapshot_id, decision_memory: r.decision_memory_id });
       return r;
     } catch (e) {
@@ -319,6 +344,95 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
       .split("\n")
       .filter((l) => l.trim())
       .map((l) => JSON.parse(l) as EvidenceRecord);
+  }
+
+  /**
+   * Deterministic checks over the run's label text, for the card: what the keyword baseline
+   * (system K, comparison only) flags, and the verifier's trap readings (e.g. "cocoa butter is
+   * not milk fat"). Offsets index the text in the run's `product` evidence record.
+   */
+  function labelChecks(run: ClearResult): { text_field: string; keyword: { group: string; term: string; start: number; end: number }[]; traps: { group: string; term: string; start: number; end: number; reason: string }[] } | null {
+    const rec = evidenceOf(run.run_id).find((r) => r.template_id === "product" && Array.isArray(r.columns) && Array.isArray(r.rows) && r.rows.length);
+    if (!rec) return null;
+    const field = run.product?.text_field ?? "ingredients_text";
+    const idx = (rec.columns as string[]).indexOf(field);
+    const text = idx >= 0 ? (rec.rows as unknown[][])[0]?.[idx] : null;
+    if (typeof text !== "string" || !text.trim() || text !== text.normalize("NFC")) return null;
+    return {
+      text_field: field,
+      keyword: keywordBaseline(text).map((h) => ({ group: h.group, term: h.term, start: h.start, end: h.end })),
+      traps: lexiconScan(text)
+        .filter((h) => h.trap)
+        .map((h) => ({ group: h.group, term: h.term, start: h.start, end: h.end, reason: h.trap!.reason })),
+    };
+  }
+
+  /** JSON files in a configured directory, newest first; names come from the directory listing only. */
+  function newestFiles(dir: string | null, keep: (name: string) => boolean): { name: string; path: string }[] {
+    if (!dir || !existsSync(dir)) return [];
+    const base = dir.replace(/[\\/]$/u, "");
+    return readdirSync(dir)
+      .filter((n) => n.endsWith(".json") && keep(n))
+      .map((name) => {
+        const path = `${base}/${name}`;
+        return { name, path, mtime: statSync(path).mtimeMs };
+      })
+      .sort((a, b) => b.mtime - a.mtime || (a.name < b.name ? 1 : -1));
+  }
+
+  function readObject(path: string): Record<string, unknown> | null {
+    try {
+      const v = JSON.parse(readFileSync(path, "utf8")) as unknown;
+      return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** The footer's figures: every number is copied from a measured file with its label, or null. */
+  function telemetry(): Record<string, unknown> {
+    let latest: Record<string, unknown> | null = null;
+    const rates: number[] = [];
+    for (const f of newestFiles(loopDir, (n) => n.endsWith(".loop.json"))) {
+      if (latest && rates.length >= 5) break;
+      const d = readObject(f.path);
+      const loop = d?.loop as { chunks?: number; chart?: unknown[]; summary?: { median_planner_tokens_per_s?: number | null } } | undefined;
+      if (!d || !loop || typeof loop !== "object") continue;
+      latest ??= { file: f.name, run_id: d.run_id ?? null, gtin: d.gtin ?? null, market: d.market ?? null, chunks: loop.chunks ?? null, chart: loop.chart ?? [], summary: loop.summary ?? null };
+      const r = loop.summary?.median_planner_tokens_per_s;
+      if (rates.length < 5 && typeof r === "number" && Number.isFinite(r)) rates.push(r);
+    }
+    rates.sort((a, b) => a - b);
+    const mid = Math.floor(rates.length / 2);
+    const median = rates.length ? (rates.length % 2 ? rates[mid]! : (rates[mid - 1]! + rates[mid]!) / 2) : null;
+
+    let vram: unknown = null;
+    let coldWarm: unknown = null;
+    const files: { vram: string | null; cold_warm: string | null } = { vram: null, cold_warm: null };
+    for (const f of newestFiles(evalDir, () => true)) {
+      if (vram && coldWarm) break;
+      const d = readObject(f.path);
+      if (!d) continue;
+      if (!vram && d.vram && typeof d.vram === "object") {
+        vram = d.vram;
+        files.vram = f.name;
+      }
+      if (!coldWarm && (d.cold_warm || (f.name.startsWith("cold-warm-") && Array.isArray(d.runs)))) {
+        coldWarm = d.cold_warm ?? d;
+        files.cold_warm = f.name;
+      }
+    }
+    return {
+      model: deps.ollama.model,
+      model_host: (deps.ollama as { baseUrl?: string }).baseUrl ?? null,
+      cloud_model_calls: 0,
+      refused_non_local_model_hosts: refusedModelHostAttempts(),
+      planner_tokens_per_s: median === null ? null : { value: median, label: "measured", runs: rates.length },
+      latest_loop: latest,
+      vram,
+      cold_warm: coldWarm,
+      eval_file: files,
+    };
   }
 
   function hostOk(req: IncomingMessage): boolean {
@@ -531,7 +645,8 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
         banner: deps.watch.banner(),
         markets: Object.fromEntries(
           markets.map((mk) => {
-            return [mk, { decision: cur.get(`${gtin}|${mk}`) ?? null, run: runStore.latest(gtin, mk), pending: deps.queue.pending().filter((q) => q.gtin === gtin && q.market === mk) }];
+            const run = runStore.latest(gtin, mk);
+            return [mk, { decision: cur.get(`${gtin}|${mk}`) ?? null, run, pending: deps.queue.pending().filter((q) => q.gtin === gtin && q.market === mk), label_checks: run ? labelChecks(run) : null }];
           }),
         ),
       });
@@ -596,7 +711,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
       const reason = s(b.reason, "reason");
       try {
         const ex = await executeDecision(deps.ops, deps.gateway, deps.queue, { gtin, market, status, statement, action, reason, contract: b.contract });
-        const rec = await recordRow(ex.row);
+        const rec = await recordRow(ex.row, executedContext(ex.row, reason, action === "RELEASE"));
         const out = { decision_id: ex.row.decision_id, contract_id: ex.contract.contractId, row: ex.row, visible_in_zetaris: ex.visibility.visible, closed_loop_sql: ex.visibility.result?.sql ?? null, recorded: rec };
         bus.publish("decision.written", { gtin, market, status, auto: false, decision_id: ex.row.decision_id, contract_id: ex.contract.contractId, visible_in_zetaris: ex.visibility.visible });
         officerReason({ kind: action === "RELEASE" ? "release" : "approve", gtin, market, reason, contract_id: ex.contract.contractId, decision_id: ex.row.decision_id });
@@ -625,7 +740,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
       const contract = deps.ops.verifier.issue({ action, parameters: params, user: OFFICER, surface: "clearshelf-ui", flags: ["manual"] });
       try {
         const ex = await executeDecision(deps.ops, deps.gateway, deps.queue, { gtin, market, status, statement: null, reason: `officer ${status}: ${reason}`, contract, actor: OFFICER });
-        await recordRow(ex.row);
+        await recordRow(ex.row, { reason });
         bus.publish("decision.written", { gtin, market, status, auto: false, decision_id: ex.row.decision_id, visible_in_zetaris: ex.visibility.visible });
         if (ex.superseded.length) bus.publish("approval.superseded", { gtin, market, queue_ids: ex.superseded, decision_id: ex.row.decision_id });
         officerReason({ kind: "manual", gtin, market, reason, decision_id: ex.row.decision_id });
@@ -666,7 +781,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
           contract,
           actor: officer,
         });
-        await recordRow(ex.row);
+        await recordRow(ex.row, { reason: `${confirm ? `confirmed name-only match ${item.notice_id ?? ""}` : `rejected the ${item.status} proposal ${item.id}`}: ${reason}`, runId: item.run_id || null });
         const it = deps.queue.resolve(id, confirm ? "approved" : "rejected", { by: officer, reason, contract_id: contract.contractId, decision_id: ex.row.decision_id });
         // The officer's HOLD outranks any other proposal still pending for the SKU.
         const superseded = supersedeBy(deps.queue, ex.row);
@@ -690,6 +805,28 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
       } catch (e) {
         contractError(e);
       }
+    }
+
+    if (m === "GET" && p === "/api/telemetry") return send(res, 200, telemetry());
+
+    if (m === "GET" && p === "/api/eval/report") {
+      // The measured evaluation report (docs/eval-report.md) for the /eval page, as written.
+      if (!evalReport || !existsSync(evalReport)) throw new HttpError(404, "no evaluation report yet (docs/eval-report.md)", "not_found");
+      return send(res, 200, { file: "docs/eval-report.md", updated_at: new Date(statSync(evalReport).mtimeMs).toISOString(), markdown: readFileSync(evalReport, "utf8") });
+    }
+
+    const lp = /^\/api\/loops\/([^/]+)\/([^/]+)\/([^/]+)$/u.exec(p);
+    if (m === "GET" && lp) {
+      if (!RUN_ID.test(lp[1]!)) throw new HttpError(400, "bad run id", "bad_id");
+      if (!/^\d{13}$/u.test(lp[2]!)) throw new HttpError(400, "the GTIN must be 13 digits", "bad_gtin");
+      const market = marketOf(lp[3]);
+      const base = loopDir ? loopDir.replace(/[\\/]$/u, "") : null;
+      const exact = base ? `${base}/${lp[1]}-${lp[2]}-${market}.loop.json` : null;
+      if (exact && existsSync(exact)) return send(res, 200, readObject(exact) ?? {});
+      const plain = base ? `${base}/${lp[1]}.loop.json` : null;
+      const d = plain && existsSync(plain) ? readObject(plain) : null;
+      if (d && d.gtin === lp[2] && d.market === market) return send(res, 200, d);
+      throw new HttpError(404, "no loop report for that run, GTIN and market", "not_found");
     }
 
     if (m === "GET" && p === "/api/contracts/log") {
@@ -758,10 +895,23 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
         return o;
       };
       const wy = /^\/api\/why\/(\d{13})\/(UK|US)$/u.exec(p);
-      if (m === "GET" && wy) return send(res, 200, await whyTrace(rt, gtinOf(wy[1]), wy[2] as Market));
+      if (m === "GET" && wy) return send(res, 200, await whyTrace(rt, gtinOf(wy[1]), wy[2] as Market, { evidenceDir }));
       if (m === "GET" && p === "/api/memory/conflicts") {
         const state = url.searchParams.get("state");
-        return send(res, 200, { conflicts: rt.hmem.allergenConflicts.all().filter((c) => !state || c.status === state) });
+        // Each side with what the memory says (read straight from the store, so listing logs no ledger reads) and the product it is about.
+        const mems = new Map(rt.hmem.store.all().map((x) => [x.id, x]));
+        const side = (id: string) => {
+          const x = mems.get(id);
+          return x ? { id, content: x.content, source: x.source, label: x.provenance?.label ?? null, refs: (x.provenance?.refs ?? []).slice(0, 6) } : { id, content: null, source: null, label: null, refs: [] };
+        };
+        const conflicts = rt.hmem.allergenConflicts
+          .all()
+          .filter((c) => !state || c.status === state)
+          .map((c) => {
+            const sku = c.gtin ? deps.catalogue.skus.find((k) => k.gtin === c.gtin) : null;
+            return { ...c, product: sku ? { name: sku.name, brand: sku.brand, markets: sku.markets } : null, sides: { a: side(c.a), b: side(c.b) } };
+          });
+        return send(res, 200, { conflicts });
       }
       if (m === "POST" && p === "/api/memory/conflicts/resolve") {
         const b = await readJson(req);
@@ -780,7 +930,19 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
         });
         return send(res, 202, { job_id: job.id });
       }
-      if (m === "GET" && p === "/api/memory/dreams") return send(res, 200, { proposals: rt.hmem.dreams() });
+      if (m === "GET" && p === "/api/memory/dreams") {
+        // How many separate officer rulings dreaming has to work from (it needs two pointing the same way).
+        const acts = new Set(rt.hmem.store.all().filter((x) => x.tags.includes("actor:officer")).flatMap((x) => x.tags.filter((t) => t.startsWith("officer-act:"))));
+        return send(res, 200, { proposals: rt.hmem.dreams(), officer_rulings: acts.size, runs_after: "each recall-watch sweep" });
+      }
+      if (m === "GET" && p === "/api/memory/sources") {
+        // Source-access memories (seeded notes and documents), read straight from the store so the panel logs no ledger reads.
+        const memories = rt.hmem.store
+          .all()
+          .filter((x) => x.tags.includes("kind:source_note") || (x.tags.includes("document") && x.tags.some((t) => t.startsWith("source:"))))
+          .map((x) => ({ id: x.id, content: x.content, tags: x.tags, label: x.provenance?.label ?? null, learned_at: x.provenance?.learnedAt ? new Date(x.provenance.learnedAt).toISOString() : null, superseded_by: x.supersededBy ?? null }));
+        return send(res, 200, { memories });
+      }
       if (m === "POST" && (p === "/api/memory/dreams/approve" || p === "/api/memory/dreams/reject")) {
         const b = await readJson(req);
         const by = officerOf(b);
@@ -810,18 +972,27 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
         const b = await readJson(req);
         const by = officerOf(b);
         const id = s(b.id, "id");
+        const reason = b.reason === undefined || b.reason === null ? null : s(b.reason, "reason");
         try {
           if (p.endsWith("/approve")) await rt.world.approveMerge(id, by);
           else await rt.world.rejectMerge(id, by);
         } catch (e) {
           throw new HttpError(409, (e as Error).message, "not_pending");
         }
-        bus.publish("world.merge_resolved", { id, approved: p.endsWith("/approve") });
-        return send(res, 200, { id });
+        bus.publish("world.merge_resolved", { id, approved: p.endsWith("/approve"), reason });
+        if (reason) officerReason({ kind: p.endsWith("/approve") ? "merge_approve" : "merge_reject", gtin: null, market: null, reason });
+        return send(res, 200, { id, reason });
       }
     }
 
     if (p.startsWith("/api/")) throw new HttpError(404, `no route ${m} ${p}`, "not_found");
+
+    // The evaluation page lives in the UI's hash routes.
+    if ((m === "GET" || m === "HEAD") && (p === "/eval" || p === "/eval/")) {
+      res.writeHead(302, { location: "/#/eval" });
+      res.end();
+      return;
+    }
 
     // ---- static UI ----
     if ((m === "GET" || m === "HEAD") && uiDir) {
