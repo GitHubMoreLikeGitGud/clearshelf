@@ -73,6 +73,14 @@
       "status": "verified",
       "requires": ["clearance_usl_activate"],
       "summary": "Gate probe: re-ACTIVATE product with a changed query (2 SKUs, then 3)"
+    },
+    {
+      "id": "decision_writeback",
+      "kind": "usl",
+      "script": "zetaris/sql/14_decision_writeback_create.sql",
+      "status": "drafted",
+      "requires": ["clearance_usl_activate"],
+      "summary": "DQ rules and read queries for the ops decision write-back on the USL decision table"
     }
   ]
 }
