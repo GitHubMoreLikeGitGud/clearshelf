@@ -147,3 +147,38 @@ def test_every_committed_script_passes_onboard():
             check(stmt.replace("YOUR_APP_NAME YOUR_CONTACT_EMAIL", "ClearShelf/0.1"), "onboard")
             n += 1
     assert n > 50
+
+
+SIGNED_CLEAR_UPDATE = (f"UPDATE DQ signed_clear TABLE {U}.decision SET NAME = signed_clear, "
+                       "EXPRESSION = status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT') OR "
+                       "(contract_id IS NOT NULL AND length(trim(contract_id)) > 0)")
+
+
+def test_update_dq_is_onboarding_only():
+    assert check(SIGNED_CLEAR_UPDATE, "onboard") == "onboard"
+    for role in ("reader", "registrar"):
+        with pytest.raises(Refused):
+            check(SIGNED_CLEAR_UPDATE, role)
+
+
+@pytest.mark.parametrize("sql", [
+    # renaming is not allowed, only the expression may change
+    f"UPDATE DQ signed_clear TABLE {U}.decision SET NAME = other_rule, EXPRESSION = status = 'HOLD'",
+    # outside the clearance USL
+    "UPDATE DQ signed_clear TABLE lightning.metastore.other.usl.decision SET NAME = signed_clear, EXPRESSION = status = 'HOLD'",
+    # subqueries and write keywords in the expression
+    f"UPDATE DQ signed_clear TABLE {U}.decision SET NAME = signed_clear, EXPRESSION = gtin IN (SELECT gtin FROM {U}.product)",
+    f"UPDATE DQ signed_clear TABLE {U}.decision SET NAME = signed_clear, EXPRESSION = status = 'x' OR DROP",
+    # missing NAME (Zetaris needs it) or EXPRESSION
+    f"UPDATE DQ signed_clear TABLE {U}.decision SET EXPRESSION = status = 'HOLD'",
+    f"UPDATE DQ signed_clear TABLE {U}.decision SET NAME = signed_clear",
+    f"{SIGNED_CLEAR_UPDATE};",
+])
+def test_update_dq_refused_shapes(sql):
+    with pytest.raises(Refused):
+        check(sql, "onboard")
+
+
+def test_update_dq_keywords_inside_literals_are_data():
+    sql = f"UPDATE DQ known_status TABLE {U}.decision SET NAME = known_status, EXPRESSION = status IN ('SELECT','DROP')"
+    assert check(sql, "onboard") == "onboard"

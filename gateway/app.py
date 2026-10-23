@@ -2,7 +2,9 @@
 
     .venv/Scripts/python -m gateway.app
 
-Endpoints (this module): GET /health, POST /sql/template.
+Endpoints: GET /health, POST /sql/template, and the registrar calls POST
+/registrar/register_off, /registrar/reactivate and /registrar/refresh_feeds
+(gateway/registrar.py; each needs a medium-risk execution contract).
 The agent sends a template id and parameters, never SQL text.
 """
 
@@ -15,12 +17,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Callable
 
-from fastapi import FastAPI
+from fastapi import Body, FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from . import allowlist, cache, templates
 from . import manifest as manifest_mod
+from . import registrar as registrar_mod
 from .jdbc import ROOT, LightningConnection, QueryTimeout, ZetarisError, load_env
 from .sqllog import log_statement, sha256
 
@@ -306,7 +309,7 @@ class Gateway:
         return status, out
 
 
-def create_app(gateway: Gateway | None = None, warm_on_start: bool = True) -> FastAPI:
+def create_app(gateway: Gateway | None = None, warm_on_start: bool = True, registrar=None) -> FastAPI:
     load_env()
     gw = gateway or Gateway()
 
@@ -328,6 +331,25 @@ def create_app(gateway: Gateway | None = None, warm_on_start: bool = True) -> Fa
     def sql_template(req: TemplateRequest) -> JSONResponse:
         status, body = gw.run_template(req)
         return JSONResponse(body, status_code=status)
+
+    # Registrar calls (gateway/registrar.py): each needs a medium-risk execution contract.
+    reg = registrar if registrar is not None else registrar_mod.Registrar(gw)
+    api.state.registrar = reg
+
+    @api.post("/registrar/register_off")
+    def register_off(body: dict = Body(...)) -> JSONResponse:
+        status, out = reg.register_off(body)
+        return JSONResponse(out, status_code=status)
+
+    @api.post("/registrar/reactivate")
+    def reactivate(body: dict = Body(...)) -> JSONResponse:
+        status, out = reg.reactivate(body)
+        return JSONResponse(out, status_code=status)
+
+    @api.post("/registrar/refresh_feeds")
+    def refresh_feeds(body: dict = Body(...)) -> JSONResponse:
+        status, out = reg.refresh_feeds(body)
+        return JSONResponse(out, status_code=status)
 
     return api
 

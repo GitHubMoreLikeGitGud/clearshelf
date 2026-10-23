@@ -56,6 +56,25 @@ def test_fda_notice_rejects_other_prefixes(recall_number):
         render("fda_notice", {"recall_number": recall_number})
 
 
+def _norm(sql: str) -> str:
+    one = " ".join(sql.split())
+    return one.replace("( ", "(").replace(" )", ")")
+
+
+def test_recheck_cleared_is_the_corrected_query_in_the_14_select_script():
+    # The current decision per (gtin, market) only, and >= so a same-day recall is flagged.
+    _, sql = render("recheck_cleared", {})
+    assert "MAX(decided_at) AS decided_at" in sql and "GROUP BY gtin, market" in sql
+    assert "f.report_date >= d.decided_date" in sql and "f.report_date > d.decided_date" not in sql
+    script = (templates_dir() / "14_decision_writeback_select.sql").read_text(encoding="utf-8")
+    assert _norm(sql) in _norm(script)
+
+
+def templates_dir():
+    from gateway.jdbc import ROOT
+    return ROOT / "zetaris" / "sql"
+
+
 def test_substitution():
     _, sql = render("product", {"gtin": "4056489125846"})
     assert sql.endswith("WHERE gtin = '4056489125846'")

@@ -116,6 +116,36 @@ export function allergenFamily(g: Group): Group {
   return g === "wheat" ? "gluten_cereal" : g;
 }
 
+/**
+ * The notice read without the model: the GS1 scan and the lexicon only. Used when the
+ * injection guard flags the notice text, so the model never receives it. `ok` is false
+ * (there is no model extraction); the zero model block is labelled measured and never
+ * counted as a call.
+ */
+export function noticeScanOnly(row: NoticeRow, why: string): NoticeExtractionResult {
+  if (!RECALL_NUMBER.test(row.recall_number)) throw new Error(`malformed recall number: ${row.recall_number}`);
+  const reason = reasonGroups(row.reason ?? "");
+  const und = undeclaredGroups(row.reason ?? "");
+  return {
+    recall_number: row.recall_number,
+    ok: false,
+    errors: [`model not called: ${why}`],
+    extraction: null,
+    upcs: [],
+    scanned_upcs: extractUpcs(noticeText(row)).accepted,
+    lots_literal: [],
+    lots_not_found: [],
+    reason_groups: reason,
+    undeclared_groups: und.groups,
+    coconut_as_tree_nut: und.coconutAsTreeNut,
+    allergens_agreed: [],
+    allergens_model_only: [],
+    allergens_reason_only: reason,
+    model: { name: "none (guard)", think: false, prompt_sha256: "", tokens_in: 0, tokens_out: 0, attempts: 0, eval_ms: 0, tokens_per_s: null, label: "measured" },
+    wall_ms: 0,
+  };
+}
+
 export async function extractNotice(row: NoticeRow, ollama: OllamaClient): Promise<NoticeExtractionResult> {
   if (!RECALL_NUMBER.test(row.recall_number)) throw new Error(`malformed recall number: ${row.recall_number}`);
   const settings = jobSettings("notice");

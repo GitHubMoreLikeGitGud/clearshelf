@@ -46,9 +46,13 @@ export function textSha12(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex").slice(0, 12);
 }
 
-export async function extractIngredients(text: string, ollama: OllamaClient): Promise<IngredientExtractionResult> {
+/**
+ * `modelText` is what the model is sent when it differs from the label text: the guard's
+ * <untrusted> wrapping of a flagged label. Grounding and the verifier always use `text`.
+ */
+export async function extractIngredients(text: string, ollama: OllamaClient, modelText?: string): Promise<IngredientExtractionResult> {
   const settings = jobSettings("ingredient");
-  const messages = extractionMessages(text);
+  const messages = extractionMessages(modelText ?? text);
   const started = performance.now();
   const outcome = await ollama.chatJson<IngredientExtraction>({
     messages,

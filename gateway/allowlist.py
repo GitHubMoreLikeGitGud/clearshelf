@@ -4,7 +4,8 @@ Roles, each a superset of the one before:
 - reader:    SELECT, SHOW, DESCRIBE, LOAD USL, LIST DQ, RUN DQ, SHOW DQ
 - registrar: + CREATE LIGHTNING REST TABLE (allowlisted hosts, CLEARSHELF_* databases),
                CACHE / UNCACHE TABLE clearshelf_*, ACTIVATE USL TABLE lightning.metastore.clearshelf.*
-- onboard:   + COMPILE USL, UPDATE USL ... DESCRIPTION, REGISTER DQ, REMOVE USL clearance_usl,
+- onboard:   + COMPILE USL, UPDATE USL ... DESCRIPTION, REGISTER DQ, UPDATE DQ (expression of a
+               clearance_usl rule, same name), REMOVE USL clearance_usl,
                CREATE LIGHTNING DATABASE CLEARSHELF_*, CREATE SCHEMASTORE CONTAINER clearshelf,
                CREATE NAMESPACE lightning.metastore[.clearshelf]
 
@@ -91,7 +92,31 @@ def _registrar_ok(sql: str, bare: str) -> bool:
     return False
 
 
-def _onboard_ok(sql: str) -> bool:
+_UPDATE_DQ = re.compile(
+    rf"^\s*UPDATE\s+DQ\s+({_ID})\s+TABLE\s+{re.escape(USL)}\.{_ID}\s+SET\s+NAME\s*=\s*({_ID})\s*,\s*EXPRESSION\s*=\s*(\S.*)$",
+    re.I | re.S)
+_DQ_EXPR_REFUSED = re.compile(r"\b(SELECT|FROM|INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|CREATE|REMOVE)\b", re.I)
+
+
+def _update_dq_ok(sql: str, bare: str) -> bool:
+    """UPDATE DQ <rule> TABLE <clearance_usl table> SET NAME = <rule>, EXPRESSION = <predicate>.
+    Onboarding only, and only to change a rule's expression: the name must stay the same
+    (Zetaris requires NAME in the statement), and the expression must be a plain predicate
+    on the table (no subquery or write keyword, checked with literals blanked)."""
+    m = _UPDATE_DQ.match(sql)
+    if not m:
+        return False
+    if m.group(1).lower() != m.group(2).lower():
+        raise Refused("UPDATE DQ may change a rule's expression only, not its name")
+    bm = _UPDATE_DQ.match(bare)
+    if not bm or _DQ_EXPR_REFUSED.search(bm.group(3)):
+        raise Refused("UPDATE DQ expression must be a plain predicate (no subquery or write keyword)")
+    return True
+
+
+def _onboard_ok(sql: str, bare: str = "") -> bool:
+    if _update_dq_ok(sql, bare or _strip_literals(sql)):
+        return True
     patterns = [
         rf"^\s*COMPILE\s+USL\s+(IF\s+NOT\s+EXISTS\s+)?clearance_usl\s+DEPLOY\s+NAMESPACE\s+{re.escape(NAMESPACE)}\s+DDL\s",
         rf"^\s*UPDATE\s+USL\s+{re.escape(USL)}(\.{_ID}){{0,2}}\s+SET\s+((TABLE|COLUMN)\s+)?DESCRIPTION\s",
@@ -128,6 +153,6 @@ def check(sql: str, role: str) -> str:
         return "read"
     if role in ("registrar", "onboard") and _registrar_ok(sql, bare):
         return "register"
-    if role == "onboard" and _onboard_ok(sql):
+    if role == "onboard" and _onboard_ok(sql, bare):
         return "onboard"
     raise Refused(f"not allowed for role {role}: {' '.join(sql.split())[:80]}")

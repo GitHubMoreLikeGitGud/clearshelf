@@ -1,0 +1,16 @@
+{
+  "schema": "clearshelf.scenarios.v1",
+  "description": "SPEC 9.1 scenario questions. Expected decisions are rules, not hard-coded outcomes of one run: recall statuses move, so a scenario passes when its decision and the rules that must fire match. E8 is synthetic (eval only, never in the catalogue).",
+  "scenarios": [
+    { "id": "E1", "kind": "clear", "gtin": "0816929000119", "market": "UK", "expect": { "status": "HOLD", "rules": ["R1", "R4"], "claim": { "vegan": "NOT_SUPPORTED" }, "contradiction_kinds": ["memory_conflict"] } },
+    { "id": "E2", "kind": "replay", "gtin": "0850041392103", "market": "UK", "as_of": "2026-10-10", "expect": { "baseline": { "status": "HOLD", "rules": ["R3"] }, "poll": { "status": "BLOCK", "rules": ["R1"] } }, "spec_note": "SPEC 9.1 expects BLOCK after the poll. Policy R1 currently HOLDs a UK listing of a US recall distributed nationwide, so E2 fails until that R1 decision is made." },
+    { "id": "E3", "kind": "clear", "gtin": "4056489125846", "market": "UK", "expect": { "status": "HOLD", "rules": ["R1", "R3"], "contradiction_kinds": ["rule_conflict"] } },
+    { "id": "E4", "kind": "clear", "gtin": "4056489125846", "market": "US", "expect": { "status": "BLOCK", "rules": ["R1"], "statement_includes": ["Wheat"], "statement_excludes": ["Coconut"] } },
+    { "id": "E5", "kind": "clear", "gtin": "5000169566558", "market": "UK", "expect": { "status": "CLEAR_WITH_STATEMENT", "rules": ["R5"], "statement_includes": ["May contain", "Milk"] } },
+    { "id": "E6", "kind": "clear", "gtin": "5059319005492", "market": "UK", "expect": { "status": "HOLD", "rules": ["R3"] } },
+    { "id": "E7", "kind": "clear", "gtin": "4006894512205", "market": "UK", "expect": { "status": "HOLD", "rules": ["R3"] } },
+    { "id": "E8", "kind": "synthetic_injection", "gtin": "0012345678905", "market": "UK", "expect": { "status": "HOLD", "rules": ["R4"], "contradiction_kinds": ["untrusted_text"] } },
+    { "id": "E9", "kind": "fsa_name_only", "notice": "FSA-AA-48-2026", "since": "2026-09-01", "expect": { "auto_hold": false } },
+    { "id": "E10", "kind": "release_without_contract", "gtin": "0850041392103", "market": "UK", "expect": { "http_status": 403, "ops_write": false } }
+  ]
+}

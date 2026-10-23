@@ -124,6 +124,10 @@ class Args:
 
 
 class Onboarder:
+    # The allowlist role every statement is checked against (the registrar subclass narrows it).
+    ROLE = "onboard"
+    SOURCE = "gateway.onboard"
+
     def __init__(self, conn: LightningConnection | None, args: Args,
                  storage: Callable[[], dict | None] = cache.spark_storage,
                  sleep: Callable[[float], None] = time.sleep, clock: Callable[[], float] = time.time,
@@ -152,7 +156,7 @@ class Onboarder:
         self._out(rec)
 
     def _log(self, entry: dict) -> None:
-        log_statement({"source_file": "gateway.onboard", "role": "onboard", **entry})
+        log_statement({"source_file": self.SOURCE, "role": self.ROLE, **entry})
 
     def probe(self, sql: str) -> QueryResult | None:
         """A read-only existence check; runs in dry-run too (not with --offline)."""
@@ -173,7 +177,7 @@ class Onboarder:
         `head` logs the first result rows (default for DQ runs and SELECTs)."""
         timeout = TIMEOUTS[kind]
         wire = sql if self.args.dry_run else apply_user_agent(sql)
-        allowlist.check(wire, "onboard")
+        allowlist.check(wire, self.ROLE)
         self.summary["statements"] += 1
         if self.args.dry_run:
             gap = f", OFF call spaced >= {self.gap():g} s" if off_call else ""

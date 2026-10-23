@@ -119,12 +119,18 @@ TEMPLATES: dict[str, Template] = {
         ),
         _t(
             "recheck_cleared",
-            f"SELECT d.gtin, d.market, d.status, d.decided_date, f.recall_number, f.report_date, f.classification, f.status AS recall_status "
-            f"FROM {U}.decision d JOIN {U}.recall_product_link l ON d.gtin = l.gtin JOIN {U}.fda_recall f ON l.recall_number = f.recall_number "
-            f"WHERE d.status IN ('CLEAR','CLEAR_WITH_STATEMENT') AND f.report_date > d.decided_date",
+            # Same statement as zetaris/sql/14_decision_writeback_select.sql: the current decision
+            # per (gtin, market) only, so a CLEAR later held is not flagged again, and >= so a
+            # recall reported on the clearance day is flagged.
+            f"SELECT d.gtin, d.market, d.status, d.decided_at, d.decided_date, f.recall_number, f.report_date, f.classification, f.status AS recall_status "
+            f"FROM {U}.decision d "
+            f"JOIN (SELECT gtin, market, MAX(decided_at) AS decided_at FROM {U}.decision GROUP BY gtin, market) latest "
+            f"ON d.gtin = latest.gtin AND d.market = latest.market AND d.decided_at = latest.decided_at "
+            f"JOIN {U}.recall_product_link l ON d.gtin = l.gtin JOIN {U}.fda_recall f ON l.recall_number = f.recall_number "
+            f"WHERE d.status IN ('CLEAR','CLEAR_WITH_STATEMENT') AND f.report_date >= d.decided_date",
             {}, (f"{U}.decision", f"{U}.recall_product_link", f"{U}.fda_recall"),
             (OPS_RAW["decision"], OPS_RAW["recall_product_link"], FDA_RAW),
-            "Cleared decisions with a newer recall for the same GTIN (closed-loop recheck).",
+            "Current cleared decisions with a recall for the same GTIN reported on or after the decision (closed-loop recheck).",
         ),
         _t(
             "join_map",
