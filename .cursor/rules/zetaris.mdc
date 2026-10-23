@@ -29,7 +29,7 @@ Zetaris Lightning 2.4.3.1 runs locally in Docker. JDBC `jdbc:zetaris:lightning@l
 
 ## REST tables
 
-- Source tables (openFDA, FSA, one `clearshelf_off.off_<gtin13>` per SKU) are `CACHE TABLE`d. CACHE is per session: on reconnect the gateway re-runs the warm-up.
+- Source tables (openFDA, FSA, one `clearshelf_off.off_<gtin13>` per SKU) are `CACHE TABLE`d. The cache is held by the driver, not the JDBC session (measured on Day 0): a driver restart drops it, and the gateway warm-up re-caches the catalogue (role `demo`) tables. A template that reads an OFF table returns 503 `warming` until every catalogue OFF table is cached, because an uncached REST table calls the source on every read.
 - Ops tables (`http://clearshelf-ops/<name>.json`, shape `{"data":[...]}`) are never cached. Every ops file keeps a sentinel row whose primary key is `"__schema__"` with every field filled; activation queries filter it out. Writes are atomic (temp file, then rename).
 - The `user-agent` header comes from `CLEARSHELF_USER_AGENT`. Never commit or send the `YOUR_APP_NAME YOUR_CONTACT_EMAIL` placeholder, and never invent a contact.
 - Open Food Facts registrations at least 2.5 s apart; on 429/503 back off to 5 s and retry twice.
@@ -37,7 +37,7 @@ Zetaris Lightning 2.4.3.1 runs locally in Docker. JDBC `jdbc:zetaris:lightning@l
 ## Gateway contract
 
 - The agent sends only `{template_id, params, role}` to `POST /sql/template`; it never sends SQL text.
-- Params are validated by regex: GTIN `^\d{13}$` with a valid check digit; notice ids `^H-\d{4}-\d{4}$` or `^FSA-AA-\d+-\d{4}$`; brand `[a-z0-9 ]{1,40}`.
+- Params are validated by regex: GTIN `^\d{13}$` with a valid check digit; notice ids `^[FH]-\d{4}-\d{4}$` (openFDA food recall numbers start with H- or F-; 7 of the 18 manifest recalls are F-) or `^FSA-AA-\d+-\d{4}$`; brand `[a-z0-9 ]{1,40}`.
 - Allowlist. Reader: `SELECT`, `SHOW`, `DESCRIBE`, `LOAD USL`, `LIST DQ`, `RUN DQ`, `SHOW DQ`. Registrar adds: `CREATE LIGHTNING REST TABLE` for hosts world.openfoodfacts.org, api.fda.gov, data.food.gov.uk and clearshelf-ops only; `CACHE`/`UNCACHE TABLE` on `clearshelf_*`; `ACTIVATE USL TABLE lightning.metastore.clearshelf.*`; onboarding-only `COMPILE USL`, `REGISTER DQ`, `CREATE LIGHTNING DATABASE`.
 - Always refused: `DROP`, `GRANT`, `REVOKE`, `INVALIDATE CACHE`, `OFFSITE*`, anything touching port 8889.
 - Every statement is logged to `data/evidence/sql_log.jsonl` with its sha256.

@@ -138,12 +138,15 @@ export function testClaim(claim: Claim, evidence: ClaimEvidence): ClaimTestResul
     };
   }
 
-  // Full text: may_contain → PARTLY_SUPPORTED
+  // Full text: may_contain → PARTLY_SUPPORTED. An unverified may_contain (a precautionary find
+  // the model and the verifier do not agree on) qualifies the claim too: it cannot be SUPPORTED.
+  let unverifiedOnly = true;
   for (const span of evidence.spans) {
-    if (!span.verified || span.relation !== "may_contain") continue;
+    if (span.relation !== "may_contain") continue;
     if (contradictingGroups.includes(span.group)) {
       contradicting.add(span.group);
-      evidenceIds.push(span.evidenceId);
+      if (!evidenceIds.includes(span.evidenceId)) evidenceIds.push(span.evidenceId);
+      if (span.verified) unverifiedOnly = false;
     }
   }
   if (contradicting.size > 0) {
@@ -152,7 +155,7 @@ export function testClaim(claim: Claim, evidence: ClaimEvidence): ClaimTestResul
       verdict: "PARTLY_SUPPORTED",
       contradicting: [...contradicting],
       evidenceIds,
-      reason: "verified may_contain allergen qualifies the claim",
+      reason: unverifiedOnly ? "unverified may_contain allergen qualifies the claim" : "verified may_contain allergen qualifies the claim",
     };
   }
 

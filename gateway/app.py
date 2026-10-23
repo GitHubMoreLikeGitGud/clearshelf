@@ -8,7 +8,6 @@ The agent sends a template id and parameters, never SQL text.
 
 from __future__ import annotations
 
-import json
 import os
 import threading
 import time
@@ -21,6 +20,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from . import allowlist, cache, templates
+from . import manifest as manifest_mod
 from .jdbc import ROOT, LightningConnection, QueryTimeout, ZetarisError, load_env
 from .sqllog import log_statement, sha256
 
@@ -31,6 +31,8 @@ OFF_SPACING_S = 3.0
 OFF_DB = "clearshelf_off"
 SHOW_TIMEOUT_S = 30.0
 CACHE_TIMEOUT_S = 300.0
+RETRY_BASE_S = 60.0  # a failed CACHE waits this long before the next try, doubling each time
+RETRY_MAX_S = 900.0
 TEMPLATE_ROLES = ("reader", "registrar")
 FEEDS = ("clearshelf_fda.enforcement_undeclared", "clearshelf_fsa.allergy_alerts")
 
@@ -43,26 +45,20 @@ class TemplateRequest(BaseModel):
 
 def cache_targets() -> list[str]:
     """Raw tables the warm-up keeps cached: the two feeds plus the OFF table of
-    every demo SKU in the intake manifest (or, before the manifest exists, every
-    OFF table the gateway has cached before). Eval-only SKUs never enter the demo
-    catalogue, so they are skipped. A manifest GTIN may not be registered yet;
-    the warm-up skips those (see Gateway.registered_off)."""
-    targets = list(FEEDS)
-    manifest = ROOT / "data" / "manifest" / "skus.json"
-    gtins: list[str] = []
-    if manifest.is_file():
-        try:
-            doc = json.loads(manifest.read_text(encoding="utf-8"))
-            items = doc.get("skus", doc) if isinstance(doc, dict) else doc
-            gtins = [str(i["gtin"]) for i in items
-                     if isinstance(i, dict) and "gtin" in i and i.get("role", "demo") == "demo"]
-        except (ValueError, KeyError, TypeError):
-            gtins = []
-    if gtins:
-        targets += [f"clearshelf_off.off_{g}" for g in gtins if templates.PARAM_PATTERNS["gtin"].match(g)]
-    else:
-        targets += sorted(o for o in cache.last_cache_events() if o.startswith("clearshelf_off.off_"))
-    return targets
+    every catalogue SKU (manifest.CATALOGUE_ROLES) in the intake manifest, the
+    set `gateway.onboard` activates by default. Eval-only SKUs never enter the
+    demo catalogue. Every OFF table in the `product` activation must be cached,
+    or each read of the USL calls Open Food Facts for it. A manifest GTIN may not
+    be registered yet; the warm-up skips those (see Gateway.registered_off).
+    Raises manifest.ManifestError if the manifest is missing or unreadable."""
+    path = ROOT / "data" / "manifest" / "skus.json"
+    try:
+        skus = manifest_mod.select(manifest_mod.load(path), manifest_mod.CATALOGUE_ROLES)
+    except manifest_mod.ManifestError:
+        raise
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise manifest_mod.ManifestError(f"{path.name}: {e}") from e
+    return list(FEEDS) + [f"{OFF_DB}.off_{s.gtin}" for s in skus]
 
 
 class Gateway:
@@ -76,8 +72,11 @@ class Gateway:
         self._lock = threading.Lock()
         self._warm_lock = threading.Lock()
         self.reader_mode = "not_connected"
-        self.last_app_id: str | None = None
+        self.last_app_id: str | None = None  # driver app whose warm-up left nothing failed or waiting
         self.last_warmup: dict | None = None
+        self._not_registered: tuple[str | None, frozenset[str]] = (None, frozenset())  # (app id, from SHOW TABLES)
+        self._retry: dict[str, tuple[int, float]] = {}  # target -> (failures so far, earliest next try)
+        self._clock: Callable[[], float] = time.monotonic
 
     # -- connections --------------------------------------------------------
 
@@ -105,9 +104,10 @@ class Gateway:
                 self._conns[role] = self._connect(role)
             return self._conns[role]
 
-    def _execute(self, role: str, sql: str, timeout_s: float, max_rows: int | None = None):
+    def _execute(self, role: str, sql: str, timeout_s: float, max_rows: int | None = None, rewarm: bool = True):
         """Execute; if it fails and the connection no longer answers SELECT 1,
-        reconnect once and retry."""
+        reconnect once and retry. A reconnect asks for a warm-up, which runs only
+        if the driver restarted (the cache is driver-wide, not per session)."""
         c = self.conn(role)
         try:
             return c.execute(sql, timeout_s=timeout_s, max_rows=max_rows)
@@ -122,7 +122,8 @@ class Gateway:
             if alive:
                 raise first
             c.close()
-            self.start_warmup()
+            if rewarm:
+                self.start_warmup()
             return c.execute(sql, timeout_s=timeout_s, max_rows=max_rows)
 
     # -- warm-up ------------------------------------------------------------
@@ -134,7 +135,7 @@ class Gateway:
         allowlist.check(sql, "registrar")
         entry = {"source_file": "gateway.warmup", "role": "registrar", "sql": sql, "timeout_s": SHOW_TIMEOUT_S}
         try:
-            res = self.conn("registrar").execute(sql, timeout_s=SHOW_TIMEOUT_S)
+            res = self._execute("registrar", sql, timeout_s=SHOW_TIMEOUT_S, rewarm=False)
         except ZetarisError as e:
             log_statement({**entry, "error": str(e)})
             return None
@@ -142,51 +143,86 @@ class Gateway:
                        "executed_at": res.executed_at, "error": None})
         return {f"{OFF_DB}.{str(r[0]).split('.')[-1].lower()}" for r in res.rows if r and r[0]}
 
-    def warmup(self) -> dict:
+    def _pending(self, targets: list[str], storage: dict) -> list[str]:
+        """Targets the driver does not hold, less the OFF tables that the last
+        SHOW TABLES on this driver app did not list (no activation reads those)."""
+        app_id, unregistered = self._not_registered
+        skip = unregistered if app_id == storage["app_id"] else frozenset()
+        return [t for t in targets if t.lower() not in storage["cached"] and t not in skip]
+
+    def warmup(self, force: bool = False) -> dict:
         """CACHE TABLE every target that the driver does not hold in memory and
-        that is registered. OFF tables are spaced at least OFF_SPACING_S apart.
-        Registering new SKUs is the registrar's job, not the warm-up's."""
+        that is registered. A call for the driver app already warmed sends
+        nothing while every target is cached. A failed CACHE leaves the app not
+        warmed; later calls retry it after RETRY_BASE_S, doubling up to
+        RETRY_MAX_S (force retries now). OFF tables are spaced at least
+        OFF_SPACING_S apart. Registering new SKUs is the registrar's job."""
         if not self._warm_lock.acquire(blocking=False):
             return {"skipped": "warm-up already running"}
         try:
             storage = self._storage()
             if storage is None:
-                result = {"at": cache.now_iso(), "skipped": "spark ui unreachable"}
-            else:
+                self.last_warmup = {"at": cache.now_iso(), "skipped": "spark ui unreachable"}
+                return self.last_warmup
+            app_id = storage["app_id"]
+            manifest_error = None
+            try:
                 targets = cache_targets()
-                missing = [t for t in targets if t.lower() not in storage["cached"]]
-                not_registered: list[str] = []
-                if any(t.startswith(OFF_DB + ".") for t in missing):
-                    registered = self.registered_off()
-                    if registered is None:  # fall back to tables cached successfully before
-                        registered = {o for o in cache.last_cache_events() if o.startswith(OFF_DB + ".")}
-                    not_registered = [t for t in missing if t.startswith(OFF_DB + ".") and t.lower() not in registered]
-                    missing = [t for t in missing if t not in not_registered]
-                done, failed = [], {}
-                for t in missing:
-                    sql = f"CACHE TABLE {t}"
-                    allowlist.check(sql, "registrar")
-                    if t.startswith(OFF_DB + "."):
-                        time.sleep(OFF_SPACING_S)
-                    entry = {"source_file": "gateway.warmup", "role": "registrar", "sql": sql, "timeout_s": CACHE_TIMEOUT_S}
-                    try:
-                        res = self.conn("registrar").execute(sql, timeout_s=CACHE_TIMEOUT_S)
-                        entry.update(elapsed_ms=res.elapsed_ms, executed_at=res.executed_at, error=None)
-                        done.append(t)
-                    except ZetarisError as e:
-                        entry.update(error=str(e))
-                        failed[t] = str(e)[:200]
-                    log_statement(entry)
-                result = {"at": cache.now_iso(), "app_id": storage["app_id"],
-                          "already_cached": len(targets) - len(missing) - len(not_registered),
-                          "cached_now": done, "failed": failed, "not_registered": sorted(not_registered)}
-                self.last_app_id = storage["app_id"]
+            except manifest_mod.ManifestError as e:
+                targets, manifest_error = list(FEEDS), str(e)[:300]
+            for t in [t for t in self._retry if t.lower() in storage["cached"]]:
+                del self._retry[t]
+            pending = self._pending(targets, storage)
+            if not force and not pending and manifest_error is None and app_id == self.last_app_id:
+                return {"skipped": f"already warmed for driver app {app_id}"}
+            now = self._clock()
+            waiting = {t: round(self._retry[t][1] - now, 1) for t in pending
+                       if not force and t in self._retry and self._retry[t][1] > now}
+            todo = [t for t in pending if t not in waiting]
+            missing = [t for t in targets if t.lower() not in storage["cached"]]
+            not_registered = [t for t in missing if t not in pending]
+            if any(t.startswith(OFF_DB + ".") for t in todo):
+                registered = self.registered_off()
+                shown = registered is not None
+                if not shown:  # fall back to tables cached successfully before
+                    registered = {o for o in cache.last_cache_events() if o.startswith(OFF_DB + ".")}
+                not_registered = [t for t in missing if t.startswith(OFF_DB + ".") and t.lower() not in registered]
+                if shown:  # a guess from the log never lets a template read past the gate
+                    self._not_registered = (app_id, frozenset(not_registered))
+                todo = [t for t in todo if t not in not_registered]
+            done, failed = [], {}
+            for t in todo:
+                sql = f"CACHE TABLE {t}"
+                allowlist.check(sql, "registrar")
+                if t.startswith(OFF_DB + "."):
+                    time.sleep(OFF_SPACING_S)
+                entry = {"source_file": "gateway.warmup", "role": "registrar", "sql": sql, "timeout_s": CACHE_TIMEOUT_S}
+                try:
+                    res = self._execute("registrar", sql, timeout_s=CACHE_TIMEOUT_S, rewarm=False)
+                    entry.update(elapsed_ms=res.elapsed_ms, executed_at=res.executed_at, error=None)
+                    done.append(t)
+                    self._retry.pop(t, None)
+                except ZetarisError as e:
+                    entry.update(error=str(e))
+                    failed[t] = str(e)[:200]
+                    n = self._retry.get(t, (0, 0.0))[0] + 1
+                    self._retry[t] = (n, self._clock() + min(RETRY_BASE_S * 2 ** (n - 1), RETRY_MAX_S))
+                log_statement(entry)
+            result = {"at": cache.now_iso(), "app_id": app_id,
+                      "already_cached": sum(1 for t in targets if t.lower() in storage["cached"]),
+                      "cached_now": done, "failed": failed, "retry_in_s": waiting, "not_registered": sorted(not_registered)}
+            if manifest_error is not None:
+                result["manifest_error"] = manifest_error
+            if not failed and not waiting and manifest_error is None:
+                self.last_app_id = app_id
             self.last_warmup = result
             return result
         finally:
             self._warm_lock.release()
 
     def start_warmup(self) -> None:
+        if self._warm_lock.locked():
+            return
         threading.Thread(target=self.warmup, daemon=True, name="gateway-warmup").start()
 
     # -- endpoints ----------------------------------------------------------
@@ -232,10 +268,30 @@ class Gateway:
             log_statement({**log, "error": out["error"], "refused": True})
             return 403, out
         storage = self._storage()
-        if storage and self.last_app_id and storage["app_id"] != self.last_app_id:
-            self.start_warmup()  # the driver restarted, so every cache is gone
-        state, detail, cached_at = cache.cache_state(t.raw_objects, req.params, storage)
+        off_targets: list[str] | None = None
+        hold, uncached_off = None, []
+        if storage is not None:
+            try:
+                targets = cache_targets()
+            except manifest_mod.ManifestError as e:
+                targets = list(FEEDS)
+                hold = f"manifest unreadable, so the Open Food Facts tables to check are unknown: {str(e)[:200]}"
+            pending = self._pending(targets, storage)
+            if pending or storage["app_id"] != self.last_app_id:
+                self.start_warmup()  # first run, driver restart, evicted or failed CACHE
+            off_targets = [o for o in targets if o.startswith(OFF_DB + ".")]
+            off_targets = [o for o in off_targets if o in pending or o.lower() in storage["cached"]]
+            uncached_off = [o for o in pending if o.startswith(OFF_DB + ".")]
+            if uncached_off and hold is None:
+                hold = (f"warming: {len(uncached_off)} Open Food Facts table(s) not cached yet "
+                        f"({', '.join(uncached_off[:3])}{', ...' if len(uncached_off) > 3 else ''}); retry after the warm-up")
+        state, detail, cached_at = cache.cache_state(t.raw_objects, req.params, storage, off_targets)
         out.update(cache_state=state, cache_detail=detail, source_cached_at=cached_at)
+        if hold and templates.OFF_RAW in t.raw_objects:
+            # An uncached OFF table in the product union is fetched from Open Food Facts on every read, unspaced.
+            out.update(error=hold, cache_state="miss", cache_detail={**detail, **{o: "miss" for o in uncached_off}})
+            log_statement({**log, "error": hold, "sent": False, "cache_state": "miss"})
+            return 503, out
         status = 200
         try:
             res = self._execute(req.role, sql, timeout_s=QUERY_TIMEOUT_S, max_rows=FETCH_LIMIT)

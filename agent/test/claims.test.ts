@@ -146,6 +146,15 @@ describe("testClaim", () => {
     expect(r.evidenceIds).toEqual(["ev-unv"]);
   });
 
+  it("marks vegan PARTLY_SUPPORTED, not SUPPORTED, on an unverified may_contain milk", () => {
+    const r = testClaim("vegan", {
+      ingredientText: "full",
+      spans: [{ evidenceId: "ev-unv-may", group: "milk", relation: "may_contain", verified: false }],
+      recalls: [],
+    });
+    expect(r).toMatchObject({ verdict: "PARTLY_SUPPORTED", contradicting: ["milk"], evidenceIds: ["ev-unv-may"], reason: "unverified may_contain allergen qualifies the claim" });
+  });
+
   it("ignores unverified spans of groups that do not contradict the claim", () => {
     const r = testClaim("vegan", {
       ingredientText: "full",

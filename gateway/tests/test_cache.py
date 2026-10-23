@@ -18,6 +18,12 @@ def test_hit_miss_uncached_unknown():
     assert cache.cache_state(("clearshelf_off.off_*",), {"gtin": "4056489125846"}, STORAGE)[0] == "miss"
 
 
+def test_off_wildcard_is_a_hit_only_when_every_catalogue_table_is_cached():
+    targets = ["clearshelf_off.off_0816929000119", "clearshelf_off.off_5000254020408"]
+    assert cache.cache_state(("clearshelf_off.off_*",), {}, STORAGE, targets)[0] == "miss"
+    assert cache.cache_state(("clearshelf_off.off_*",), {}, STORAGE, targets[:1])[0] == "hit"
+
+
 def test_cached_at_from_log_ignores_failures_and_events_before_driver_start(temp_sql_log):
     rows = [
         {"sql": "CACHE TABLE clearshelf_fda.enforcement_undeclared", "executed_at": "2026-10-23T07:00:00+0800", "error": None},

@@ -89,9 +89,12 @@ def resolve(raw_objects: tuple[str, ...], params: dict) -> list[str]:
     return objs
 
 
-def cache_state(raw_objects: tuple[str, ...], params: dict, storage: dict | None) -> tuple[str, dict, dict]:
+def cache_state(raw_objects: tuple[str, ...], params: dict, storage: dict | None,
+                off_targets: list[str] | None = None) -> tuple[str, dict, dict]:
     """(state, per-object detail, source_cached_at). state is hit, miss, unknown,
-    or uncached for a template that reads only the ops tables (never cached by design)."""
+    or uncached for a template that reads only the ops tables (never cached by design).
+    `off_targets` are the OFF tables an unresolved off_* stands for (the catalogue's
+    registered tables); off_* is a hit only if every one of them is cached."""
     objs = resolve(raw_objects, params)
     cacheable = [o for o in objs if not o.startswith("clearshelf_ops.")]
     if not objs:
@@ -105,7 +108,11 @@ def cache_state(raw_objects: tuple[str, ...], params: dict, storage: dict | None
         if o.startswith("clearshelf_ops."):
             detail[o] = "uncached_by_design"
         elif o.endswith("off_*"):
-            detail[o] = "hit" if any(c.startswith("clearshelf_off.off_") for c in storage["cached"]) else "miss"
+            if off_targets is not None:
+                hit = all(t.lower() in storage["cached"] for t in off_targets)
+            else:
+                hit = any(c.startswith("clearshelf_off.off_") for c in storage["cached"])
+            detail[o] = "hit" if hit else "miss"
         else:
             detail[o] = "hit" if o.lower() in storage["cached"] else "miss"
     states = [detail[o] for o in cacheable]

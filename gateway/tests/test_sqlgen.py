@@ -1,8 +1,9 @@
+import json
 from pathlib import Path
 
 import pytest
 
-from gateway import sqlgen
+from gateway import manifest, sqlgen
 from gateway.jdbc import split_statements
 
 SQL_DIR = Path(__file__).resolve().parents[2] / "zetaris" / "sql"
@@ -60,25 +61,33 @@ def test_bad_inputs():
         sqlgen.Sku("0816929000119", ["EU"])
 
 
-def test_create_off_table_matches_committed_script():
-    sql = sqlgen.create_off_table("5000254020408")
-    assert 'endpoint "https://world.openfoodfacts.org/api/v2/product/5000254020408.json?fields=code,product_name' in sql
-    committed = split_statements((SQL_DIR / "04_off_products_create.sql").read_text(encoding="utf-8"))
-    assert " ".join(sql.split()) in [" ".join(s.split()) for s in committed]
+def _committed_skus():
+    """Catalogue SKUs (role demo, manifest order) with the DESCRIBE fields recorded at onboarding."""
+    described = json.loads((SQL_DIR.parent / "off_describe.json").read_text(encoding="utf-8"))
+    skus = manifest.select(manifest.load(SQL_DIR.parents[1] / "data" / "manifest" / "skus.json"), manifest.CATALOGUE_ROLES)
+    return skus, [sqlgen.Sku(m.gtin, list(m.markets), set(described[m.gtin])) for m in skus if m.gtin in described]
+
+
+def test_every_catalogue_sku_was_described_at_onboarding():
+    skus, described = _committed_skus()
+    assert [s.gtin for s in described] == [m.gtin for m in skus]
+
+
+def test_committed_off_script_matches_generator():
+    sql = sqlgen.create_off_table("0816929000119")
+    assert 'endpoint "https://world.openfoodfacts.org/api/v2/product/0816929000119.json?fields=code,product_name' in sql
+    committed = [" ".join(s.split()) for s in split_statements((SQL_DIR / "04_off_products_create.sql").read_text(encoding="utf-8"))]
+    skus, _ = _committed_skus()
+    for m in skus:
+        assert " ".join(sqlgen.create_off_table(m.gtin).split()) in committed
+        assert f"CACHE TABLE clearshelf_off.off_{m.gtin}" in committed
+    assert len(committed) == 3 * len(skus)
 
 
 def test_committed_activation_matches_generator():
-    fields = {
-        "0816929000119": sqlgen.product_fields_from_describe(PUFFS_DESCRIBE),
-        "4056489125846": {"allergens_tags", "brands", "code", "countries_tags", "ingredients_text", "labels_tags", "lang",
-                          "last_modified_t", "product_name", "traces_tags"},
-        "5000254020408": {"allergens_tags", "brands", "code", "countries_tags", "ingredients_text", "ingredients_text_en",
-                          "labels_tags", "lang", "last_modified_t", "product_name", "traces_tags"},
-    }
-    skus = [sqlgen.Sku("0816929000119", ["UK", "US"], fields["0816929000119"]),
-            sqlgen.Sku("4056489125846", ["UK", "US"], fields["4056489125846"]),
-            sqlgen.Sku("5000254020408", ["UK"], fields["5000254020408"])]
+    _, described = _committed_skus()
     text = (SQL_DIR / "11_clearance_usl_activate_create.sql").read_text(encoding="utf-8")
+    assert text == sqlgen.activation_script(described)
     committed = [" ".join(s.split()) for s in split_statements(text)]
-    assert " ".join(sqlgen.activate_product(skus).split()) in committed
-    assert " ".join(sqlgen.activate_declared(skus).split()) in committed
+    assert " ".join(sqlgen.activate_product(described).split()) in committed
+    assert " ".join(sqlgen.activate_declared(described).split()) in committed
