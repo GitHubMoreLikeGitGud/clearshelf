@@ -31,7 +31,7 @@ OBJECT_REF_RE = re.compile(
     re.I,
 )
 REST_FROM_RE = re.compile(
-    r"CREATE\s+LIGHTNING\s+REST\s+TABLE\s+[A-Za-z_][A-Za-z0-9_]*\s+FROM\s+(CLEARSHELF_[A-Z]+)\b",
+    r"CREATE\s+LIGHTNING\s+REST\s+TABLE\s+[A-Za-z_][A-Za-z0-9_]*\s+FROM\s+(\w+)",
     re.I,
 )
 CREATE_TABLE_RE = re.compile(r"CREATE\s+TABLE\s+(\w+)\s*\((.*?)\)\s*(?=;|$)", re.I | re.S)
@@ -98,7 +98,7 @@ DQ_12 = {
 }
 DQ_14 = {
     "signed_clear": (
-        "status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT') OR "
+        "status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT','RELEASE') OR "
         "(contract_id IS NOT NULL AND length(trim(contract_id)) > 0)"
     ),
     "known_status": "status IN ('CLEAR','CLEAR_WITH_STATEMENT','HOLD','BLOCK')",
@@ -284,7 +284,7 @@ def test_object_refs_and_rest_from_clearshelf():
                     "lightning.metastore.clearshelf"
                 ), f"{path.name}: {name}"
             for m in REST_FROM_RE.finditer(s):
-                assert m.group(1).startswith("CLEARSHELF_"), path.name
+                assert re.fullmatch(r"CLEARSHELF_[A-Z]+", m.group(1)), f"{path.name}: {m.group(1)}"
 
 
 def test_activate_script_covers_nine_tables_and_not_null_coalesce():
@@ -363,15 +363,41 @@ def test_off_template_matches_sqlgen_and_committed_04():
         assert _norm(sqlgen.create_off_table(gtin)) == create
 
 
-def test_dq_rules_md_covers_list_and_pair14():
+def _expected_dq_rules() -> set[tuple[str, str]]:
+    """(rule name, table) for every rule clearance_usl should list: one PK or FK
+    rule per key column of the 10_ DDL (Zetaris names them after the column),
+    plus the custom rules registered in 12_ and 14_."""
+    ddl = (SQL_DIR / "10_clearance_usl_create.sql").read_text(encoding="utf-8")
+    compile_stmt = next(s for s in split_statements(ddl) if re.match(r"^\s*COMPILE\s+USL\b", s, re.I))
+    rules: set[tuple[str, str]] = set()
+    for m in CREATE_TABLE_RE.finditer(compile_stmt):
+        table, cols = m.group(1), m.group(2)
+        rules.update((pk, table) for pk in PK_RE.findall(cols))
+        rules.update((fk, table) for fk, _ref, _col in FK_RE.findall(cols))
+    for name in ("12_clearance_dq_create.sql", "14_decision_writeback_create.sql"):
+        for s in split_statements((SQL_DIR / name).read_text(encoding="utf-8")):
+            m = REGISTER_DQ_RE.match(s.strip())
+            rules.add((m.group(1), m.group(2)))
+    return rules
+
+
+def test_dq_rules_md_has_a_row_for_every_rule():
     assert DQ_RULES_PATH.is_file()
     text = DQ_RULES_PATH.read_text(encoding="utf-8")
+    expected = _expected_dq_rules()
+    assert len(expected) == 22  # 9 PK, 8 FK, 3 custom (12_), 2 custom (14_)
+    for name, table in sorted(expected):
+        # Rule names repeat across tables, so match the table row, not the name alone.
+        assert re.search(rf"^\| `{re.escape(name)}` \| `{re.escape(table)}` \|", text, re.M), (
+            f"dq-rules.md has no row for rule {name} on {table}"
+        )
+    assert "14_decision_writeback_create.sql" in text
+
+
+def test_saved_list_dq_names_the_day0_rules():
+    """The saved LIST DQ output is gitignored, so a fresh clone skips this."""
+    if not LIST_DQ_PATH.is_file():
+        pytest.skip("saved LIST DQ output not present (data/ is not committed)")
     rows = json.loads(LIST_DQ_PATH.read_text(encoding="utf-8"))["rows"]
-    for name, table, *_rest in rows:
-        # Rule names can repeat; always pair with table.
-        assert re.search(rf"\b{re.escape(name)}\b[\s\S]{{0,200}}\b{re.escape(table)}\b", text) or re.search(
-            rf"\b{re.escape(table)}\b[\s\S]{{0,200}}\b{re.escape(name)}\b", text
-        ), f"missing rule {name} on {table}"
-    for name in ("signed_clear", "known_status"):
-        assert name in text
-        assert "14_decision_writeback_create.sql" in text
+    listed = {(name, table) for name, table, *_rest in rows}
+    assert listed == _expected_dq_rules() - {("signed_clear", "decision"), ("known_status", "decision")}

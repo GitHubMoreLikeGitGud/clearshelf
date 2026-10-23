@@ -22,15 +22,17 @@ the evidence "DQ-equivalent SQL".
 
 ## Day-0 results (23 Oct 2026)
 
-Copied from [`README.md`](README.md). Saved `LIST DQ USL` has 20 rows
+From the Day-0 gate run, as first recorded in [`README.md`](README.md). Saved `LIST DQ USL` has 20 rows
 (9 primary-key, 8 foreign-key, 3 custom). On 23 Oct the Day-0 gate set
-(three SKUs) gave:
+(three SKUs, gate-seed recall links) gave, with every `RUN DQ` returning within 2 s:
 
 | Rule | Table | Total | Valid | Invalid |
 |---|---|---|---|---|
 | `has_ingredients` | `product` | 3 | 2 | 1 |
 | `english_label` | `product` | 3 | 1 | 2 |
-| `market_code` (FK) | `declared_allergen` | 10 | 7 | 3 |
+| `market_code` (FK) | `declared_allergen` | 10 | 7 | 3 (`UK:blé`, `US:blé`, `US:gluten_cereal`) |
+| `known_relation` | `extracted_allergen` | 0 | 0 | 0 |
+| `gtin` (FK) | `recall_product_link` | 4 | 2 | 2 (recalled codes not in the catalogue) |
 
 USL row counts from the same gate record: `product` 3, `declared_allergen` 10,
 `recall_product_link` 4. `SHOW DQ INVALID RECORD` returns the same rows as the
@@ -79,5 +81,5 @@ Registered by `14_decision_writeback_create.sql`; not in the Day-0 listing.
 
 | Name | Table | Expression | Invalid means | Gateway templates |
 |---|---|---|---|---|
-| `signed_clear` | `decision` | `status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0)` | CLEAR or CLEAR_WITH_STATEMENT without a signed `contract_id` | none yet |
+| `signed_clear` | `decision` | `status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT','RELEASE') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0)` | CLEAR, CLEAR_WITH_STATEMENT or RELEASE written back without a signed `contract_id` (the safety invariant "no CLEAR or RELEASE without signed approval") | none yet |
 | `known_status` | `decision` | `status IN ('CLEAR','CLEAR_WITH_STATEMENT','HOLD','BLOCK')` | Status outside the four decision states | none yet |

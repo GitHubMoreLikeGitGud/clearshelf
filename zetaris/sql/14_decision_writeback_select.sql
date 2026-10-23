@@ -8,7 +8,8 @@ LIST DQ USL lightning.metastore.clearshelf.clearance_usl;
 SELECT COUNT(*) AS n FROM clearshelf_ops.decisions LATERAL VIEW explode(data) x AS d WHERE d.decision_id <> '__schema__';
 SELECT COUNT(*) AS n FROM lightning.metastore.clearshelf.clearance_usl.decision;
 
--- Current decision per (gtin, market): latest decided_at, with product_name.
+-- Current decision per (gtin, market): latest decided_at, with product_name
+-- (LEFT JOIN, so a decision on a GTIN that left the catalogue is still listed).
 SELECT d.decision_id, d.gtin, d.market, d.status, d.statement, d.decided_at, d.decided_date, d.actor, d.contract_id, p.product_name
 FROM lightning.metastore.clearshelf.clearance_usl.decision d
 JOIN (
@@ -16,7 +17,7 @@ JOIN (
     FROM lightning.metastore.clearshelf.clearance_usl.decision
     GROUP BY gtin, market
 ) latest ON d.gtin = latest.gtin AND d.market = latest.market AND d.decided_at = latest.decided_at
-JOIN lightning.metastore.clearshelf.clearance_usl.product p ON d.gtin = p.gtin;
+LEFT JOIN lightning.metastore.clearshelf.clearance_usl.product p ON d.gtin = p.gtin;
 
 -- Closed-loop recheck on the current decision only (>= so a same-day recall is flagged; superseded CLEAR rows are excluded).
 SELECT d.gtin, d.market, d.status, d.decided_at, d.decided_date, f.recall_number, f.report_date, f.classification, f.status AS recall_status
@@ -37,5 +38,5 @@ SHOW DQ INVALID RECORD signed_clear TABLE lightning.metastore.clearshelf.clearan
 SHOW DQ INVALID RECORD known_status TABLE lightning.metastore.clearshelf.clearance_usl.decision;
 
 -- DQ-equivalent plain SQL when DQ does not return within the bounded wait.
-SELECT decision_id, gtin, market, status, contract_id FROM lightning.metastore.clearshelf.clearance_usl.decision WHERE NOT (status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0));
+SELECT decision_id, gtin, market, status, contract_id FROM lightning.metastore.clearshelf.clearance_usl.decision WHERE NOT (status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT','RELEASE') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0));
 SELECT decision_id, gtin, market, status, contract_id FROM lightning.metastore.clearshelf.clearance_usl.decision WHERE NOT (status IN ('CLEAR','CLEAR_WITH_STATEMENT','HOLD','BLOCK'));
