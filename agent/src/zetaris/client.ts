@@ -82,6 +82,8 @@ export const TEMPLATE_PARAMS: Record<string, Record<string, ParamKind>> = {
   dq_invalid_english_label: {},
   dq_invalid_declared_market_code: {},
   dq_invalid_extracted_market_code: {},
+  dq_invalid_signed_clear: {},
+  dq_invalid_known_status: {},
   dq_rules: {},
   usl_model: {},
 };
@@ -302,6 +304,43 @@ export class DqGate {
     }
     return out;
   }
+}
+
+// ---------- write-back DQ ----------
+
+export type WritebackRule = "signed_clear" | "known_status";
+
+export const WRITEBACK_DQ: readonly { rule: WritebackRule; template: string }[] = [
+  { rule: "signed_clear", template: "dq_invalid_signed_clear" },
+  { rule: "known_status", template: "dq_invalid_known_status" },
+];
+
+export interface WritebackDqResult {
+  rule: WritebackRule;
+  /** Invalid records in the whole USL decision table (empty when the rule could not run). */
+  invalid: Record<string, unknown>[];
+  result: TemplateResult | null;
+  error: string | null;
+}
+
+/**
+ * Zetaris's own check of the decisions it reads back from the ops store: SHOW DQ INVALID RECORD
+ * for the write-back rules on clearance_usl.decision. signed_clear flags a CLEAR or
+ * CLEAR_WITH_STATEMENT row without a contract id, independently of the agent server's contract
+ * check before the write. A failure is reported in `error`, never thrown: the check runs after
+ * the decision is already written.
+ */
+export async function writebackDq(client: GatewayClient, rules: readonly WritebackRule[] = ["signed_clear", "known_status"]): Promise<WritebackDqResult[]> {
+  const out: WritebackDqResult[] = [];
+  for (const spec of WRITEBACK_DQ.filter((x) => rules.includes(x.rule))) {
+    try {
+      const result = await client.template(spec.template, {});
+      out.push({ rule: spec.rule, invalid: rowsAsObjects(result), result, error: result.truncated ? `truncated: ${result.rows.length} of ${result.row_count} rows` : null });
+    } catch (e) {
+      out.push({ rule: spec.rule, invalid: [], result: null, error: (e as Error).message.slice(0, 300) });
+    }
+  }
+  return out;
 }
 
 function splitByMarket(

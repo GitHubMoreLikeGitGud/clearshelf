@@ -81,7 +81,9 @@ Registered by `14_decision_writeback_create.sql`; not in the Day-0 listing. Regi
 
 | Name | Table | Expression | Invalid means | Gateway templates |
 |---|---|---|---|---|
-| `signed_clear` | `decision` | `status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0)` | CLEAR or CLEAR_WITH_STATEMENT written back without a signed `contract_id` (the safety invariant "no CLEAR or RELEASE without signed approval": a signed RELEASE is stored as the CLEAR or CLEAR_WITH_STATEMENT row it results in, with its `contract_id`) | none yet |
-| `known_status` | `decision` | `status IN ('CLEAR','CLEAR_WITH_STATEMENT','HOLD','BLOCK')` | Status outside the four decision states (a row written with status RELEASE included) | none yet |
+| `signed_clear` | `decision` | `status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0)` | CLEAR or CLEAR_WITH_STATEMENT written back without a signed `contract_id` (the safety invariant "no CLEAR or RELEASE without signed approval": a signed RELEASE is stored as the CLEAR or CLEAR_WITH_STATEMENT row it results in, with its `contract_id`) | `dq_invalid_signed_clear` |
+| `known_status` | `decision` | `status IN ('CLEAR','CLEAR_WITH_STATEMENT','HOLD','BLOCK')` | Status outside the four decision states (a row written with status RELEASE included) | `dq_invalid_known_status` |
 
 On the instance, `signed_clear` still holds its first registration, which also listed RELEASE (`status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT','RELEASE') OR ...`). On 23 Oct 2026 `REGISTER DQ` with the expression above was refused (`A data quality rule named "signed_clear" already exists in table "decision".`), and the onboard allowlist does not admit `UPDATE DQ`. The registered rule differs only on a RELEASE row, which `known_status` rejects in either version.
+
+At runtime the agent server runs `dq_invalid_signed_clear` after every signed CLEAR, CLEAR_WITH_STATEMENT or RELEASE it writes, and both templates on every `GET /api/recheck`. Measured on 23 Oct 2026: after one signed CLEAR_WITH_STATEMENT, `signed_clear` returned 0 invalid records (359 ms); a synthetic CLEAR row with an empty `contract_id`, written into the ops file directly, returned 1 invalid record naming that row, and was then removed (`docs/eval-report.md`, section 7).

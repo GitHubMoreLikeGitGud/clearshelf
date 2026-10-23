@@ -8,8 +8,9 @@
 //
 // A reset first saves the current state as data/demo/_before-reset-<time>/, so it can be
 // restored the same way. Kept as they are on a reset: the used-contract lists (a contract that
-// was used stays used), evidence files, loop reports, sweep records, eval results and the
-// recall links (onboarding writes them). Run it with the server stopped: it takes
+// was used stays used), evidence files, loop reports, eval results and the recall links
+// (onboarding writes them). Sweep records are restored with the snapshot, so the recall watch
+// never lists a sweep whose decisions the reset took back. Run it with the server stopped: it takes
 // data/agent.lock like every command that opens the stores.
 
 import { createHash } from "node:crypto";
@@ -24,6 +25,7 @@ export const DEMO_PATHS = [
   "data/hmem",
   "data/world",
   "data/watch/state.json",
+  "data/watch/sweeps",
   "data/runs",
   "data/contracts/verifier-agent-ops.jsonl",
   "data/contracts/verifier-gateway.jsonl",
@@ -131,6 +133,8 @@ export function resetDemo(root: string, from: { name: string } | { fresh: true }
   let restored = 0;
   for (const rel of DEMO_PATHS) {
     const dst = path.join(root, rel);
+    // A snapshot taken before this path was a demo store says nothing about it: keep it as it is.
+    if (manifest && !manifest.absent.includes(rel) && !Object.keys(manifest.files).some((f) => f === rel || f.startsWith(`${rel}/`))) continue;
     if (existsSync(dst)) {
       rmSync(dst, { recursive: true, force: true });
       removed.push(rel);

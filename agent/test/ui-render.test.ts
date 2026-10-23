@@ -274,6 +274,38 @@ describe("ui: intake and catalogue", () => {
     expect(list[1].why).toBe("check digit does not match");
   });
 
+  it("lists what needs the officer: signatures, then name matches, then contradictions; not recall holds", () => {
+    const auto = (rules: string) => `auto HOLD (policy p1): ${rules}`;
+    const sku = (gtin: string, decision: unknown, pending: unknown[] = []) => ({ gtin, name: gtin, brand: "", markets: ["UK"], decisions: { UK: decision }, pending, latest_runs: {} });
+    const cat = {
+      skus: [
+        sku("0000000000017", { status: "HOLD", actor: "clearshelf-agent", reason: auto("R4 the model and the verifier disagree") }),
+        sku("0000000000024", { status: "HOLD", actor: "clearshelf-agent", reason: auto("R1 recall of this barcode; R4 the model and the verifier disagree") }),
+        sku("0000000000031", null, [{ id: "q1", kind: "proposal", market: "UK", status: "CLEAR" }]),
+        sku("0000000000048", { status: "HOLD", actor: "clearshelf-agent", reason: auto("R3 no ingredient list") }, [{ id: "n1", kind: "name_match", market: "UK" }]),
+        sku("0000000000055", { status: "HOLD", actor: "officer", reason: "officer HOLD: supplier spec missing" }),
+        sku("0000000000062", { status: "BLOCK", actor: "clearshelf-agent", reason: "auto BLOCK (policy p1): R1 recall of this barcode" }),
+      ],
+    };
+    const html = intake.renderCatalogue!(cat, "you");
+    expect(html).toMatch(/data-filter="you" aria-pressed="true">Needs you <span class="filter__n">3<\/span>/u);
+    const order = [...html.matchAll(/#\/sku\/(\d{13})\/UK/gu)].map((m) => m[1]);
+    expect(order).toEqual(["0000000000031", "0000000000048", "0000000000017"]);
+  });
+
+  it("normalises UPC-A, EAN-8 and GTIN-14 to the GTIN-13 and refuses case codes", () => {
+    const list = intake.parseGtins!(`816929000119 0816929000119 96385074 00816929000119 10816929000116 81692900011`);
+    expect(list.map((x: { value: string; ok: boolean; input?: string }) => [x.value, x.ok, x.input ?? null])).toEqual([
+      ["0816929000119", true, "816929000119"],
+      ["0000096385074", true, "96385074"],
+      ["10816929000116", false, null],
+      ["81692900011", false, null],
+    ]);
+    expect(list[0].kind).toBe("UPC-A");
+    expect(list[2].why).toMatch(/case code/u);
+    expect(list[3].why).toMatch(/11 digits/u);
+  });
+
   it("counts listings per filter and shows pending proposals next to the decision", () => {
     const cat = {
       skus: [
@@ -437,6 +469,30 @@ describe("ui: legibility fixes", () => {
     const html = watch.renderSweep!(s, [], { current: { [`${G}|UK`]: { decision_id: "d-new", status: "HOLD", decided_at: "2026-10-02T10:00:00+0800" } } });
     expect(html).toContain("Since superseded");
     expect(html).toContain("2 evidence records");
+  });
+
+  it("shows Zetaris's write-back DQ results on the recheck and after a signed write", () => {
+    const html = watch.renderRecheck!({ rows: [], dq: [{ rule: "signed_clear", invalid: 0, invalid_decisions: [], sql: "SHOW DQ INVALID RECORD signed_clear TABLE x", elapsed_ms: 40, error: null }, { rule: "known_status", invalid: 1, invalid_decisions: ["d-odd"], sql: null, elapsed_ms: 30, error: null }] }, 1);
+    expect(html).toContain("0 invalid records");
+    expect(html).toContain("SHOW DQ INVALID RECORD signed_clear");
+    expect(html).toMatch(/1 invalid<\/span>: <code>d-<wbr>odd/u);
+    expect(watch.renderWritebackDq!(undefined)).toBe("");
+    expect(card.signedClearLine!({ rule: "signed_clear", invalid: 0, row_invalid: false, sql: "SHOW DQ", error: null })).toContain("passes");
+    expect(card.signedClearLine!({ rule: "signed_clear", invalid: 1, row_invalid: true, sql: null, error: null })).toContain("is flagged");
+    expect(card.signedClearLine!(null)).toBe("");
+  });
+
+  it("says a sweep's decision was withdrawn, not superseded, when the current decision is older (a reset)", () => {
+    const action = { gtin: G, market: "UK", status: "HOLD", rules: ["R1"], applied: true, visible_in_zetaris: true, decision_id: `rp-${G}-UK-20261023T114636-da74`, run_id: "w20261023T114500abcd", evidence_ids: [] };
+    const s = { sweep_id: "w20261023T114500abcd", kind: "poll", window: {}, model: {}, notices: [], exact_matches: [], name_matches: [], recheck: { rows: [] }, gaps: [], actions: [action] };
+    const older = watch.renderSweep!(s, [], { current: { [`${G}|UK`]: { decision_id: `d-${G}-UK-20261023T083032-3368`, status: "HOLD", decided_at: "2026-10-23T16:30:32+0800" } } });
+    expect(older).toContain("No longer in the ops store");
+    expect(older).toContain("yes</span> when written");
+    expect(older).not.toContain("Since superseded");
+    const newer = watch.renderSweep!(s, [], { current: { [`${G}|UK`]: { decision_id: `d-${G}-UK-20261023T130000-0001`, status: "BLOCK", decided_at: "2026-10-23T21:00:00+0800" } } });
+    expect(newer).toContain("Since superseded");
+    expect(newer).not.toContain("No longer in the ops store");
+    expect(watch.idTime!(`d-${G}-UK-20261023T083032-3368`)).toBe("20261023T083032");
   });
 
   it("leads the why trace with at most five plain lines and folds the rest", () => {

@@ -189,6 +189,16 @@ TEMPLATES: dict[str, Template] = {
             "dq_invalid_extracted_market_code", f"SHOW DQ INVALID RECORD market_code TABLE {U}.extracted_allergen", {},
             (f"{U}.extracted_allergen",), (OPS_RAW["extracted_allergen"], OPS_RAW["market_allergen"]), "DQ invalid records: market_code FK on extracted_allergen.",
         ),
+        # The write-back rules on the agent's own decisions (zetaris/dq-rules.md): Zetaris re-checks
+        # every clearance it reads back, independently of the agent server's contract check.
+        _t(
+            "dq_invalid_signed_clear", f"SHOW DQ INVALID RECORD signed_clear TABLE {U}.decision", {},
+            (f"{U}.decision",), (OPS_RAW["decision"],), "DQ invalid records: CLEAR or CLEAR_WITH_STATEMENT decisions without a contract id.",
+        ),
+        _t(
+            "dq_invalid_known_status", f"SHOW DQ INVALID RECORD known_status TABLE {U}.decision", {},
+            (f"{U}.decision",), (OPS_RAW["decision"],), "DQ invalid records: decisions whose status is not one of the four decision states.",
+        ),
         _t("dq_rules", f"LIST DQ USL {U}", {}, (U,), (), "Every key constraint and DQ rule in clearance_usl."),
         _t("usl_model", "LOAD USL clearance_usl NAMESPACE lightning.metastore.clearshelf", {}, (U,), (), "The clearance_usl model as JSON (planner map)."),
     ]

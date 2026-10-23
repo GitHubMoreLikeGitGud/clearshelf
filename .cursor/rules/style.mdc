@@ -28,5 +28,3 @@ alwaysApply: true
 ## Commits
 
 - Stage explicit paths only. Cursor Agent commits use the message `Cn: <task> (Cursor Agent)`.
-- Plain commit messages: no co-author lines and no other trailers.
-- Public text (README, docs, code comments, commit messages) names no development tool other than Cursor.

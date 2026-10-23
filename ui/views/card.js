@@ -502,7 +502,7 @@ function band(gtin, market, run, cur, groups, ctx) {
   let how = "";
   if (saved.applied === true && d.autoExecutable) {
     label = "Decision, applied automatically";
-    how = "HOLD and BLOCK are applied without a signature, and the officer is notified.";
+    how = "HOLD and BLOCK are applied without a signature; the listing shows here and in the catalogue for the officer to review.";
   } else if (prop) {
     const r = prop.resolution;
     if (prop.state === "pending") {
@@ -795,6 +795,13 @@ function okLine(text, sql, extra = "") {
   return `<div class="msg msg--ok" role="status"><p>${text}</p>${extra}${sql ? `<details><summary>Closed-loop SQL run in Zetaris</summary><pre class="sql">${esc(sql)}</pre></details>` : ""}</div>`;
 }
 
+/** Zetaris's signed_clear DQ rule on the decision table after a signed write (`signed_clear_dq` of POST /api/execute). */
+export function signedClearLine(dq) {
+  if (!dq) return "";
+  if (dq.error) return `<p class="small">Zetaris DQ <code>signed_clear</code> could not run: ${esc(dq.error)}</p>`;
+  return `<p class="small">Zetaris DQ <code>signed_clear</code> on <code>clearance_usl.decision</code>: this row ${dq.row_invalid ? `<span class="cross">is flagged</span>` : `<span class="tick">passes</span>`}; ${esc(fmtNum(dq.invalid))} invalid record${dq.invalid === 1 ? "" : "s"} in the table.</p>${dq.sql ? `<details><summary>DQ statement run in Zetaris</summary><pre class="sql">${esc(dq.sql)}</pre></details>` : ""}`;
+}
+
 /** What the signed contract says, for the officer to read after signing. */
 export function contractSummary(c, statement) {
   if (!c || typeof c !== "object") return "";
@@ -834,7 +841,7 @@ async function signAndExecute(form, { gtin, market, action, status, statement, r
     okLine(
       `Signed and written: ${statusChip(status)} decision <code>${idHtml(ex.data.decision_id)}</code> by <strong>officer</strong>; visible in Zetaris: <strong>${ex.data.visible_in_zetaris ? "yes" : "not yet"}</strong>.`,
       ex.data.closed_loop_sql,
-      `<details open><summary>What you signed</summary>${contractSummary(c, statement)}</details>`,
+      `${signedClearLine(ex.data.signed_clear_dq)}<details open><summary>What you signed</summary>${contractSummary(c, statement)}</details>`,
     ),
   );
   return true;

@@ -1,6 +1,6 @@
 # Cursor task files
 
-ClearShelf is developed in Cursor. Larger pieces of work are written up as task files in this folder and handed to Cursor Agent, which runs headless against the repository. Each task file is a self-contained brief: Cursor Agent reads it, does the work, and runs the listed checks until they pass. The task files and their commits are the record of how Cursor was used. A summary, `docs/how-cursor-was-used.md`, is planned (written in task C7; the file does not exist yet).
+ClearShelf was developed in a Cursor workspace with project rules in `.cursor/rules`. Larger pieces of work are written up as task files in this folder and handed to Cursor Agent, which runs headless against the repository. Each task file is a self-contained brief: Cursor Agent reads it, does the work, and runs the listed checks until they pass. The task files and their commits are the record of how Cursor was used; the summary is [`docs/how-cursor-was-used.md`](../how-cursor-was-used.md). Cursor Agent ran G9, C1, C2 and C3. The Cursor Free plan reached its usage limit during C3, so C4 to C8 were not run by Cursor Agent: the work they describe was done outside Cursor Agent, or not done, as the index below says.
 
 ## File naming
 
@@ -48,10 +48,10 @@ From the repository root, in PowerShell:
 | Task | File | Scope | Status |
 |---|---|---|---|
 | C1 | C1-zetaris-preflight.md | read-only Zetaris JDBC preflight | done 2026-10-23: preflight NOT READY on Windows (path false negatives); read-only JDBC confirmed directly (see the run record) |
-| C2 | C2-lightning-sql-and-usl.md | decision write-back SQL (pair 14), per-SKU OFF template, DQ rule docs, review of pairs 00 to 13, static SQL tests | done 2026-10-23, reviewer fixes in a separate commit (see the run record) |
-| C3 | C3-lexicon-and-verifiers.md | multilingual lexicon, jurisdiction, GTIN normaliser, claim tester and tests | done 2026-10-23; the run stopped at the Free plan usage limit after its first test run (99 of 100 passing); reviewer fixes in a separate commit (see the run record) |
-| C4 | C4-ui-screens.md | the four UI screens | planned |
-| C5 | C5-evidence-drawer-and-ledger.md | evidence drawer, ledger trace view, telemetry footer and tokens-per-chunk chart (three read-only endpoints) | planned |
-| C6 | C6-eval-runner.md | eval runner (scenarios, extraction, evidence quality, cold vs warm) and report | planned |
-| C7 | C7-readme-drafts.md | README and how-cursor-was-used drafts | planned |
-| C8 | C8-rehearsal-fixes.md | interactive fixes during rehearsal | planned (file not yet written) |
+| C2 | C2-lightning-sql-and-usl.md | decision write-back SQL (pair 14), per-SKU OFF template, DQ rule docs, review of pairs 00 to 13, static SQL tests | done 2026-10-23, fixes in a separate commit (see the run record) |
+| C3 | C3-lexicon-and-verifiers.md | multilingual lexicon, jurisdiction, GTIN normaliser, claim tester and tests | done 2026-10-23; the run stopped at the Free plan usage limit after its first test run (99 of 100 passing); fixes in a separate commit (see the run record) |
+| C4 | C4-ui-screens.md | the four UI screens | **not run by Cursor Agent**: refused at the usage limit on 2026-10-23 (7.4 s, no tool calls, no files changed); the UI was built outside Cursor Agent |
+| C5 | C5-evidence-drawer-and-ledger.md | evidence drawer, ledger trace view, telemetry footer and tokens-per-chunk chart (three read-only endpoints) | **not run by Cursor Agent** (usage limit); built outside Cursor Agent |
+| C6 | C6-eval-runner.md | eval runner (scenarios, extraction, evidence quality, cold vs warm) and report | **not run by Cursor Agent** (usage limit); the measurement scripts were written outside Cursor Agent and the report generator was not built |
+| C7 | C7-readme-drafts.md | README and how-cursor-was-used drafts | **not run by Cursor Agent** (usage limit); both files were written outside Cursor Agent |
+| C8 | C8-rehearsal-fixes.md | interactive fixes during rehearsal | **not run** (usage limit; task file not written) |

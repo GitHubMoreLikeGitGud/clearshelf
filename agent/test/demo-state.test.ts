@@ -52,6 +52,28 @@ describe("demo state", () => {
     expect(readFileSync(join(root, "data/demo", r.archived, "data/ops/decisions.json"), "utf8")).toContain("d-test");
   });
 
+  it("restores sweep records with the snapshot, and leaves them alone for a snapshot that predates them", () => {
+    const root = repo();
+    const put = (rel: string, text: string) => {
+      mkdirSync(join(root, rel, ".."), { recursive: true });
+      writeFileSync(join(root, rel), text, "utf8");
+    };
+    put("data/watch/sweeps/w1.json", "{}\n");
+    snapshotDemo(root, "with-sweeps");
+    put("data/watch/sweeps/w2.json", "{}\n");
+    resetDemo(root, { name: "with-sweeps" });
+    expect(existsSync(join(root, "data/watch/sweeps/w1.json"))).toBe(true);
+    expect(existsSync(join(root, "data/watch/sweeps/w2.json"))).toBe(false);
+
+    // A snapshot written before sweeps were a demo store: neither in its files nor in absent.
+    const m = snapshotDemo(root, "older");
+    const older = { ...m, files: Object.fromEntries(Object.entries(m.files).filter(([f]) => !f.startsWith("data/watch/sweeps/"))), absent: m.absent.filter((a) => a !== "data/watch/sweeps") };
+    writeFileSync(join(root, "data/demo/older/manifest.json"), `${JSON.stringify(older)}\n`, "utf8");
+    put("data/watch/sweeps/w3.json", "{}\n");
+    resetDemo(root, { name: "older" });
+    expect(existsSync(join(root, "data/watch/sweeps/w3.json"))).toBe(true);
+  });
+
   it("fresh: empty stores with the ops sentinel rows Zetaris needs", () => {
     const root = repo();
     const r = resetDemo(root, { fresh: true });

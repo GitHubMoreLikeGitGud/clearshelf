@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>ClearShelf</title>
+<style>
+  @page { size: 1920px 1080px; margin: 0; }
+  :root {
+    --paper: #edf0f2;
+    --surface: #ffffff;
+    --ink: #15222c;
+    --ink-2: #44545f;
+    --ink-3: #5f6d78;
+    --rule: #d3dadf;
+    --rule-strong: #a9b5be;
+    --accent: #1d4e89;
+    --accent-soft: #e6eef8;
+    --clear: #17643f; --clear-bg: #dcefe4; --clear-edge: #2e8b57;
+    --cws: #0d5a6b; --cws-bg: #d6edf2; --cws-edge: #1f8299;
+    --hold: #714500; --hold-bg: #fbe7bd; --hold-edge: #c98a10;
+    --block: #971b23; --block-bg: #f8dbdc; --block-edge: #c4323c;
+    --baseline: #66737d;
+    --font-display: "Bahnschrift", "DIN Alternate", "Arial Narrow", sans-serif;
+    --font-body: "Segoe UI Variable Text", "Segoe UI", system-ui, Arial, sans-serif;
+    --font-mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); }
+  body { color: var(--ink); font: 400 22px/1.4 var(--font-body); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+  b, strong { font-weight: 600; }
+
+  .slide { width: 1920px; height: 1080px; position: relative; overflow: hidden; background: var(--surface); break-after: page; page-break-after: always; }
+  .slide:last-of-type { break-after: auto; page-break-after: auto; }
+  .slide::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 10px; background: var(--ink); }
+  .eyebrow { position: absolute; left: 96px; top: 46px; font: 600 18px/1 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+  .title { position: absolute; left: 96px; right: 96px; top: 78px; margin: 0; font: 600 52px/1.12 var(--font-display); color: var(--ink); }
+  .body { position: absolute; left: 96px; right: 96px; top: 196px; bottom: 82px; }
+  .foot { position: absolute; left: 96px; right: 96px; bottom: 30px; padding-top: 12px; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 24px; font-size: 15.5px; color: var(--ink-3); }
+  .foot .src { flex: 1; }
+  .foot .pg { font-family: var(--font-display); font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+
+  .row { display: flex; gap: 40px; }
+  .col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .lead { font-size: 27px; line-height: 1.38; color: var(--ink); margin: 0; }
+  .muted { color: var(--ink-3); }
+  .small { font-size: 18px; line-height: 1.4; }
+  p { margin: 0; }
+  ul.b { margin: 0; padding-left: 26px; }
+  ul.b li { margin: 0 0 10px; }
+  ul.b li::marker { color: var(--accent); }
+  h3 { margin: 0 0 8px; font: 600 25px/1.2 var(--font-display); color: var(--ink); }
+  h4 { margin: 0 0 6px; font: 600 21px/1.2 var(--font-display); color: var(--ink); letter-spacing: 0.01em; }
+
+  .card { border: 1px solid var(--rule); border-top: 4px solid var(--accent); border-radius: 6px; padding: 18px 22px; background: var(--surface); }
+  .card p { font-size: 20px; line-height: 1.4; }
+  .card .num { font: 700 20px/1 var(--font-display); color: var(--accent); margin-right: 8px; }
+  .panel { background: #f5f7f8; border: 1px solid var(--rule); border-radius: 6px; padding: 18px 22px; }
+
+  figure { margin: 0; }
+  .shot { display: block; border: 1px solid #c3ccd2; border-radius: 6px; box-shadow: 0 2px 12px rgba(21, 34, 44, 0.12); background: #fff; }
+  figcaption { margin-top: 8px; font-size: 15.5px; line-height: 1.35; color: var(--ink-3); }
+
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border: 2px solid; border-radius: 4px; font: 700 19px/1.25 var(--font-display); letter-spacing: 0.03em; white-space: nowrap; }
+  .chip--hold { color: var(--hold); background: var(--hold-bg); border-color: var(--hold-edge); }
+  .chip--block { color: var(--block); background: var(--block-bg); border-color: var(--block-edge); }
+  .chip--clear { color: var(--clear); background: var(--clear-bg); border-color: var(--clear-edge); }
+  .chip--cws { color: var(--cws); background: var(--cws-bg); border-color: var(--cws-edge); }
+  .rule { display: inline-block; min-width: 38px; text-align: center; padding: 1px 7px; border-radius: 4px; background: var(--ink); color: #fff; font: 700 17px/1.35 var(--font-display); }
+
+  table.t { border-collapse: collapse; width: 100%; font-size: 19.5px; }
+  table.t th, table.t td { padding: 8px 12px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  table.t th { font: 600 17px/1.25 var(--font-display); color: var(--ink-2); background: #f1f4f6; letter-spacing: 0.02em; }
+  table.t td.n, table.t th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t tr.hi td { background: #eef3fa; }
+  .tag { display: inline-block; font: 600 14px/1.3 var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--rule-strong); border-radius: 3px; padding: 0 5px; vertical-align: 2px; }
+
+  .stat { border: 1px solid var(--rule); border-radius: 6px; padding: 16px 20px; background: var(--surface); }
+  .stat .v { font: 600 44px/1.05 var(--font-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .stat .k { margin-top: 6px; font-size: 18px; line-height: 1.35; color: var(--ink-2); }
+  .stat .m { margin-top: 4px; font-size: 15px; color: var(--ink-3); }
+
+  /* title slide */
+  .s1 .brand { position: absolute; left: 96px; top: 250px; font: 700 112px/1 var(--font-display); letter-spacing: -0.01em; color: var(--ink); }
+  .s1 .tagline { position: absolute; left: 96px; top: 392px; width: 760px; font-size: 33px; line-height: 1.35; color: var(--ink); }
+  .s1 .meta { position: absolute; left: 96px; top: 560px; width: 760px; }
+  .s1 .meta div { display: flex; gap: 14px; padding: 13px 0; border-top: 1px solid var(--rule); font-size: 21px; line-height: 1.4; }
+  .s1 .meta div b { width: 132px; flex: none; font-family: var(--font-display); color: var(--accent); }
+  .s1 .team { position: absolute; left: 96px; top: 930px; font: 600 24px/1 var(--font-display); color: var(--ink-2); }
+  .s1 .hero { position: absolute; left: 920px; top: 196px; width: 904px; }
+
+  /* flow band */
+  .flow { display: flex; align-items: stretch; gap: 0; }
+  .flow .step { flex: 1; border: 1px solid var(--rule); border-left: 5px solid var(--accent); background: #f5f7f8; padding: 12px 16px; border-radius: 4px; font-size: 18.5px; line-height: 1.35; }
+  .flow .step b { display: block; font: 600 20px/1.2 var(--font-display); margin-bottom: 4px; }
+  .flow .arrow { flex: none; width: 34px; display: flex; align-items: center; justify-content: center; color: var(--accent); font: 700 28px/1 var(--font-display); }
+
+  /* architecture */
+  .arch { position: relative; width: 1728px; height: 780px; }
+  .arch .box { position: absolute; border: 2px solid var(--ink); border-radius: 8px; background: #fff; padding: 14px 18px; }
+  .arch .box h4 { font-size: 23px; margin-bottom: 4px; }
+  .arch .box .sub { font-size: 16.5px; color: var(--ink-3); line-height: 1.35; }
+  .arch .mod { border: 1px solid var(--rule-strong); border-radius: 5px; background: #f5f7f8; padding: 8px 12px; margin-top: 10px; font-size: 17px; line-height: 1.35; }
+  .arch .mod b { font-family: var(--font-display); font-size: 18.5px; }
+  .arch .mod .who { float: right; font: 600 13.5px/1.6 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: #fff; background: var(--accent); border-radius: 3px; padding: 0 6px; margin-left: 8px; }
+  .arch .mod .who.nv { background: #3d6b12; }
+  .arch .mod .who.zt { background: #6a2c70; }
+  .arch .mod .who.cs { background: var(--ink-2); }
+  .arch .box.zet { border-color: #6a2c70; }
+  .arch .box.nvd { border-color: #3d6b12; }
+  .arch svg { position: absolute; left: 0; top: 0; pointer-events: none; }
+  .arch .lbl { position: absolute; font: 600 15px/1.25 var(--font-display); color: var(--ink-2); background: #fff; padding: 2px 4px; text-align: center; }
+
+  .kv { display: grid; grid-template-columns: auto 1fr; column-gap: 16px; row-gap: 8px; font-size: 20px; }
+  .kv dt { font: 600 19px/1.4 var(--font-display); color: var(--ink-2); }
+  .kv dd { margin: 0; }
+
+  .finding { display: flex; gap: 18px; padding: 14px 0; border-top: 1px solid var(--rule); }
+  .finding:first-child { border-top: none; padding-top: 0; }
+  .finding .n { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: #fff; font: 700 21px/40px var(--font-display); text-align: center; }
+  .finding h4 { font-size: 22px; margin-bottom: 4px; }
+  .finding p { font-size: 19px; line-height: 1.4; color: var(--ink-2); }
+
+  .quote { border-left: 6px solid var(--accent); background: var(--accent-soft); padding: 22px 28px; font-size: 25px; line-height: 1.45; border-radius: 0 6px 6px 0; }
+  .lic div { padding: 9px 0; border-top: 1px solid var(--rule); font-size: 18.5px; line-height: 1.4; }
+  .lic div:first-child { border-top: none; }
+  .lic b { font-family: var(--font-display); }
+</style>
+</head>
+<body>
+
+<!-- 1. Title -->
+<section class="slide s1">
+  <div class="eyebrow">Open Agent Hackathon 2026 &middot; Track 3: Reasoning Architecture</div>
+  <div class="brand">ClearShelf</div>
+  <p class="tagline">Allergen clearance and recall watch for online grocers. Every decision is cited and every release is signed.</p>
+  <div class="meta">
+    <div><b>Zetaris</b><span>The data harness: Open Food Facts, openFDA and UK FSA read only through Lightning SQL; the clearance USL's data-quality rules gate every clearance.</span></div>
+    <div><b>Meterless</b><span>Markovian investigation loop, H-MEM memory and ledger, World Model timeline, Scout-style signed execution contracts.</span></div>
+    <div><b>NVIDIA</b><span>Nemotron 3 Nano 4B on a local GPU reads labels and notices and plans each investigation. 0 cloud model calls.</span></div>
+  </div>
+  <div class="team">Umar Mohktar, Singapore - solo</div>
+  <figure class="hero">
+    <img class="shot" src="../img/hero-puffs.png" style="width:904px" alt="ClearShelf SKU card for Plant-Based Puffs, UK, held automatically on rules R1, R3 and R4, with source cards and evidence chips">
+    <figcaption>The SKU card for Plant-Based Puffs (UK): held automatically on an FDA milk recall, a missing ingredient list and a vegan claim the recall contradicts. Local ClearShelf UI, 23 Oct 2026.</figcaption>
+  </figure>
+  <div class="foot"><span class="src">Data: Open Food Facts (ODbL 1.0), openFDA (public domain / CC0, not endorsed by the FDA), UK FSA (Open Government Licence v3.0).</span><span class="pg">1 / 12</span></div>
+</section>
+
+<!-- 2. User and problem -->
+<section class="slide">
+  <div class="eyebrow">The user and the problem</div>
+  <h2 class="title">One officer, hundreds of listings, sources that disagree</h2>
+  <div class="body row">
+    <div class="col" style="width:900px">
+      <div class="card">
+        <h3>The user: a product-compliance officer at a UK online grocer</h3>
+        <p>The grocer also sells US- and EU-made packaged food. The officer signs off the allergen information shown before purchase, which Reg. (EU) 1169/2011 Art. 14 requires for distance selling (retained in UK law), and pulls or relabels live listings when an FSA or FDA notice lands.</p>
+      </div>
+      <div class="card" style="border-top-color: var(--block-edge)">
+        <h3>The problem: label data and recall notices disagree, and the check is manual</h3>
+        <p>Open Food Facts lists <b>Plant-Based Puffs</b> (UPC 816929000119) as vegan, with no allergen tags and no ingredient list. FDA recall <b>H-1328-2026</b> (Class I, reported 2026-09-09) says the product <b>"tested positive for undeclared milk"</b>. Reconciled by hand, a wrong "free-from" listing can stay live.</p>
+      </div>
+      <div class="row" style="gap:20px">
+        <div class="stat" style="flex:1"><div class="v">6,325</div><div class="k">openFDA food enforcement reports whose recall reason matches "undeclared"</div><div class="m">counted 23 Oct 2026</div></div>
+        <div class="stat" style="flex:1"><div class="v">~7 a month</div><div class="k">UK FSA allergy alerts: 200 from 8 Jul 2024 to 21 Oct 2026</div><div class="m">counted in Zetaris and in the source JSON: equal</div></div>
+        <div class="stat" style="flex:1"><div class="v">17 of 17</div><div class="k">catalogue listings whose barcode an FDA recall names, held or blocked automatically</div><div class="m">none proposed for clearance</div></div>
+      </div>
+      <p class="lead" style="margin-top:8px">ClearShelf reconciles these sources for each product and market, cites every claim, holds anything unsettled on its own, and clears only with the officer's signature.</p>
+    </div>
+    <figure style="width:788px">
+      <img class="shot" src="../img/puffs-sources.png" style="width:788px" alt="Open Food Facts and openFDA source cards for Plant-Based Puffs side by side">
+      <figcaption>Both sources on one card: the Open Food Facts row (vegan labels, no ingredient text) and the openFDA recall (undeclared milk). Every line carries its evidence chip.</figcaption>
+    </figure>
+  </div>
+  <div class="foot"><span class="src">Counts measured on 23 Oct 2026 through Zetaris; see zetaris/README.md. Open Food Facts data, ODbL 1.0.</span><span class="pg">2 / 12</span></div>
+</section>
+
+<!-- 3. Why an agent -->
+<section class="slide">
+  <div class="eyebrow">Why this needs an agent</div>
+  <h2 class="title">Reading, contradictions, memory and risk need an agent</h2>
+  <div class="body">
+    <div class="row" style="gap:24px">
+      <div class="card" style="flex:1"><h4><span class="num">1</span>Read, don't keyword-match</h4><p>Cocoa butter is not milk. "May contain" is precautionary. Labels arrive in German, French and Italian.</p></div>
+      <div class="card" style="flex:1"><h4><span class="num">2</span>Contradictions go on the record</h4><p>Source against source, model against verifier, memory against source, rule against rule: each is queued for the officer, never settled by the last write.</p></div>
+      <div class="card" style="flex:1"><h4><span class="num">3</span>Memory carries rulings forward</h4><p>Officer rulings and verified extractions persist in H-MEM. New standing rules come only from proposals a human approves.</p></div>
+      <div class="card" style="flex:1"><h4><span class="num">4</span>Actions are asymmetric</h4><p>The agent may HOLD or BLOCK on its own, the safe direction. CLEAR and RELEASE need the officer's signed contract.</p></div>
+    </div>
+    <div class="row" style="margin-top:26px; gap:32px; align-items:flex-start">
+      <figure style="width:1300px">
+        <img class="shot" src="../img/darkchoc-label.png" style="width:1300px" alt="Dark Chocolate label as read: model and verifier agree on may-contain peanuts, milk and nuts; the keyword baseline marks them as contains">
+        <figcaption>Waitrose Dark Chocolate, UK. The keyword rule (K) calls cocoa butter milk and reads "may contain" as contains; Nemotron and the lexicon verifier agree on three precautionary spans. Label text from Open Food Facts, ODbL 1.0, shortened here to a quote (&hellip;).</figcaption>
+      </figure>
+      <div class="col" style="flex:1; gap:14px">
+        <div class="stat"><div class="v">5/15 &rarr; 0/15</div><div class="k">trap false alarms, keyword baseline against Nemotron</div></div>
+        <div class="stat"><div class="v">0/27 &rarr; 18/27</div><div class="k">"may contain" read as exactly may-contain</div></div>
+        <p class="small muted">Measured on 27 SKUs, 23 Oct 2026 (docs/eval-report.md, section 3).</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span class="src">A single prompt cannot query anything; a script cannot weigh a crowd-sourced vegan claim against a lab-tested recall and an earlier ruling. Trap words scored: cocoa butter, cream of tartar, lactic acid, plant milks, coconut, nutmeg, shea, buckwheat, maltodextrin.</span><span class="pg">3 / 12</span></div>
+</section>
+
+<!-- 4. Solution walkthrough -->
+<section class="slide">
+  <div class="eyebrow">Solution walkthrough</div>
+  <h2 class="title">From barcode to a cited decision, then a watch on every new notice</h2>
+  <div class="body">
+    <div class="flow">
+      <div class="step"><b>Intake</b>Barcode (EAN-13, UPC-A, EAN-8 or GTIN-14) and market (UK or US). The GS1 check digit is verified first.</div>
+      <div class="arrow">&rsaquo;</div>
+      <div class="step"><b>Register in Zetaris</b>The product's Open Food Facts table is created, described, cached and added to the USL.</div>
+      <div class="arrow">&rsaquo;</div>
+      <div class="step"><b>Investigate</b>Markovian loop on Nemotron: product, guard, label, verifier, recalls, notices, DQ gate, memory.</div>
+      <div class="arrow">&rsaquo;</div>
+      <div class="step"><b>Decide</b>Deterministic policy R0&ndash;R6. The model drafts; it never decides.</div>
+      <div class="arrow">&rsaquo;</div>
+      <div class="step"><b>Act and watch</b>HOLD or BLOCK is applied and written back; a clearance waits for a signature. Each new notice is matched against the catalogue.</div>
+    </div>
+    <div class="row" style="margin-top:24px; gap:36px; align-items:flex-start">
+      <figure style="width:860px">
+        <img class="shot" src="../img/catalogue.png" style="width:860px" alt="Catalogue of 33 listings with decision and the rules that decided each">
+        <figcaption>The catalogue after intake: 33 listings (30 products, UK and US), 24 HOLD, 3 BLOCK, 6 waiting for the officer's signature, each with the rules that decided it.</figcaption>
+      </figure>
+      <div class="col" style="flex:1; gap:16px">
+        <figure>
+          <img class="shot" src="../img/watch-sweep.png" style="width:832px" alt="Recall watch sweep result with replay label, 15 new notices, one exact barcode match held">
+          <figcaption>Recall watch, labelled as a replay from 10 Oct polled to 23 Oct: 15 new notices, 1 exact barcode match, held automatically (a US-only recall does not cover UK units, so the UK listing is held for the officer).</figcaption>
+        </figure>
+        <div class="panel" style="padding:14px 18px; display:flex; gap:22px; align-items:center">
+          <div style="display:grid; grid-template-columns:auto auto; gap:8px 12px; align-items:center; font-size:17px; line-height:1.25; flex:none">
+            <span class="chip chip--block">BLOCK</span><span>automatic</span>
+            <span class="chip chip--hold">HOLD</span><span>automatic</span>
+            <span class="chip chip--cws">CLEAR WITH STATEMENT</span><span>signed</span>
+            <span class="chip chip--clear">CLEAR</span><span>signed</span>
+          </div>
+          <p class="small">RELEASE of a hold also needs a signed contract. Open Food Facts stands in for the grocer's supplier or PIM feed.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span class="src">R0 investigation incomplete &middot; R1 recall of this barcode &middot; R2 name-only match &middot; R3 data-quality rule failed &middot; R4 unresolved contradiction &middot; R5 verified allergens, clear with statement &middot; R6 no allergens, clear.</span><span class="pg">4 / 12</span></div>
+</section>
+
+<!-- 5. Architecture -->
+<section class="slide">
+  <div class="eyebrow">Agent workflow and architecture</div>
+  <h2 class="title">Everything runs on one machine; every source read goes through Zetaris</h2>
+  <div class="body">
+    <div class="arch" id="arch">
+      <svg id="arch-svg" width="1728" height="780" viewBox="0 0 1728 780" aria-hidden="true">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#15222c"/></marker>
+          <marker id="ahp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6a2c70"/></marker>
+        </defs>
+        <!-- UI <-> agent -->
+        <path d="M262 170 L328 170" stroke="#15222c" stroke-width="2.5" fill="none" marker-end="url(#ah)" marker-start="url(#ah)"/>
+        <!-- agent <-> ollama -->
+        <path d="M634 552 L634 604" stroke="#15222c" stroke-width="2.5" fill="none" marker-end="url(#ah)" marker-start="url(#ah)"/>
+        <!-- agent -> gateway -->
+        <path d="M938 250 L1004 250" stroke="#15222c" stroke-width="2.5" fill="none" marker-end="url(#ah)"/>
+        <!-- gateway -> zetaris -->
+        <path d="M1254 250 L1320 250" stroke="#15222c" stroke-width="2.5" fill="none" marker-end="url(#ah)"/>
+        <!-- write-back: agent ops writer -> ops nginx -> CLEARSHELF_OPS -->
+        <path d="M938 500 L1290 500 L1290 378 L1320 378" stroke="#6a2c70" stroke-width="2.5" stroke-dasharray="8 6" fill="none" marker-end="url(#ahp)"/>
+      </svg>
+
+      <div class="box" style="left:0; top:40px; width:262px; height:300px">
+        <h4>Officer UI</h4>
+        <div class="sub">Plain HTML and JS, live updates over SSE, 127.0.0.1 only</div>
+        <div class="mod">Intake and catalogue, SKU card, recall watch, memory and why</div>
+        <div class="mod">Evidence drawer: the SQL is the citation</div>
+      </div>
+
+      <div class="box" style="left:330px; top:0; width:608px; height:550px">
+        <h4>Agent server <span class="sub">Node 22 + TypeScript</span></h4>
+        <div class="mod"><span class="who">Meterless</span><b>Markovian loop</b>: bounded chunks; the planner picks the next tool through a NEEDS_TOOL executor</div>
+        <div class="mod"><span class="who">Meterless</span><b>H-MEM</b>: facts with Zetaris provenance, officer rulings, trust ledger, allergen conflicts, human-approved dreaming</div>
+        <div class="mod"><span class="who">Meterless</span><b>World Model</b>: product, brand, firm, notice and allergen graph; timeline; merge review</div>
+        <div class="mod"><span class="who">Meterless</span><b>Scout subset</b>: injection guard, risk classes, HMAC-signed single-use execution contracts</div>
+        <div class="mod"><span class="who cs">ClearShelf</span><b>Deterministic core</b>: lexicon verifier (EN, DE, FR, IT, ES), jurisdiction rules, GTIN normaliser, claim tester, policy R0&ndash;R6, statement builder</div>
+        <div class="mod"><span class="who cs">ClearShelf</span><b>Evidence store and ops writer</b>: every claim keeps its SQL, rows and times</div>
+      </div>
+
+      <div class="box nvd" style="left:330px; top:606px; width:608px; height:122px">
+        <h4>NVIDIA Nemotron 3 Nano 4B <span class="sub">Ollama, local RTX 4070 Ti SUPER</span></h4>
+        <div class="sub" style="font-size:17px">Label and notice extraction, investigation planner, adjudication briefs, memory mining. Loopback only: 0 cloud model calls.</div>
+      </div>
+
+      <div class="box" style="left:1006px; top:100px; width:248px; height:370px">
+        <h4>Zetaris gateway</h4>
+        <div class="sub">Python 3.12, FastAPI, JDBC; 127.0.0.1 only</div>
+        <div class="mod">Named SQL templates only: the agent sends a template id and parameters, never SQL</div>
+        <div class="mod">Allowlist; registrar and reader connections; contract check on write-back</div>
+      </div>
+
+      <div class="box zet" style="left:1322px; top:0; width:406px; height:728px">
+        <h4>Zetaris Lightning 2.4.3.1</h4>
+        <div class="sub">Local Docker; JDBC on port 10000</div>
+        <div class="mod"><span class="who zt">REST</span><b>CLEARSHELF_OFF</b>.off_&lt;gtin13&gt;<br><span class="muted">one table per product, Open Food Facts API</span></div>
+        <div class="mod"><span class="who zt">REST</span><b>CLEARSHELF_FDA</b>.enforcement_undeclared<br><span class="muted">openFDA food enforcement</span></div>
+        <div class="mod"><span class="who zt">REST</span><b>CLEARSHELF_FSA</b>.allergy_alerts<br><span class="muted">UK FSA food alerts</span></div>
+        <div class="mod" style="border-color:#6a2c70"><span class="who zt">REST</span><b>CLEARSHELF_OPS</b>.*<br><span class="muted">the agent's decisions, links and extractions, served as JSON and federated back</span></div>
+        <div class="mod" style="background:#f3ecf4; border-color:#6a2c70"><span class="who zt">USL</span><b>clearance_usl</b><br>9 tables with primary and foreign keys; 22 data-quality rules; an invalid record holds the listing</div>
+        <div class="mod"><span class="who zt">Cache</span><b>Driver-wide CACHE TABLE</b><br><span class="muted">the gateway re-caches both feeds and every product table after a driver restart</span></div>
+      </div>
+
+      <div class="lbl" style="left:262px; top:180px; width:70px">HTTP<br>SSE</div>
+      <div class="lbl" style="left:936px; top:262px; width:72px">template<br>+ params</div>
+      <div class="lbl" style="left:1252px; top:262px; width:72px">Lightning<br>SQL</div>
+      <div class="lbl" style="left:960px; top:510px; width:310px; color:#6a2c70">decision write-back, read back through Zetaris (closed loop)</div>
+    </div>
+  </div>
+  <div class="foot"><span class="src">At runtime the agent never calls Open Food Facts, openFDA or the FSA directly; only Zetaris does. Ports: UI 8790, gateway 8791, Ollama 11434, Zetaris JDBC 10000.</span><span class="pg">5 / 12</span></div>
+</section>
+
+<!-- 6. Zetaris -->
+<section class="slide">
+  <div class="eyebrow">How Zetaris is used</div>
+  <h2 class="title">Zetaris is the data harness, the gate and the citation</h2>
+  <div class="body row" style="gap:44px">
+    <div class="col" style="width:1044px; gap:14px">
+      <div class="finding"><div class="n">1</div><div><h4>Federated REST tables, counted against the source</h4><p>Four Lightning databases: openFDA (1,000 reports), UK FSA (200 alerts; double explode gives 349 alert-allergen rows), one Open Food Facts table per product (30 catalogue products; 40 registered, including 10 eval-only), and the ops store. Zetaris counts equal the source JSON counts.</p></div></div>
+      <div class="finding"><div class="n">2</div><div><h4>Agent-driven registration</h4><p>A new barcode at intake makes the registrar create its Open Food Facts table, DESCRIBE it, CACHE it and re-activate the USL product table. The cache is driver-wide: a cached openFDA count takes about 0.1 s, against 0.9 to 2.8 s uncached.</p></div></div>
+      <div class="finding"><div class="n">3</div><div><h4>The USL is the contract, its data-quality rules are the gate</h4><p><code>clearance_usl</code>: 9 tables, 22 DQ rules (9 primary key, 8 foreign key, 5 custom). Any invalid record for the product holds it under R3. At onboarding: has_ingredients 3 of 30 invalid, english_label 5 of 30, market_code 6 of 111.</p></div></div>
+      <div class="finding"><div class="n">4</div><div><h4>The SQL is the citation</h4><p>Every claim on a card links to the Lightning SQL that produced it, with its sha256, objects, source URL, licence and cache time. Re-running all 95 cited Zetaris and DQ records returned every cited row (95/95).</p></div></div>
+      <div class="finding"><div class="n">5</div><div><h4>Closed loop, checked by Zetaris</h4><p>Decisions are federated back as <code>clearance_usl.decision</code> and re-read in the "why" trace and the recheck. After every signed write, the <code>signed_clear</code> DQ rule checks the row: a signed clearance passed, a synthetic unsigned row was flagged. Join map: 11 UPC-12 and 3 EAN-13 links, 0 orphans.</p></div></div>
+      <p class="small muted">Limitation: the least-privilege reader role is not configured, so reads run on the admin login behind the gateway's read-only allowlist.</p>
+    </div>
+    <figure style="width:640px">
+      <img class="shot" src="../img/drawer-sql.png" style="width:640px" alt="Evidence drawer showing the Lightning SQL that links FDA recall H-1328-2026 to the Puffs GTIN">
+      <figcaption>Evidence record 04: the Lightning SQL that links FDA H-1328-2026 to the Puffs barcode, with sha256, objects, source URL, licence, cache time and the returned row.</figcaption>
+    </figure>
+  </div>
+  <div class="foot"><span class="src">Counts from zetaris/README.md (full onboarding, 23 Oct 2026) and docs/eval-report.md (E-replay). Rules in zetaris/dq-rules.md.</span><span class="pg">6 / 12</span></div>
+</section>
+
+<!-- 7. Meterless -->
+<section class="slide">
+  <div class="eyebrow">How Meterless is used</div>
+  <h2 class="title">Meterless engines run the reasoning loop, the memory and the audit trail</h2>
+  <div class="body row" style="gap:40px">
+    <div class="col" style="width:920px; gap:16px">
+      <div class="card"><h4>Markovian: bounded investigation</h4><p>Vendored reference, unmodified. Nemotron plans the next tool call; each chunk carries a bounded state (768-token budget, peak 474, estimated). Measured prompts stay between 1,322 and 1,788 tokens per chunk while a full-history prompt (estimated) grows to 4,264.</p></div>
+      <div class="card"><h4>H-MEM: memory, conflicts and the ledger</h4><p>Vendored reference plus an allergen-conflict module. Facts carry Zetaris provenance; conflicts are always queued (11 pairs now); the ledger answers "Why was this held?". A warm run reused a verified extraction: tool-model tokens 3,658 &rarr; 804.</p></div>
+      <div class="card"><h4>World Model: what we knew when</h4><p>Vendored reference. Product, brand, firm, notice and allergen graph with a timeline and a merge review queue; re-ingesting the catalogue and live Zetaris rows gives an empty diff.</p></div>
+      <div class="card"><h4>Scout subset: guard and signed contracts</h4><p>Partly reimplemented from the spec (no reference code exists). The injection guard flags 7/7 Scout injection cases, passes 3/3 clean ones, and flagged 0 of 146 real texts. Contracts are HMAC-signed and single-use.</p></div>
+    </div>
+    <div class="col" style="flex:1; gap:18px">
+      <div class="panel" style="padding:16px 18px 10px; background:#fff">
+        <h4 style="margin-bottom:2px">Prompt tokens per chunk, 8 real investigations</h4>
+        <div class="small muted">Measured: Ollama prompt_eval_count of each chunk's first planner call. Estimated: full history, chars/4.</div>
+        <svg id="chunk-chart" width="748" height="330" role="img" aria-label="Markovian prompt per chunk stays flat near 1,300 to 1,800 tokens while the estimated full-history prompt grows to 4,264"></svg>
+      </div>
+      <figure>
+        <img class="shot" src="../img/memory-conflict.png" style="width:740px" alt="H-MEM allergen conflict for Plant-Based Puffs: FDA recall says contains milk, Open Food Facts labels say free from milk">
+        <figcaption>H-MEM conflict queued for the officer: the FDA recall says contains milk; the Open Food Facts labels say vegan. The score only suggests which side to keep.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <div class="foot"><span class="src">Conformance: H-MEM 13/13 (vendored and the ClearShelf facade), Markovian 8/8, World Model 8/8, idempotency diff empty. Upstream Meterless/Meterless 1742dec, Apache-2.0.</span><span class="pg">7 / 12</span></div>
+</section>
+
+<!-- 8. NVIDIA -->
+<section class="slide">
+  <div class="eyebrow">Where NVIDIA contributes</div>
+  <h2 class="title">Nemotron 3 Nano 4B runs every model call on the local GPU</h2>
+  <div class="body">
+    <div class="row" style="gap:20px">
+      <div class="stat" style="flex:1"><div class="v">159.8 tok/s</div><div class="k">extraction median; planner 150.0 to 155.6 median per run</div><div class="m">2.0 s median per extraction call</div></div>
+      <div class="stat" style="flex:1"><div class="v">27/27</div><div class="k">extraction replies valid JSON on the first try</div><div class="m">planner: 57/65 first try, 65/65 after one repair</div></div>
+      <div class="stat" style="flex:1"><div class="v">2,881 MiB</div><div class="k">model resident in VRAM, RTX 4070 Ti SUPER 16 GB</div><div class="m">Q4_K_M, num_ctx 8192, temperature 0</div></div>
+      <div class="stat" style="flex:1"><div class="v">0</div><div class="k">cloud model calls: the client accepts loopback URLs only</div><div class="m">one model call at a time</div></div>
+    </div>
+    <div class="row" style="margin-top:26px; gap:40px; align-items:flex-start">
+      <div style="width:1040px">
+        <h4>Allergen extraction on 27 SKUs: keyword baseline, Nemotron, Nemotron + lexicon verifier</h4>
+        <table class="t">
+          <thead><tr><th>Measure</th><th class="n">K keyword</th><th class="n">N Nemotron</th><th class="n">N+V verified</th></tr></thead>
+          <tbody>
+            <tr><td>"Contains", micro precision / recall (80 positives)</td><td class="n">0.71 / 0.99</td><td class="n">1.00 / 0.78</td><td class="n">1.00 / 0.78</td></tr>
+            <tr><td>Trap false alarms (cocoa butter, coconut, shea&hellip;)</td><td class="n">5/15</td><td class="n">0/15</td><td class="n">0/15</td></tr>
+            <tr><td>"May contain" read as exactly may-contain</td><td class="n">0/27</td><td class="n">18/27</td><td class="n">18/27</td></tr>
+            <tr><td>Multilingual subset (6 SKUs: DE, FR, IT), precision / recall</td><td class="n">0.65 / 0.97</td><td class="n">1.00 / 0.58</td><td class="n">1.00 / 0.58</td></tr>
+          </tbody>
+        </table>
+        <p class="small" style="margin-top:12px">Nemotron never marked an allergen "contains" that the reference does not. Its errors are misses, most of all on non-English labels. All 18 missed "contains" pairs fell in 11 SKUs, each of which had a model/verifier disagreement, so each was held for the officer, not cleared (counted per SKU; the reference labels use the verifier's lexicon, so this is partly circular).</p>
+      </div>
+      <div class="col" style="flex:1; gap:16px">
+        <div class="panel">
+          <h4>Roles</h4>
+          <ul class="b small" style="margin-top:4px">
+            <li>Multilingual ingredient extraction (thinking off)</li>
+            <li>Recall-notice extraction</li>
+            <li>Investigation planner (thinking on)</li>
+            <li>H-MEM memory mining and one-sentence dream proposals</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h4>Cold against warm, same product</h4>
+          <p class="small">Ritz Cracker Sandwiches, US: same 5 chunks and decision; tool-model tokens 3,658 &rarr; 804 in and out; wall time 61.1 s &rarr; 48.1 s.</p>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:22px; gap:20px">
+      <div class="panel" style="flex:1; padding:14px 18px"><h4>Day-0 gate</h4><p class="small">29/30 replies valid JSON (96.7%) with the adopted settings, Zetaris running on the same PC. The 30B tier was cut: the gate projected too little host RAM.</p></div>
+      <div class="panel" style="flex:1; padding:14px 18px"><h4>Thinking, measured per job</h4><p class="small">Thinking on: 10/10 planner replies valid, but only 2/10 extractions (the reasoning hit the 4,096-token cap). So the planner thinks; extraction does not.</p></div>
+      <div class="panel" style="flex:1; padding:14px 18px"><h4>Shared-PC guard</h4><p class="small">The runner's prompt cache grew host memory by 5,507 MiB over 30 calls. Below 2,048 MiB free, the client unloads the model before the next call.</p></div>
+    </div>
+    <figure style="margin-top:18px">
+      <img class="shot" src="../img/telemetry-footer.png" style="width:1728px" alt="ClearShelf telemetry footer: nemotron-3-nano:4b, planner 154 tok/s measured, peak VRAM, 0 cloud model calls, cold to warm tokens">
+      <figcaption>The UI's telemetry footer. Peak VRAM is whole-GPU use, including another workload on the shared PC; the model itself holds 2,881 MiB. A full investigation takes 48 to 94 s.</figcaption>
+    </figure>
+  </div>
+  <div class="foot"><span class="src">All figures measured on 23 Oct 2026 with Ollama's token counters and nvidia-smi; reference labels come from recall texts and documented label rules, never typed by hand (docs/eval-report.md, docs/nemotron-bench.md).</span><span class="pg">8 / 12</span></div>
+</section>
+
+<!-- 9. Findings -->
+<section class="slide">
+  <div class="eyebrow">Findings from live data</div>
+  <h2 class="title">What the live feeds taught us, each one now handled in the product</h2>
+  <div class="body row" style="gap:40px">
+    <div class="col" style="width:988px; gap:0">
+      <div class="finding"><div class="n">1</div><div><h4>Rule against rule: coconut</h4><p>FDA's allergen Q&amp;A (Edition 5, January 2025) removed coconut from the tree-nut list, and UK/EU Annex II does not list it. Recall H-1275-2026 (Lidl's Eridanous apricot biscuits with coconut) still says "tree nut (coconut)". ClearShelf records a rule conflict instead of a tree-nut allergen.</p></div></div>
+      <div class="finding"><div class="n">2</div><div><h4>Recalls carry barcodes only some of the time</h4><p>Of the latest 1,000 openFDA "undeclared" reports, 533 mention a UPC, GTIN, EAN or barcode, and 442 contain a code that passes the GS1 check digit.</p></div></div>
+      <div class="finding"><div class="n">3</div><div><h4>FSA allergy alerts carry no GTIN</h4><p>Product details hold names only, so an FSA match is name-only: it becomes a review item for the officer (Skinny Crunch, similarity 0.28), never an automatic action.</p></div></div>
+      <div class="finding"><div class="n">4</div><div><h4>Crowd tags surface as DQ orphans</h4><p>The Open Food Facts tag <code>de:blé</code> on the same biscuits maps to <code>UK:blé</code>, which Zetaris DQ reports as a foreign-key orphan, and the listing is held under R3.</p></div></div>
+      <div class="finding"><div class="n">5</div><div><h4>Pasted label noise</h4><p>On the same label, an address line pasted into the Open Food Facts ingredient field splits "noix de coco", so the verifier reads "noix" as walnut. The draft marks it "(to confirm)", and a statement with "(to confirm)" cannot be signed.</p></div></div>
+      <div class="finding"><div class="n">6</div><div><h4>Sources throttle</h4><p>Open Food Facts search returned HTTP 503, and the product endpoint returned 429 on 10 of 549 curation calls. ClearShelf spaces its calls 5 s apart by default (never below 2.5 s) and caches every table in Zetaris.</p></div></div>
+    </div>
+    <div class="col" style="flex:1; gap:16px">
+      <figure>
+        <img class="shot" src="../img/lidl-contradictions.png" style="width:540px" alt="Contradictions panel for the Lidl apricot biscuits, including the coconut rule conflict">
+        <figcaption>Aprikosenkekse mit Kokosraspeln (UK): six contradictions hold the listing, including the coconut rule conflict and two model misses the verifier caught.</figcaption>
+      </figure>
+      <figure>
+        <img class="shot" src="../img/dq-orphan-row.png" style="width:700px" alt="Zetaris SHOW DQ INVALID RECORD row: market_code UK:blé from source tag de:blé">
+        <figcaption>SHOW DQ INVALID RECORD on <code>declared_allergen</code>: the orphan row, cited in the evidence drawer.</figcaption>
+      </figure>
+    </div>
+  </div>
+  <div class="foot"><span class="src">openFDA counts from one 1,000-record page fetched 23 Oct 2026; Open Food Facts call counts from the dev-time curation log.</span><span class="pg">9 / 12</span></div>
+</section>
+
+<!-- 10. What's unique -->
+<section class="slide">
+  <div class="eyebrow">What is unique, and how we measured it</div>
+  <h2 class="title">Decisions you can audit: gated, signed and cited</h2>
+  <div class="body row" style="gap:36px">
+    <div class="col" style="width:600px; gap:14px">
+      <div class="card"><h4>A data-quality gate on decisions</h4><p>The clearance USL's DQ rules sit in front of CLEAR: one invalid record holds the listing.</p></div>
+      <div class="card"><h4>Rule-against-rule conflicts on the record</h4><p>Regulations that disagree (coconut) are queued like any other contradiction.</p></div>
+      <div class="card"><h4>Signed, asymmetric autonomy</h4><p>HOLD and BLOCK run on their own. CLEAR and RELEASE need a single-use HMAC contract bound to the exact values, valid for 15 minutes; a replayed or edited contract is refused.</p></div>
+      <div class="card"><h4>Citations you can re-run</h4><p>SQL text, sha256 and cache time on every claim; the "why" trace and the ledger point to the same records.</p></div>
+    </div>
+    <div style="width:560px">
+      <h4>Measured on 23 Oct 2026</h4>
+      <table class="t">
+        <tbody>
+          <tr><td>Scenarios E1&ndash;E10</td><td class="n"><b>10/10 pass</b></td></tr>
+          <tr><td>Card claims cited (E-cov)</td><td class="n">100%</td></tr>
+          <tr><td>Policy firings / review items cited</td><td class="n">43/43, 37/37</td></tr>
+          <tr><td>Records with every required field</td><td class="n">200/200</td></tr>
+          <tr><td>Cited SQL re-run returns the rows (E-replay)</td><td class="n">95/95</td></tr>
+          <tr><td>Contradictions surfaced (E-contra)</td><td class="n">3/3</td></tr>
+          <tr><td>Spans not in the source, kept</td><td class="n">0 (1 dropped, counted)</td></tr>
+          <tr class="hi"><td>CLEAR on a product with an ongoing exact recall</td><td class="n"><b>0</b></td></tr>
+          <tr class="hi"><td>CLEAR or RELEASE executed without a signed contract</td><td class="n"><b>0</b></td></tr>
+          <tr><td>Zetaris <code>signed_clear</code>: signed row / synthetic unsigned row</td><td class="n">passed / flagged</td></tr>
+          <tr><td>Agent tests / gateway tests</td><td class="n">419 / 199 pass (4 skipped)</td></tr>
+        </tbody>
+      </table>
+      <p class="small muted" style="margin-top:12px">E8 is a synthetic injection fixture, labelled and eval-only. E2 is a replay and is labelled as one on every row it writes.</p>
+    </div>
+    <figure style="flex:1">
+      <img class="shot" src="../img/darkchoc-sign.png" style="width:100%" alt="Officer actions panel showing exactly what the officer signs for the Dark Chocolate clearance">
+      <figcaption>What the officer signs: action, product, market, status and statement. A reason is required and recorded in memory.</figcaption>
+    </figure>
+  </div>
+  <div class="foot"><span class="src">Scenario run of 23 Oct 2026, 17:06&ndash;17:16 SGT; signed_clear checks 20:38&ndash;20:40 SGT; docs/eval-report.md sections 1, 2 and 7.</span><span class="pg">10 / 12</span></div>
+</section>
+
+<!-- 11. Limits and future -->
+<section class="slide">
+  <div class="eyebrow">Limits and future enhancements</div>
+  <h2 class="title">What it does not do yet, and what comes next</h2>
+  <div class="body row" style="gap:48px">
+    <div class="col" style="width:840px; gap:14px">
+      <h3>Limits, measured</h3>
+      <div class="finding"><div class="n" style="background:var(--hold-edge)">!</div><div><h4>Recall is the weak side</h4><p>Nemotron's "contains" recall is 0.78 overall and 0.58 on the six non-English labels. Misses are held for the officer, never cleared.</p></div></div>
+      <div class="finding"><div class="n" style="background:var(--hold-edge)">!</div><div><h4>About a minute per product</h4><p>Investigations take 48 to 94 s on the local 4B model, one call at a time.</p></div></div>
+      <div class="finding"><div class="n" style="background:var(--hold-edge)">!</div><div><h4>A small evaluation set</h4><p>Extraction is scored on 27 products; the 10 eval-only products are registered in Zetaris but not yet in the USL product table.</p></div></div>
+      <div class="finding"><div class="n" style="background:var(--hold-edge)">!</div><div><h4>Demo identity and admin reads</h4><p>The officer is a local demo identity with no sign-on, and Zetaris reads run on the admin login behind a read-only allowlist.</p></div></div>
+      <div class="finding"><div class="n" style="background:var(--hold-edge)">!</div><div><h4>Crowd-sourced label data</h4><p>Open Food Facts can lag the physical label, and lot codes are not matched. Every card lists what was not checked.</p></div></div>
+      <p class="small muted">Decision support only, not legal advice. ClearShelf never publishes a free-from claim on its own.</p>
+    </div>
+    <div class="col" style="flex:1; gap:14px">
+      <h3>Future enhancements</h3>
+      <div class="card"><h4>Supplier PIM and spec-sheet connector</h4><p>Replace the Open Food Facts stand-in with the grocer's own supplier feed, registered in Zetaris the same way.</p></div>
+      <div class="card"><h4>Lot and batch-code matching</h4><p>Match recall code information against stock, so a recall holds only the affected lots.</p></div>
+      <div class="card"><h4>EU RASFF and more markets</h4><p>Add RASFF notifications as a third notice feed, and further statutory allergen lists to the reference table.</p></div>
+      <div class="card"><h4>Production identity and least privilege</h4><p>Single sign-on in front of the officer endpoints, and a least-privilege Zetaris reader role.</p></div>
+      <div class="card"><h4>Better non-English recall</h4><p>Adopt the Q8 build (recall 0.867 against 0.767 for Q4 on 10 bench texts, at 117.4 tok/s) or a larger tier, and measure the thinking ablation on multilingual labels.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span class="src">Also not measured yet: cold against warm on a fresh memory store, and officer time saved (docs/eval-report.md, "Not measured").</span><span class="pg">11 / 12</span></div>
+</section>
+
+<!-- 12. Cursor, credits, licences -->
+<section class="slide">
+  <div class="eyebrow">How Cursor was used &middot; credits and licences</div>
+  <h2 class="title">Built in a Cursor workspace; every source attributed</h2>
+  <div class="body row" style="gap:48px">
+    <div class="col" style="width:960px; gap:20px">
+      <div class="quote" style="font-size:23px">ClearShelf was developed in a Cursor workspace with project rules in <code>.cursor/rules</code> and <code>AGENTS.md</code>. Cursor Agent ran the Zetaris JDBC preflight against our local instance. It drafted the decision write-back SQL, the per-product Open Food Facts registration template and the DQ rule documentation, with static tests for the SQL. It also drafted the multilingual allergen lexicon, the jurisdiction rules, the GTIN normaliser and the claim tester, with their tests. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. Every Cursor task, its commit and what was corrected afterwards are listed in <code>docs/how-cursor-was-used.md</code>.</div>
+      <table class="t">
+        <thead><tr><th style="white-space:nowrap">Cursor Agent run</th><th>Scope</th></tr></thead>
+        <tbody>
+          <tr><td>G9</td><td>Task index in docs/cursor-tasks/README.md</td></tr>
+          <tr><td>C1</td><td>Zetaris JDBC preflight against our local instance, read-only</td></tr>
+          <tr><td>C2</td><td>Decision write-back SQL, Open Food Facts registration template, DQ rule documentation, static SQL tests</td></tr>
+          <tr><td>C3</td><td>Multilingual allergen lexicon, jurisdiction rules, GTIN normaliser, claim tester, with tests</td></tr>
+        </tbody>
+      </table>
+      <div class="panel">
+        <h4>Project rules in <code>.cursor/rules</code></h4>
+        <p class="small"><code>zetaris.mdc</code> Lightning SQL rules &middot; <code>meterless.mdc</code> engine contracts and the never-edit rule for vendored engines &middot; <code>safety.mdc</code> decision safety and risk asymmetry &middot; <code>data-licences.mdc</code> attribution and what data may be committed &middot; <code>style.mdc</code> code, test and commit conventions</p>
+      </div>
+    </div>
+    <div class="col lic" style="flex:1; gap:0">
+      <h3 style="margin-bottom:6px">Credits and licences</h3>
+      <div><b>Open Food Facts</b>: data from openfoodfacts.org, ODbL 1.0. No bulk data in the repository.</div>
+      <div><b>openFDA</b> food enforcement reports: public domain / CC0 1.0. ClearShelf is not endorsed by the FDA.</div>
+      <div><b>UK FSA</b> food alerts: contains public sector information licensed under the Open Government Licence v3.0.</div>
+      <div><b>Meterless</b> H-MEM, Markovian and World Model reference engines: Apache-2.0, vendored unchanged.</div>
+      <div><b>Zetaris</b> getting-started SQL helper, adapted: Apache-2.0.</div>
+      <div><b>NVIDIA Nemotron</b> 3 Nano: NVIDIA Open Model License; weights not redistributed.</div>
+      <div><b>ClearShelf</b>: Apache-2.0.</div>
+      <div style="margin-top:12px; font: 600 24px/1.3 var(--font-display); color: var(--ink)">Umar Mohktar, Singapore - solo</div>
+    </div>
+  </div>
+  <div class="foot"><span class="src">Open Agent Hackathon 2026 (GenAI.Works), Track 3: Reasoning Architecture.</span><span class="pg">12 / 12</span></div>
+</section>
+
+<script>
+(function () {
+  // Tokens per chunk, docs/eval-report.md section 6 (8 real scenario investigations).
+  var runs = [
+    { id: "E1", m: [1652, 1432, 1574, 1601], e: [1280, 1884, 2446, 3185] },
+    { id: "E3", m: [1322, 1466, 1776, 1758, 1545], e: [1136, 1839, 2628, 3444, 4168] },
+    { id: "E4", m: [1659, 1528, 1788, 1717, 1568], e: [1290, 1998, 2761, 3473, 4264] },
+    { id: "E5", m: [1595, 1445, 1489, 1362], e: [1285, 1980, 2505, 3082] },
+    { id: "E6", m: [1322, 1419, 1488, 1456], e: [1136, 1805, 2396, 2988] },
+    { id: "E7", m: [1322, 1495, 1667, 1591], e: [1136, 1810, 2536, 3259] },
+    { id: "E2b", m: [1605, 1502, 1519, 1471], e: [1302, 1896, 2364, 3044] },
+    { id: "E2p", m: [1688, 1455, 1624, 1510], e: [1341, 1923, 2534, 3018] }
+  ];
+  var svg = document.getElementById("chunk-chart");
+  var W = 748, H = 330, L = 64, R = 210, T = 18, B = 44;
+  var pw = W - L - R, ph = H - T - B, yMax = 4500;
+  var x = function (i) { return L + (i * pw) / 4; };
+  var y = function (v) { return T + ph - (v / yMax) * ph; };
+  var ns = "http://www.w3.org/2000/svg";
+  function el(tag, attrs, text) { var e = document.createElementNS(ns, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; svg.appendChild(e); return e; }
+  [0, 1000, 2000, 3000, 4000].forEach(function (v) {
+    el("line", { x1: L, x2: L + pw, y1: y(v), y2: y(v), stroke: "#e3e8eb", "stroke-width": 1 });
+    el("text", { x: L - 10, y: y(v) + 5, "text-anchor": "end", "font-size": 15, fill: "#5f6d78", "font-family": "Segoe UI, sans-serif" }, v.toLocaleString("en-GB"));
+  });
+  el("line", { x1: L, x2: L + pw, y1: y(0), y2: y(0), stroke: "#a9b5be", "stroke-width": 1.5 });
+  for (var i = 0; i < 5; i++) el("text", { x: x(i), y: T + ph + 22, "text-anchor": "middle", "font-size": 15, fill: "#5f6d78", "font-family": "Segoe UI, sans-serif" }, String(i + 1));
+  el("text", { x: L + pw / 2, y: H - 4, "text-anchor": "middle", "font-size": 15, fill: "#5f6d78", "font-family": "Segoe UI, sans-serif" }, "chunk");
+  function path(vals) { return vals.map(function (v, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); }).join(" "); }
+  runs.forEach(function (r) {
+    if (r.id === "E4") return;
+    el("path", { d: path(r.e), fill: "none", stroke: "#66737d", "stroke-width": 1.5, "stroke-dasharray": "6 5", opacity: 0.45 });
+    el("path", { d: path(r.m), fill: "none", stroke: "#1d4e89", "stroke-width": 1.5, opacity: 0.4 });
+  });
+  var e4 = runs[2];
+  el("path", { d: path(e4.e), fill: "none", stroke: "#66737d", "stroke-width": 3, "stroke-dasharray": "9 6" });
+  el("path", { d: path(e4.m), fill: "none", stroke: "#1d4e89", "stroke-width": 3 });
+  e4.m.forEach(function (v, i) { el("circle", { cx: x(i), cy: y(v), r: 4.5, fill: "#1d4e89", stroke: "#fff", "stroke-width": 2 }); });
+  e4.e.forEach(function (v, i) { el("circle", { cx: x(i), cy: y(v), r: 4.5, fill: "#fff", stroke: "#66737d", "stroke-width": 2 }); });
+  var lx = x(4) + 14;
+  el("text", { x: lx, y: y(4264) + 5, "font-size": 16, fill: "#15222c", "font-family": "Segoe UI, sans-serif", "font-weight": 600 }, "4,264 full history");
+  el("text", { x: lx, y: y(4264) + 25, "font-size": 15, fill: "#5f6d78", "font-family": "Segoe UI, sans-serif" }, "estimated, chars/4");
+  el("text", { x: lx, y: y(1568) + 5, "font-size": 16, fill: "#15222c", "font-family": "Segoe UI, sans-serif", "font-weight": 600 }, "1,568 Markovian");
+  el("text", { x: lx, y: y(1568) + 25, "font-size": 15, fill: "#5f6d78", "font-family": "Segoe UI, sans-serif" }, "measured prompt");
+  el("text", { x: lx, y: y(1568) + 50, "font-size": 14, fill: "#5f6d78", "font-family": "Segoe UI, sans-serif" }, "bold: E4 Lidl biscuits, US");
+  el("text", { x: lx, y: y(1568) + 68, "font-size": 14, fill: "#5f6d78", "font-family": "Segoe UI, sans-serif" }, "faint: the other 7 runs");
+})();
+</script>
+</body>
+</html>

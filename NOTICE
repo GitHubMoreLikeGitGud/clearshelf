@@ -15,18 +15,44 @@ Meterless reference engines: H-MEM, Markovian, World Model
   Licensed under the Apache License, Version 2.0. Vendored unchanged;
   see engines/UPSTREAM.md. Each engine's LICENSE is kept alongside it.
 
+Meterless Scout Intent injection regression cases
+  Path: agent/test/fixtures/scout-injection/adversarial.jsonl
+  Source: https://github.com/Meterless/Meterless,
+  engines/scout-intent/evals/regression-set/v1/injection/adversarial.jsonl
+  at the commit above. Licensed under the Apache License, Version 2.0.
+  Copied unchanged.
+
+Zetaris getting-started helper (adapted)
+  Path: gateway/jdbc.py
+  Source: https://github.com/zetaris/getting-started, scripts/zetaris_sql.py,
+  commit 6a2fbaa
+  Licensed under the Apache License, Version 2.0. Adapted: the .env.local
+  loader, the SQL statement splitter and the JayDeBeApi channel. Modified
+  for ClearShelf (Windows JDK discovery, column names and timings in
+  results, a bounded wait with statement cancel, one lock per connection).
+
 
 Data sources read at runtime
 ----------------------------
 
-No bulk data from these sources is distributed in this repository.
+ClearShelf reads these sources only through Zetaris. No bulk data from them
+is distributed in this repository.
 
 Open Food Facts
-  Data from Open Food Facts (openfoodfacts.org), ODbL 1.0
+  Data from Open Food Facts (openfoodfacts.org), ODbL.
+  Database: Open Database License 1.0,
   https://opendatacommons.org/licenses/odbl/1-0/
+  Contents: Database Contents License 1.0,
+  https://opendatacommons.org/licenses/dbcl/1-0/
+  The intake manifest (data/manifest/skus.json) holds, for 40 products,
+  the barcode, product name and brand, language, allergen, trace and
+  label tags and a hash of the ingredient text, fetched from Open Food
+  Facts on 23 Oct 2026 (SGT). It holds no ingredient text.
 
 openFDA food enforcement reports (U.S. Food and Drug Administration)
   Public domain / CC0 1.0. ClearShelf is not endorsed by the FDA.
+  The intake manifest quotes recall numbers, dates, classifications,
+  statuses, firm names and recall reasons from these reports.
 
 UK Food Standards Agency food alerts
   Contains public sector information licensed under the Open Government
@@ -34,9 +60,26 @@ UK Food Standards Agency food alerts
   https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
 
 
-Models
-------
+Regulatory reference
+--------------------
 
-NVIDIA Nemotron (nemotron-3-nano) runs locally through Ollama under the
+data/reference/market_allergens.json is transcribed, with a citation on
+every row, from:
+  - the Food Standards Agency allergen guidance for food businesses
+    (GOV.UK) and Regulation (EU) No 1169/2011 Annex II on
+    legislation.gov.uk: contains public sector information licensed under
+    the Open Government Licence v3.0;
+  - U.S. Food and Drug Administration guidance on food allergen labelling
+    (FALCPA, the FASTER Act, Questions and Answers Edition 5): a work of
+    the U.S. government.
+
+
+Models and platforms (not redistributed)
+----------------------------------------
+
+NVIDIA Nemotron (nemotron-3-nano:4b) runs locally through Ollama under the
 NVIDIA Open Model License. The model weights are not redistributed in this
 repository.
+
+Zetaris Lightning 2.4.3.1 and its JDBC driver are installed from Zetaris
+under Zetaris's terms. Neither is redistributed in this repository.

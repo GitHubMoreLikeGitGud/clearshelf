@@ -33,7 +33,7 @@ This repository.
 
 The Cursor statement says only what the task records prove: a Cursor Agent transcript in the run record and a commit marked "(Cursor Agent)". Today that is G9, C1, C2 and C3, so the statement is:
 
-> ClearShelf was developed in Cursor. The repository is a Cursor workspace with project rules in `.cursor/rules`. Cursor Agent ran the Zetaris getting-started JDBC preflight against our local instance, reviewed the Lightning SQL onboarding scripts and the clearance_usl model against sample API responses and wrote their static tests, and drafted the multilingual allergen lexicon and its tests. Each task, its commits and the reviewer's corrections are listed in docs/how-cursor-was-used.md.
+> ClearShelf was developed in a Cursor workspace with project rules in `.cursor/rules`. Cursor Agent ran the Zetaris getting-started JDBC preflight against our local instance, reviewed the Lightning SQL onboarding scripts and the clearance_usl model against sample API responses and wrote their static tests, and drafted the multilingual allergen lexicon and its tests. Each task, its commits and the reviewer's corrections are listed in docs/how-cursor-was-used.md.
 
 Add a clause, before "Each task", only for a task that has run in Cursor Agent and has its "(Cursor Agent)" commit; otherwise list it as TODO and leave it out:
 
@@ -52,7 +52,7 @@ Cursor Agent did not draft the Lightning SQL scripts or the clearance_usl model:
 ## Constraints
 
 - Every number comes from a committed record (`docs/conformance.md`, `docs/eval-report.md`, `zetaris/README.md`, task run records). Never invent or round a number; write "TODO (measured)" where none exists yet.
-- Public text names no development tool other than Cursor, and never claims replayed events were live.
+- Public text never claims replayed events were live.
 - The C1 result is summarised in exactly these words, never as "preflight passed": "Preflight NOT READY on Windows (bin/java and .venv/bin/python path false negatives, verified); read-only JDBC confirmed directly: SELECT 1, SHOW LIGHTNING DATABASES, SHOW NAMESPACES".
 - No credentials, no local private paths, no contact e-mail addresses.
 - Keep `metadata.json` as it is; report any mismatch with the README instead of editing it.

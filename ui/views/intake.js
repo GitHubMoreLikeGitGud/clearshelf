@@ -5,26 +5,50 @@
 import { api, esc, noAddress, plainReason, renderError, ruleBadge, STAGES, stageOfTool, statusChip, stripEvidenceRefs, tag, ZETARIS_HOME, zoneName } from "../lib.js";
 import { mountStream } from "./stream.js";
 
-/** GS1 check digit of a 13-digit GTIN. */
-export function gtinCheckOk(g) {
-  if (!/^\d{13}$/u.test(g)) return false;
+/** GS1 check digit of an 8-, 12-, 13- or 14-digit code. */
+export function checkDigitOk(g) {
+  if (!/^(\d{8}|\d{12,14})$/u.test(g)) return false;
   let sum = 0;
-  for (let i = 0; i < 12; i++) sum += Number(g[i]) * (i % 2 ? 3 : 1);
-  return (10 - (sum % 10)) % 10 === Number(g[12]);
+  for (let i = g.length - 2, w = 3; i >= 0; i--, w = 4 - w) sum += Number(g[i]) * w;
+  return (10 - (sum % 10)) % 10 === Number(g[g.length - 1]);
 }
 
-/** Splits pasted text into barcodes, each marked valid or with the reason it is not. */
+/** GS1 check digit of a 13-digit GTIN. */
+export function gtinCheckOk(g) {
+  return /^\d{13}$/u.test(g) && checkDigitOk(g);
+}
+
+/**
+ * One typed barcode as the GTIN-13 the catalogue uses: UPC-A (12 digits) and EAN-8 are
+ * zero-padded, a GTIN-14 with indicator 0 drops it. A GTIN-14 with another indicator is a
+ * case or pack code, not a consumer unit, and is refused.
+ */
+export function normaliseGtin(v) {
+  if (!/^\d+$/u.test(v)) return { ok: false, why: "not a barcode (digits only)" };
+  if (![8, 12, 13, 14].includes(v.length)) return { ok: false, why: `${v.length} digits; a barcode has 8, 12, 13 or 14` };
+  if (!checkDigitOk(v)) return { ok: false, why: "check digit does not match" };
+  if (v.length === 14 && v[0] !== "0") return { ok: false, why: "a GTIN-14 with indicator 1 to 9 is a case code, not a product" };
+  const gtin = v.length === 14 ? v.slice(1) : v.padStart(13, "0");
+  const kind = { 8: "EAN-8", 12: "UPC-A", 13: "", 14: "GTIN-14" }[v.length];
+  return { ok: true, gtin, kind };
+}
+
+/**
+ * Splits pasted text into barcodes, each marked valid (as its GTIN-13, with `input` and `kind`
+ * when it was normalised) or with the reason it is not.
+ */
 export function parseGtins(text) {
   const seen = new Set();
   const out = [];
   for (const raw of String(text ?? "").split(/[\s,;]+/u)) {
     const v = raw.trim();
     if (!v) continue;
-    if (seen.has(v)) continue;
-    seen.add(v);
-    if (!/^\d{13}$/u.test(v)) out.push({ value: v, ok: false, why: /^\d+$/u.test(v) ? `${v.length} digits, 13 needed` : "not a 13-digit number" });
-    else if (!gtinCheckOk(v)) out.push({ value: v, ok: false, why: "check digit does not match" });
-    else out.push({ value: v, ok: true, why: "" });
+    const n = normaliseGtin(v);
+    const key = n.ok ? n.gtin : v;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (!n.ok) out.push({ value: v, ok: false, why: n.why });
+    else out.push({ value: n.gtin, ok: true, why: "", ...(n.gtin !== v ? { input: v, kind: n.kind } : {}) });
   }
   return out;
 }
@@ -77,6 +101,7 @@ export function whyCell(st) {
 
 const FILTERS = [
   { key: "all", label: "All listings" },
+  { key: "you", label: "Needs you" },
   { key: "HOLD", label: "HOLD" },
   { key: "BLOCK", label: "BLOCK" },
   { key: "CLEAR_WITH_STATEMENT", label: "CLEAR WITH STATEMENT" },
@@ -99,9 +124,25 @@ function statusCell(l) {
   return parts.join(" ");
 }
 
-/** Whether a listing passes a filter: a decision status, waiting for signature, or not cleared. */
+/**
+ * What the officer can act on now, most urgent first (lower is sooner), or null: a proposal to
+ * sign (0), a name-only match to confirm or dismiss (1), an automatic hold on a contradiction
+ * to settle (2). A listing held by a recall of its barcode waits on the recall, not on the
+ * officer, so it is not in the list.
+ */
+export function needsYou(st) {
+  if (st.proposal) return 0;
+  if (st.names) return 1;
+  const d = st.decision;
+  if (d?.status !== "HOLD" || d.actor === "officer") return null;
+  const rules = new Set(rowReasons(d).firings.map((f) => f.rule));
+  return rules.has("R4") && !rules.has("R1") ? 2 : null;
+}
+
+/** Whether a listing passes a filter: a decision status, waiting for signature, needs the officer, or not cleared. */
 export function matchesFilter(l, f) {
   if (f === "all") return true;
+  if (f === "you") return needsYou(l.st) !== null;
   if (f === "pending") return !!l.st.proposal;
   if (f === "none") return !l.st.decision && !l.st.proposal;
   return l.st.decision?.status === f;
@@ -112,6 +153,7 @@ export function renderCatalogue(cat, filter = "all") {
   const all = listings(cat);
   const count = (f) => all.filter((l) => matchesFilter(l, f)).length;
   const rows = all.filter((l) => matchesFilter(l, filter));
+  if (filter === "you") rows.sort((a, b) => needsYou(a.st) - needsYou(b.st));
   return `<div class="filters" role="group" aria-label="Filter listings">${FILTERS.map((f) => `<button type="button" class="filter" data-filter="${f.key}" aria-pressed="${f.key === filter}">${esc(f.label)} <span class="filter__n">${count(f.key)}</span></button>`).join("")}</div>
   <div class="table-wrap"><table class="cat">
     <caption class="sr-only">Catalogue: current decision per listing, with the rules and the main reason</caption>
@@ -207,7 +249,7 @@ export function mount(el, ctx) {
     <section class="panel intake__form" aria-labelledby="h-intake">
       <h2 id="h-intake" class="panel__h">Clear new products</h2>
       <form data-form="intake" novalidate>
-        <label class="field" for="gtins"><span class="field__label">Barcodes (GTIN-13), one per line or separated by commas</span>
+        <label class="field" for="gtins"><span class="field__label">Barcodes (EAN-13, UPC-A, EAN-8 or GTIN-14), one per line or separated by commas</span>
           <textarea id="gtins" rows="4" spellcheck="false" autocomplete="off" aria-describedby="gtin-check"></textarea></label>
         <div id="gtin-check" class="gtin-check small" aria-live="polite"></div>
         <fieldset class="field field--inline"><legend class="field__label">Market</legend>
@@ -264,8 +306,9 @@ export function mount(el, ctx) {
     const bad = list.filter((x) => !x.ok);
     submit.disabled = !good.length;
     submit.textContent = good.length ? `Clear ${good.length} product${good.length === 1 ? "" : "s"}` : "Clear products";
+    const normalised = good.filter((g) => g.input);
     check.innerHTML = list.length
-      ? `${good.length} valid${good.length > 1 ? `, about ${good.length} min of model time` : ""}${bad.length ? `; <span class="cross">${bad.length} invalid</span>: ${bad.map((b) => `<code>${esc(b.value)}</code> ${esc(b.why)}`).join("; ")}` : ""}`
+      ? `${good.length} valid${good.length > 1 ? `, about ${good.length} min of model time` : ""}${normalised.length ? ` (${normalised.map((g) => `${esc(g.kind)} <code>${esc(g.input)}</code> normalised to <code>${esc(g.value)}</code>`).join("; ")})` : ""}${bad.length ? `; <span class="cross">${bad.length} invalid</span>: ${bad.map((b) => `<code>${esc(b.value)}</code> ${esc(b.why)}`).join("; ")}` : ""}`
       : "";
     return good;
   };

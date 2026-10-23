@@ -2,29 +2,72 @@
   "name": "ClearShelf",
   "tagline": "Allergen clearance and recall watch for online grocers. Every decision is cited and every release is signed.",
   "track": "Track 3: Reasoning Architecture",
-  "team": "Umar Mohktar (solo)",
-  "repository": "",
-  "demo_video": "",
+  "team": "Umar Mohktar, Singapore - solo",
+  "repository": "https://github.com/GitHubMoreLikeGitGud/clearshelf",
+  "demo_video": "https://youtu.be/p9bATVx6YsA",
+  "licence": "Apache-2.0",
   "meterless": {
     "engines": ["hmem", "world-model", "markovian", "scout-intent"],
-    "usage": {}
+    "upstream": "https://github.com/Meterless/Meterless at commit 1742dec56a66e58eef9dda2d2b865823758ca8cd; H-MEM, World Model and Markovian vendored unchanged in engines/ (engines/UPSTREAM.md)",
+    "usage": {
+      "hmem": "Vendored reference implementation, unmodified, extended by subclass in agent/src/memory/hmemFacade.ts: facts with Zetaris provenance (source zetaris:<object>, SQL sha256), officer rulings, trust ledger and why traces; allergen conflicts (agent/src/memory/allergenConflicts.ts) always queued, never auto-resolved; human-approved dreaming whose invariants can only make a decision stricter; seeded from the Zetaris getting-started manifest and known_to_fail notes",
+      "world-model": "Vendored reference implementation, unmodified, wrapped in agent/src/world/world.ts: product, brand, firm, notice and allergen graph with edges dated by source time, a snapshot per decision ('what we knew when'), name matching with the reference bands and merge queue",
+      "markovian": "Vendored reference orchestrator, unmodified (agent/src/loop/): every SKU clearance and recall sweep is a bounded-context Markovian chain; the generator plans each chunk with local Nemotron and a NEEDS_TOOL executor runs the chosen tool; carried state capped at 768 tokens, at most 8 chunks",
+      "scout-intent": "Partial reimplementation of the spec (no reference engine is vendored), labelled as such (agent/src/contract/): injection guard on all untrusted text, risk classes, HMAC-signed single-use execution contracts (high risk for CLEAR, CLEAR_WITH_STATEMENT and RELEASE, verified by the agent server; medium risk for Zetaris registrar calls, verified by the Python gateway in gateway/contracts.py); an integrity check, not cryptographic-grade security"
+    },
+    "conformance": {
+      "hmem": "13/13 on the vendored reference; 13/13 with the ClearShelf subclass loaded through the engine's own runner",
+      "world-model": "8/8; idempotency check diff empty; live re-ingest of Zetaris rows appended 0 events",
+      "markovian": "8/8",
+      "scout-intent": "guard passes the 10 Scout injection regression cases (7 injections, 3 clean) vendored from the Meterless repository"
+    }
   },
   "zetaris": {
-    "role": "",
+    "role": "Federated data layer and the only runtime path to data: Lightning REST tables over Open Food Facts, openFDA, the UK FSA and the ClearShelf ops store; the Unified Semantic Layer clearance_usl (9 tables, PK/FK and custom DQ rules) whose DQ results gate every CLEAR (policy R3); every source read is Lightning SQL over JDBC through the ClearShelf gateway (named templates and an allowlist; the agent never writes SQL) and the SQL text is the citation; decisions are written to the ops store and read back through Zetaris for the closed-loop recheck, and the signed_clear and known_status DQ rules check the decisions Zetaris reads back after every signed write and on every recheck",
     "instance": "local Docker, Zetaris 2.4.3.1",
+    "where": "zetaris/sql/ (Lightning SQL create/select pairs), gateway/ (JDBC gateway, onboarding, registrar), ops/ (nginx that serves the ops store to Zetaris as http://clearshelf-ops)",
     "usl": "lightning.metastore.clearshelf.clearance_usl",
-    "lightning_databases": ["CLEARSHELF_OFF", "CLEARSHELF_FDA", "CLEARSHELF_FSA", "CLEARSHELF_OPS"]
+    "usl_tables": ["market_allergen", "fda_recall", "fsa_alert", "fsa_alert_allergen", "product", "declared_allergen", "extracted_allergen", "recall_product_link", "decision"],
+    "lightning_databases": ["CLEARSHELF_OFF", "CLEARSHELF_FDA", "CLEARSHELF_FSA", "CLEARSHELF_OPS"],
+    "rest_tables": ["CLEARSHELF_OFF.off_<gtin13> (one per SKU, cached)", "CLEARSHELF_FDA.enforcement_undeclared (cached)", "CLEARSHELF_FSA.allergy_alerts (cached)", "CLEARSHELF_OPS.decisions, recall_links, extractions, market_allergens, health (never cached)"],
+    "dq_rules": {"primary_key": 9, "foreign_key": 8, "custom": ["has_ingredients", "english_label", "known_relation", "signed_clear", "known_status"]},
+    "least_privilege": "not configured: read templates run on the admin login behind the gateway's reader allowlist; /health reports admin_fallback"
   },
   "nvidia": {
-    "model": "nemotron-3-nano:4b via Ollama, local RTX 4070 Ti Super 16 GB",
-    "roles": [],
-    "cloud_model_calls": null
+    "model": "nemotron-3-nano:4b (Q4_K_M) via Ollama 0.40.7, local RTX 4070 Ti SUPER 16 GB",
+    "roles": [
+      "multilingual ingredient extraction into grounded spans (think off)",
+      "recall notice extraction (think off)",
+      "Markovian investigation planner choosing the next tool (think on)",
+      "H-MEM miner for source documents and officer reasons, and one-sentence wording of dream proposals (think off)"
+    ],
+    "decides": false,
+    "settings": "temperature 0, seed 7, num_ctx 8192, JSON schema output validated on the host, one retry then a labelled deterministic fallback step",
+    "measured": {
+      "extraction_tokens_per_s_median": 159.8,
+      "planner_tokens_per_s_median_per_run": "150.0 to 155.6",
+      "extraction_json_valid_first_try": "27/27",
+      "planner_json_valid_first_try": "57/65 (65/65 after one repair)",
+      "model_vram_mib": 2881,
+      "investigation_seconds_per_sku": "48 to 94"
+    },
+    "cloud_model_calls": 0,
+    "cloud_model_calls_basis": "by construction: the model client accepts loopback URLs only"
   },
-  "cursor": "",
+  "cursor": "ClearShelf was developed in a Cursor workspace with project rules in .cursor/rules and AGENTS.md. Cursor Agent ran the Zetaris JDBC preflight against our local instance; drafted the decision write-back SQL, the per-product Open Food Facts registration template and the DQ rule documentation, with static tests for the SQL; and drafted the multilingual allergen lexicon, the jurisdiction rules, the GTIN normaliser and the claim tester, with their tests. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. See docs/how-cursor-was-used.md.",
+  "cursor_tasks": {
+    "run_by_cursor_agent": ["G9", "C1", "C2", "C3"],
+    "cursor_agent_commits": ["6b732e3", "c499ca5", "59cf150"],
+    "not_run_by_cursor_agent": ["C4", "C5", "C6", "C7", "C8"],
+    "details": "docs/how-cursor-was-used.md"
+  },
   "data_sources": [
-    {"name": "Open Food Facts product API v2", "licence": "ODbL-1.0"},
-    {"name": "openFDA food enforcement", "licence": "Public domain / CC0"},
-    {"name": "UK FSA Food Alerts API", "licence": "OGL-UK-3.0"}
+    {"name": "Open Food Facts product API v2", "licence": "ODbL-1.0", "attribution": "Data from Open Food Facts (openfoodfacts.org), ODbL", "access": "through Zetaris only"},
+    {"name": "openFDA food enforcement", "licence": "Public domain / CC0-1.0", "attribution": "U.S. Food and Drug Administration; no FDA endorsement", "access": "through Zetaris only"},
+    {"name": "UK FSA Food Alerts API", "licence": "OGL-UK-3.0", "attribution": "Contains public sector information licensed under the Open Government Licence v3.0", "access": "through Zetaris only"}
   ],
-  "pre_existing_code": ["Meterless reference engines (Apache-2.0)"]
+  "pre_existing_code": [
+    "Meterless reference engines H-MEM, Markovian and World Model (Apache-2.0), vendored unchanged in engines/, and the 10 Scout Intent injection regression cases in agent/test/fixtures/scout-injection/",
+    "gateway/jdbc.py, adapted from scripts/zetaris_sql.py in the Zetaris getting-started repository at commit 6a2fbaa (Apache-2.0)"
+  ]
 }

@@ -3,7 +3,8 @@
 // CLEAR_WITH_STATEMENT and RELEASE run only from an officer-signed contract, and only when
 // no exact-GTIN recall of the SKU is still open (the safety invariant "no CLEAR on a SKU
 // with an exact-GTIN Ongoing recall" is checked again in Zetaris at execution time).
-// Every write is followed by the closed-loop query that proves the row is visible in Zetaris.
+// Every write is followed by the closed-loop query that proves the row is visible in Zetaris,
+// and a signed write by Zetaris's own signed_clear DQ rule on the decision table.
 //
 // An officer approval never relaxes a decision it did not see: a HOLD or BLOCK written
 // after a proposal supersedes it in the queue, and a signed contract names the decision
@@ -11,7 +12,7 @@
 // signed before a later HOLD or BLOCK is refused at execution (409 stale_proposal).
 
 import { officerApproval, OFFICER, type ExecutionContract } from "../contract/scout.ts";
-import { rowsAsObjects, type GatewayClient, type TemplateResult } from "../zetaris/client.ts";
+import { rowsAsObjects, writebackDq, type GatewayClient, type TemplateResult, type WritebackDqResult } from "../zetaris/client.ts";
 import type { Decision, Market } from "../policy/decide.ts";
 import { TO_CONFIRM } from "../policy/statement.ts";
 import { confirmDecisionVisible, ContractRefused, decisionContractParams, OpsError, OpsStore, type DecisionRow, type Visibility } from "./store.ts";
@@ -155,6 +156,12 @@ export interface ExecuteRequest {
 
 export interface Executed extends Applied {
   safety: TemplateResult | null;
+  /**
+   * For a clearance or release: Zetaris's signed_clear DQ rule on the decision table after the
+   * write, and whether it flags the new row. Null for HOLD and BLOCK, or when the row was not
+   * yet visible in Zetaris.
+   */
+  signedClear: { dq: WritebackDqResult; row_invalid: boolean } | null;
 }
 
 /** Fills `over_decision` on a proposal: the row current for the SKU when it is queued. */
@@ -193,12 +200,17 @@ export async function executeDecision(ops: OpsStore, gateway: GatewayClient, que
   const res = await ops.writeDecision({ gtin: r.gtin, market: r.market, status: r.status, statement: r.statement, reason: r.reason, actor, contract: r.contract, action: r.action });
   const superseded = high ? [] : supersedeBy(queue, res.row);
   const visibility = await confirmDecisionVisible(gateway, res.row);
+  let signedClear: Executed["signedClear"] = null;
+  if (high && visibility.visible) {
+    const [dq] = await writebackDq(gateway, ["signed_clear"]);
+    signedClear = { dq: dq!, row_invalid: dq!.invalid.some((x) => x.decision_id === res.row.decision_id) };
+  }
   if (queue && high && r.action !== "RELEASE") {
     const planned = planOf(contract).queue_id;
     const item = planned ? queue.get(planned) : queue.proposalFor(r.gtin, r.market);
     if (item && item.state === "pending") queue.resolve(item.id, "executed", { by: actor, reason: r.reason, contract_id: res.contract_id, decision_id: res.row.decision_id });
   }
-  return { row: res.row, contract, visibility, safety, superseded };
+  return { row: res.row, contract, visibility, safety, superseded, signedClear };
 }
 
 function planOf(c: ExecutionContract): Record<string, string | undefined> {

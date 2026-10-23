@@ -49,7 +49,7 @@ E1 to E10 as in SPEC 9.1, with the manifest picks filled. **E2 expects HOLD afte
 ## Constraints
 
 - Only measured numbers. Every number in the JSON and the report carries its label (`measured`, or `estimated (chars/4)` where a baseline is estimated). Nothing is rounded up, extrapolated or filled in by hand; a missing measurement is printed "not measured".
-- `docs/eval-report.md` and every committed file contain no Open Food Facts ingredient text, no span or `evidence_text` strings, no secrets, no e-mail addresses and no names of development tools other than Cursor.
+- `docs/eval-report.md` and every committed file contain no Open Food Facts ingredient text, no span or `evidence_text` strings, no secrets and no e-mail addresses.
 - Synthetic fixtures (E8) are labelled synthetic in the JSON and in the report.
 - The evaluation reads sources only through the gateway (Zetaris) and the model only through local Ollama. It writes no decision rows, approvals or contracts (`investigate`, not `clearWithAgent`).
 - `data/eval/` stays gitignored; only `docs/eval-report.md` is committed.

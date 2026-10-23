@@ -29,7 +29,8 @@ import { clearSku, type ClearResult, type PipelineDeps } from "./pipeline.ts";
 import type { Decision, Market } from "./policy/decide.ts";
 import { AsOfGateway, replayBanner, ReplayEvidenceStore } from "./watch/asOf.ts";
 import type { Catalogue, RecallWatch } from "./watch/recallWatch.ts";
-import { DqGate, GatewayError, rowsAsObjects, validateParam, type GatewayClient } from "./zetaris/client.ts";
+import { DqGate, GatewayError, rowsAsObjects, validateParam, writebackDq, type GatewayClient, type WritebackDqResult } from "./zetaris/client.ts";
+import { normalise } from "./verify/gtin.ts";
 import { keywordBaseline, lexiconScan } from "./verify/lexicon.ts";
 import { agentWatch, clearWithAgent, openRuntime, recordExecuted, whyTrace, type ExecutedContext, type Runtime } from "./runtime.ts";
 import type { DecisionRow } from "./ops/store.ts";
@@ -256,6 +257,38 @@ function gtinOf(v: unknown): string {
   }
 }
 
+/**
+ * A barcode typed at intake as the GTIN-13 the catalogue and Zetaris use: UPC-A (12 digits)
+ * and EAN-8 are zero-padded, a GTIN-14 with indicator 0 drops it. `input` is what was typed
+ * when it differs.
+ */
+function intakeGtinOf(v: unknown): { gtin: string; input: string | null } {
+  const raw = s(v, "gtin").trim();
+  if (/^(?:\d{8}|\d{12}|\d{14})$/u.test(raw)) {
+    const n = normalise(raw);
+    if (!n.ok) {
+      throw new HttpError(400, n.reason === "gtin14_case_level" ? `${raw} is a case code (GTIN-14 indicator 1 to 9), not a product` : `GTIN check digit fails: ${raw}`, "bad_gtin");
+    }
+    return { gtin: gtinOf(n.gtin13), input: raw };
+  }
+  return { gtin: gtinOf(raw), input: null };
+}
+
+/** A write-back DQ result for the API: the rule, its invalid decision ids, and the SQL as the citation. */
+function dqOut(d: WritebackDqResult, rowInvalid?: boolean) {
+  return {
+    rule: d.rule,
+    invalid: d.invalid.length,
+    invalid_decisions: d.invalid.map((x) => String(x.decision_id ?? "")).slice(0, 50),
+    ...(rowInvalid === undefined ? {} : { row_invalid: rowInvalid }),
+    sql: d.result?.sql ?? null,
+    sql_sha256: d.result?.sql_sha256 ?? null,
+    executed_at: d.result?.executed_at ?? null,
+    elapsed_ms: d.result?.elapsed_ms ?? null,
+    error: d.error,
+  };
+}
+
 function marketOf(v: unknown): Market {
   const m = s(v, "market").toUpperCase();
   if (m !== "UK" && m !== "US") throw new HttpError(400, "market must be UK or US", "bad_market");
@@ -277,6 +310,8 @@ export interface ClearShelfServer {
   runStore: RunStore;
   listen(port: number, host?: string): Promise<number>;
   close(): Promise<void>;
+  /** Queues a poll of the live recall watch (the CLEARSHELF_WATCH_EVERY_MIN timer); null when the watch is not live, or is already polling. */
+  schedulePoll(): Job | null;
 }
 
 export function createServer(deps: ServerDeps): ClearShelfServer {
@@ -333,6 +368,12 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
     }
   };
   let port = 0;
+
+  const submitPoll = (until?: string | null, scheduled = false): Job =>
+    jobs.submit("watch.poll", { until: until ?? null, ...(scheduled ? { scheduled: true } : {}) }, async () => {
+      const r = await deps.watch.poll({ until: until ?? undefined });
+      return { sweep_id: r.sweep_id, banner: r.banner, window: r.window, notices: r.notices.length, exact_matches: r.exact_matches, name_matches: r.name_matches.length, actions: r.actions, recheck_rows: r.recheck.rows.length, gaps: r.gaps };
+    });
 
   const loadRun = (id: string): ClearResult | null => runStore.load(id);
 
@@ -611,11 +652,11 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
 
     if (m === "POST" && p === "/api/clear") {
       const b = await readJson(req);
-      const gtin = gtinOf(b.gtin);
+      const { gtin, input } = intakeGtinOf(b.gtin);
       const market = marketOf(b.market);
       const asOf = dateOf(b.as_of, "as_of");
       const job = jobs.submit("clear", { gtin, market, as_of: asOf ?? null }, () => runClear(gtin, market, asOf));
-      return send(res, 202, { job_id: job.id, state: job.state });
+      return send(res, 202, { job_id: job.id, state: job.state, gtin, ...(input ? { normalised_from: input } : {}) });
     }
 
     const jm = /^\/api\/jobs\/([A-Za-z0-9]+)$/u.exec(p);
@@ -712,7 +753,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
       try {
         const ex = await executeDecision(deps.ops, deps.gateway, deps.queue, { gtin, market, status, statement, action, reason, contract: b.contract });
         const rec = await recordRow(ex.row, executedContext(ex.row, reason, action === "RELEASE"));
-        const out = { decision_id: ex.row.decision_id, contract_id: ex.contract.contractId, row: ex.row, visible_in_zetaris: ex.visibility.visible, closed_loop_sql: ex.visibility.result?.sql ?? null, recorded: rec };
+        const out = { decision_id: ex.row.decision_id, contract_id: ex.contract.contractId, row: ex.row, visible_in_zetaris: ex.visibility.visible, closed_loop_sql: ex.visibility.result?.sql ?? null, signed_clear_dq: ex.signedClear ? dqOut(ex.signedClear.dq, ex.signedClear.row_invalid) : null, recorded: rec };
         bus.publish("decision.written", { gtin, market, status, auto: false, decision_id: ex.row.decision_id, contract_id: ex.contract.contractId, visible_in_zetaris: ex.visibility.visible });
         officerReason({ kind: action === "RELEASE" ? "release" : "approve", gtin, market, reason, contract_id: ex.contract.contractId, decision_id: ex.row.decision_id });
         return send(res, 200, out);
@@ -801,7 +842,10 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
     if (m === "GET" && (p === "/api/recheck" || p === "/api/join-map")) {
       try {
         const r = await deps.gateway.template(p === "/api/recheck" ? "recheck_cleared" : "join_map", {});
-        return send(res, 200, { rows: rowsAsObjects(r), sql: r.sql, sql_sha256: r.sql_sha256, objects: r.objects, executed_at: r.executed_at, elapsed_ms: r.elapsed_ms, cache_state: r.cache_state });
+        const out = { rows: rowsAsObjects(r), sql: r.sql, sql_sha256: r.sql_sha256, objects: r.objects, executed_at: r.executed_at, elapsed_ms: r.elapsed_ms, cache_state: r.cache_state };
+        // The recheck also asks Zetaris's write-back DQ rules about every decision it reads back.
+        if (p === "/api/recheck") return send(res, 200, { ...out, dq: (await writebackDq(deps.gateway)).map((d) => dqOut(d)) });
+        return send(res, 200, out);
       } catch (e) {
         contractError(e);
       }
@@ -860,11 +904,7 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
     }
     if (m === "POST" && p === "/api/watch/poll") {
       const b = await readJson(req);
-      const until = dateOf(b.until, "until");
-      const job = jobs.submit("watch.poll", { until: until ?? null }, async () => {
-        const r = await deps.watch.poll({ until });
-        return { sweep_id: r.sweep_id, banner: r.banner, window: r.window, notices: r.notices.length, exact_matches: r.exact_matches, name_matches: r.name_matches.length, actions: r.actions, recheck_rows: r.recheck.rows.length, gaps: r.gaps };
-      });
+      const job = submitPoll(dateOf(b.until, "until"));
       return send(res, 202, { job_id: job.id });
     }
     if (m === "POST" && p === "/api/watch/live") {
@@ -1041,6 +1081,12 @@ export function createServer(deps: ServerDeps): ClearShelfServer {
       bus.closeAll();
       return new Promise((ok) => server.close(() => ok()));
     },
+    schedulePoll(): Job | null {
+      // Only a live watch is polled on a timer: a replay moves only when the officer asks.
+      if (deps.watch.state()?.mode !== "live" || deps.watch.busy) return null;
+      if ([...jobs.jobs.values()].some((j) => j.kind === "watch.poll" && (j.state === "queued" || j.state === "running"))) return null;
+      return submitPoll(null, true);
+    },
   };
 }
 
@@ -1057,6 +1103,16 @@ export async function main(): Promise<void> {
   const app = createServer({ gateway: rt.gateway, ollama: rt.ollama, ops: rt.ops, queue: rt.queue, watch, catalogue: rt.catalogue, bus, log, runtime: rt, runStore });
   const bound = await app.listen(port);
   log(`ClearShelf agent server on http://127.0.0.1:${bound} (gateway ${rt.gateway.baseUrl}, model ${rt.ollama.model}, actor ${AGENT_ACTOR}, Markovian clearances with H-MEM and the World Model)`);
+  const every = process.env.CLEARSHELF_WATCH_EVERY_MIN ? Number(process.env.CLEARSHELF_WATCH_EVERY_MIN) : 0;
+  if (every) {
+    // Modest polling of openFDA and the FSA (AGENTS.md rule 6): never more often than every 5 minutes.
+    if (!(every >= 5)) throw new Error("CLEARSHELF_WATCH_EVERY_MIN must be 5 or more (minutes)");
+    setInterval(() => {
+      const job = app.schedulePoll();
+      if (job) log(`scheduled recall-watch poll ${job.id}`);
+    }, every * 60_000).unref();
+    log(`recall watch: a poll every ${every} min while the watch is live`);
+  }
   const stop = () => {
     rt.close();
     process.exit(0);

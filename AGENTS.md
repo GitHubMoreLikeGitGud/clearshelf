@@ -48,6 +48,6 @@ python -m venv .venv && .venv/Scripts/pip install -r gateway/requirements.txt
 ## Git
 
 - Stage explicit paths only (`git add <path> ...`), never `git add -A` or `git add .`.
-- Commits made by Cursor Agent use the message `Cn: <task> (Cursor Agent)`. Plain messages, no co-author or other trailers.
+- Commits made by Cursor Agent use the message `Cn: <task> (Cursor Agent)`.
 - Never commit `.env.local`, runtime `data/`, transcripts or notes.
-- `AGENTS.md` and `.cursor/rules/` are the only agent instruction files in this repository; do not add others. Public text (README, docs, code comments, commit messages) names no development tool other than Cursor.
+- `AGENTS.md` and `.cursor/rules/` are the only agent instruction files in this repository; do not add others.

@@ -175,6 +175,17 @@ export function fakeGateway(w: FakeWorld): GatewayClient {
       case "join_map":
         b = body(template_id, ["transform", "links", "in_catalogue"], [], [`${U}.recall_product_link`, `${U}.product`], ["clearshelf_ops.recall_links", "clearshelf_off.off_*"]);
         break;
+      case "dq_invalid_signed_clear":
+      case "dq_invalid_known_status": {
+        // The rule expressions in zetaris/dq-rules.md, evaluated over the ops decisions.
+        const cleared = (d: Record<string, string>) => d.status === "CLEAR" || d.status === "CLEAR_WITH_STATEMENT";
+        const bad =
+          template_id === "dq_invalid_signed_clear"
+            ? (d: Record<string, string>) => cleared(d) && !String(d.contract_id ?? "").trim()
+            : (d: Record<string, string>) => !cleared(d) && d.status !== "HOLD" && d.status !== "BLOCK";
+        b = body(template_id, DECISION_COLS, decisions.filter(bad).map((d) => DECISION_COLS.map((c) => d[c] ?? null)), [`${U}.decision`], ["clearshelf_ops.decisions"]);
+        break;
+      }
       default:
         if (template_id === "dq_invalid_has_ingredients") {
           b = body(template_id, ["gtin"], (w.noIngredients ?? []).map((g) => [g]), [`${U}.product`], ["clearshelf_off.off_*"]);

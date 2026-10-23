@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="990" viewBox="0 0 1480 990" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">ClearShelf architecture</title>
+<desc id="d">Open Food Facts, openFDA and UK FSA are read only through Zetaris Lightning REST tables and the clearance_usl Unified Semantic Layer. A gateway exposes named SQL templates to the agent server, where a Markovian investigation loop planned by Nemotron 3 Nano 4B on local Ollama gathers evidence, H-MEM and the World Model keep memory and history, deterministic verifiers and policy decide, and actions are executed only under a signed contract. Decisions are written to an ops store that Zetaris federates back, and the officer works in the UI.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4A5563"/></marker><marker id="arrow-start" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4A5563"/></marker></defs>
+<rect width="1480" height="990" fill="#FFFFFF"/>
+<text x="30" y="46" font-size="26" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">ClearShelf: from public data to a signed clearance decision</text>
+<text x="30" y="74" font-size="15" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">One machine: Zetaris in local Docker, the gateway and agent on 127.0.0.1, Nemotron in local Ollama. No cloud model calls.</text>
+<rect x="280" y="110" width="360" height="540" rx="14" fill="#F6FBFB" stroke="#0E7C86" stroke-width="2.0" stroke-dasharray="7 5"/>
+<rect x="990" y="110" width="460" height="680" rx="14" fill="#FAFAFC" stroke="#9AA3AF" stroke-width="2.0" stroke-dasharray="7 5"/>
+<text x="30" y="150" font-size="11" font-weight="bold" font-style="normal" fill="#5F6670" text-anchor="start" letter-spacing="1.2">PUBLIC SOURCES</text>
+<rect x="30" y="165" width="200" height="84" rx="10" fill="#F5F6F8" stroke="#8A8F98" stroke-width="2.0"/>
+<text x="44" y="195" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Open Food Facts</text>
+<text x="44" y="218" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">product API v2</text>
+<text x="44" y="237" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">ODbL 1.0</text>
+<rect x="30" y="265" width="200" height="84" rx="10" fill="#F5F6F8" stroke="#8A8F98" stroke-width="2.0"/>
+<text x="44" y="295" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">openFDA</text>
+<text x="44" y="318" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">food recall reports</text>
+<text x="44" y="337" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">public domain (CC0)</text>
+<rect x="30" y="365" width="200" height="84" rx="10" fill="#F5F6F8" stroke="#8A8F98" stroke-width="2.0"/>
+<text x="44" y="395" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">UK FSA</text>
+<text x="44" y="418" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">food allergy alerts</text>
+<text x="44" y="437" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">Open Government Licence</text>
+<text x="30" y="478" font-size="13" font-weight="normal" font-style="italic" fill="#52606D" text-anchor="start">Zetaris is the only</text>
+<text x="30" y="496" font-size="13" font-weight="normal" font-style="italic" fill="#52606D" text-anchor="start">runtime path to them.</text>
+<text x="300" y="138" font-size="11" font-weight="bold" font-style="normal" fill="#0B6670" text-anchor="start" letter-spacing="1.2">ZETARIS</text>
+<text x="300" y="160" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Lightning 2.4.3.1, local Docker</text>
+<rect x="300" y="175" width="320" height="110" rx="10" fill="#E7F4F5" stroke="#0E7C86" stroke-width="2.0"/>
+<text x="314" y="205" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">REST tables, cached</text>
+<text x="314" y="228" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">CLEARSHELF_OFF.off_&lt;gtin13&gt;</text>
+<text x="314" y="247" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">30 catalogue + 10 eval-only products</text>
+<text x="314" y="266" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">CLEARSHELF_FDA, CLEARSHELF_FSA</text>
+<rect x="300" y="330" width="320" height="150" rx="10" fill="#E7F4F5" stroke="#0E7C86" stroke-width="2.0"/>
+<text x="314" y="360" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">clearance_usl</text>
+<text x="314" y="383" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">Unified Semantic Layer, 9 tables:</text>
+<text x="314" y="402" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">products, recalls, alerts, allergens,</text>
+<text x="314" y="421" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">recall links, decisions</text>
+<text x="314" y="440" font-size="14" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">PK/FK + custom DQ rules gate CLEAR</text>
+<rect x="300" y="530" width="320" height="100" rx="10" fill="#E7F4F5" stroke="#0E7C86" stroke-width="2.0"/>
+<text x="314" y="560" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Ops REST tables, read live</text>
+<text x="314" y="583" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">CLEARSHELF_OPS: decisions, recall links,</text>
+<text x="314" y="602" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">extractions, market allergens</text>
+<line x1="230" y1="207" x2="256" y2="207" stroke="#4A5563" stroke-width="2"/>
+<line x1="230" y1="307" x2="256" y2="307" stroke="#4A5563" stroke-width="2"/>
+<line x1="230" y1="407" x2="256" y2="407" stroke="#4A5563" stroke-width="2"/>
+<line x1="256" y1="207" x2="256" y2="407" stroke="#4A5563" stroke-width="2"/>
+<polyline points="256,230 300,230" fill="none" stroke="#4A5563" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="460,285 460,330" fill="none" stroke="#4A5563" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="472" y="312" font-size="12.5" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">ACTIVATE USL TABLE</text>
+<polyline points="460,530 460,480" fill="none" stroke="#4A5563" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="472" y="510" font-size="12.5" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">decisions read back</text>
+<rect x="300" y="680" width="320" height="90" rx="10" fill="#EAF0F7" stroke="#3B5B85" stroke-width="2.0"/>
+<text x="314" y="710" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Ops store</text>
+<text x="314" y="733" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">data/ops/*.json, atomic writes</text>
+<text x="314" y="752" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">nginx, served as http://clearshelf-ops</text>
+<polyline points="460,680 460,630" fill="none" stroke="#4A5563" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="330" width="190" height="150" rx="10" fill="#EAF0F7" stroke="#3B5B85" stroke-width="2.0"/>
+<text x="714" y="360" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Zetaris gateway</text>
+<text x="714" y="383" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">FastAPI + JDBC</text>
+<text x="714" y="402" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">named SQL templates</text>
+<text x="714" y="421" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">allowlist, registrar</text>
+<text x="714" y="440" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">every query logged</text>
+<polyline points="620,405 700,405" fill="none" stroke="#4A5563" stroke-width="2" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
+<text x="660" y="395" font-size="12.5" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="middle">JDBC</text>
+<polyline points="890,405 1010,405" fill="none" stroke="#4A5563" stroke-width="2" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
+<text x="940" y="395" font-size="12.5" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="middle">tool call</text>
+<text x="940" y="425" font-size="12.5" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="middle">rows + SQL</text>
+<text x="1010" y="138" font-size="11" font-weight="bold" font-style="normal" fill="#5F6670" text-anchor="start" letter-spacing="1.2">AGENT SERVER</text>
+<text x="1010" y="160" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Node 22 + TypeScript, 127.0.0.1:8790</text>
+<rect x="1010" y="175" width="205" height="120" rx="10" fill="#F1EDFA" stroke="#6B4FBB" stroke-width="2.0"/>
+<text x="1024" y="197" font-size="11" font-weight="bold" font-style="normal" fill="#5A3FA8" text-anchor="start" letter-spacing="1.2">METERLESS</text>
+<text x="1024" y="220" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">H-MEM</text>
+<text x="1024" y="243" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">facts + officer rulings</text>
+<text x="1024" y="262" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">conflicts always queued</text>
+<text x="1024" y="281" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">ledger, approved dreams</text>
+<rect x="1225" y="175" width="205" height="120" rx="10" fill="#F1EDFA" stroke="#6B4FBB" stroke-width="2.0"/>
+<text x="1239" y="197" font-size="11" font-weight="bold" font-style="normal" fill="#5A3FA8" text-anchor="start" letter-spacing="1.2">METERLESS</text>
+<text x="1239" y="220" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">World Model</text>
+<text x="1239" y="243" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">products, brands, firms,</text>
+<text x="1239" y="262" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">notices, allergens</text>
+<text x="1239" y="281" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">timeline: what we knew</text>
+<rect x="1010" y="330" width="420" height="150" rx="10" fill="#F1EDFA" stroke="#6B4FBB" stroke-width="2.0"/>
+<text x="1024" y="352" font-size="11" font-weight="bold" font-style="normal" fill="#5A3FA8" text-anchor="start" letter-spacing="1.2">METERLESS  +  NVIDIA</text>
+<text x="1024" y="375" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Markovian investigation loop</text>
+<text x="1024" y="398" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">bounded chunks, carried state of at most 768 tokens</text>
+<text x="1024" y="417" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">planner: Nemotron chooses the next tool</text>
+<text x="1024" y="436" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">NEEDS_TOOL executor runs it through the gateway</text>
+<text x="1024" y="455" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">untrusted text wrapped by the Scout guard</text>
+<rect x="1010" y="510" width="205" height="120" rx="10" fill="#F2F8E6" stroke="#76B900" stroke-width="2.0"/>
+<text x="1024" y="532" font-size="11" font-weight="bold" font-style="normal" fill="#4B7700" text-anchor="start" letter-spacing="1.2">NVIDIA</text>
+<text x="1024" y="555" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Nemotron 3 Nano 4B</text>
+<text x="1024" y="578" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">local Ollama, Q4_K_M</text>
+<text x="1024" y="597" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">plans, extracts spans</text>
+<text x="1024" y="616" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">0 cloud model calls</text>
+<rect x="1225" y="510" width="205" height="120" rx="10" fill="#EAF0F7" stroke="#3B5B85" stroke-width="2.0"/>
+<text x="1239" y="532" font-size="11" font-weight="bold" font-style="normal" fill="#2F4A6E" text-anchor="start" letter-spacing="1.2">DETERMINISTIC</text>
+<text x="1239" y="555" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Verifiers + policy</text>
+<text x="1239" y="578" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">lexicon, jurisdiction,</text>
+<text x="1239" y="597" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">GTIN, claim tester</text>
+<text x="1239" y="616" font-size="14" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">rules R0 to R6 decide</text>
+<rect x="1010" y="660" width="420" height="110" rx="10" fill="#F1EDFA" stroke="#6B4FBB" stroke-width="2.0"/>
+<text x="1024" y="682" font-size="11" font-weight="bold" font-style="normal" fill="#5A3FA8" text-anchor="start" letter-spacing="1.2">SCOUT INTENT SUBSET, REIMPLEMENTED</text>
+<text x="1024" y="705" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Signed actions</text>
+<text x="1024" y="728" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">HOLD, BLOCK: applied automatically (the safe side)</text>
+<text x="1024" y="747" font-size="14" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">CLEAR, RELEASE: officer-signed, single-use contract</text>
+<polyline points="1112,295 1112,330" fill="none" stroke="#4A5563" stroke-width="2" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
+<polyline points="1327,295 1327,330" fill="none" stroke="#4A5563" stroke-width="2" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
+<polyline points="1112,480 1112,510" fill="none" stroke="#4A5563" stroke-width="2" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
+<polyline points="1327,480 1327,510" fill="none" stroke="#4A5563" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="1327,630 1327,660" fill="none" stroke="#4A5563" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="1010,715 620,715" fill="none" stroke="#4A5563" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="815" y="705" font-size="12.5" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="middle">decision write-back</text>
+<rect x="1010" y="820" width="420" height="100" rx="10" fill="#FFF4E2" stroke="#B26A00" stroke-width="2.0"/>
+<text x="1024" y="842" font-size="11" font-weight="bold" font-style="normal" fill="#8A5200" text-anchor="start" letter-spacing="1.2">OFFICER</text>
+<text x="1024" y="865" font-size="17" font-weight="bold" font-style="normal" fill="#1F2933" text-anchor="start">Officer UI</text>
+<text x="1024" y="888" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">SKU card, evidence drawer (the SQL is the citation),</text>
+<text x="1024" y="907" font-size="14" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">recall watch, memory, “Why was this held?”</text>
+<polyline points="1220,820 1220,770" fill="none" stroke="#4A5563" stroke-width="2" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
+<text x="1232" y="806" font-size="12.5" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">approve with a reason</text>
+<rect x="30" y="947" width="16" height="16" rx="4" fill="#E7F4F5" stroke="#0E7C86" stroke-width="2.0"/>
+<text x="54" y="960" font-size="13" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">Zetaris</text>
+<rect x="129" y="947" width="16" height="16" rx="4" fill="#F1EDFA" stroke="#6B4FBB" stroke-width="2.0"/>
+<text x="153" y="960" font-size="13" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">Meterless</text>
+<rect x="240" y="947" width="16" height="16" rx="4" fill="#F2F8E6" stroke="#76B900" stroke-width="2.0"/>
+<text x="264" y="960" font-size="13" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">NVIDIA</text>
+<rect x="333" y="947" width="16" height="16" rx="4" fill="#EAF0F7" stroke="#3B5B85" stroke-width="2.0"/>
+<text x="357" y="960" font-size="13" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">ClearShelf code, deterministic</text>
+<rect x="568" y="947" width="16" height="16" rx="4" fill="#FFF4E2" stroke="#B26A00" stroke-width="2.0"/>
+<text x="592" y="960" font-size="13" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">Officer</text>
+<rect x="667" y="947" width="16" height="16" rx="4" fill="#F5F6F8" stroke="#8A8F98" stroke-width="2.0"/>
+<text x="691" y="960" font-size="13" font-weight="normal" font-style="normal" fill="#52606D" text-anchor="start">Public source</text>
+</svg>

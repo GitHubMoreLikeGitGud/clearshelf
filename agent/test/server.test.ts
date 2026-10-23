@@ -134,6 +134,9 @@ describe("server: E10 and the signed-approval path", () => {
     const ex = await call(base, "/api/execute", { gtin: A, market: "UK", status: "CLEAR_WITH_STATEMENT", statement: "May contain: Milk.", reason: "label photo matches", contract });
     expect(ex.status).toBe(200);
     expect(ex.body.visible_in_zetaris).toBe(true);
+    // Zetaris re-checks the signed row with its own signed_clear DQ rule after the write.
+    expect(ex.body.signed_clear_dq).toMatchObject({ rule: "signed_clear", invalid: 0, row_invalid: false, error: null });
+    expect(ex.body.signed_clear_dq.sql).toContain("dq_invalid_signed_clear");
     expect(ops.decisions()[0]).toMatchObject({ status: "CLEAR_WITH_STATEMENT", actor: "officer", contract_id: contract.contractId });
     const again = await call(base, "/api/execute", { gtin: A, market: "UK", status: "CLEAR_WITH_STATEMENT", statement: "May contain: Milk.", reason: "again", contract });
     expect(again.status).toBe(403);
@@ -161,6 +164,58 @@ describe("server: E10 and the signed-approval path", () => {
     const cat = await call(base, "/api/catalogue");
     expect(cat.body.skus.find((s: any) => s.gtin === B).decisions.UK.status).toBe("HOLD");
     expect(cat.body.skus.find((s: any) => s.gtin === B).latest_runs.UK).toBe(done.result.run_id);
+  });
+
+  it("the recheck runs Zetaris's write-back DQ rules: a clearance row without a contract is flagged", async () => {
+    const { base, w } = await start();
+    await waitJob(base, (await call(base, "/api/clear", { gtin: B, market: "UK" })).body.job_id);
+    const clean = await call(base, "/api/recheck");
+    expect(clean.status).toBe(200);
+    expect(clean.body.dq.map((d: any) => [d.rule, d.invalid, d.error])).toEqual([
+      ["signed_clear", 0, null],
+      ["known_status", 0, null],
+    ]);
+    // A row written around the server (no contract), as a tampered ops file would hold it.
+    const file = join(w.opsDir, "decisions.json");
+    const doc = JSON.parse(readFileSync(file, "utf8")) as { data: Record<string, string>[] };
+    doc.data.push({ decision_id: "d-forged", gtin: A, market: "UK", status: "CLEAR", statement: "", decided_at: "2026-10-23T10:00:00+0800", decided_date: "2026-10-23", actor: "officer", contract_id: "", reason: "forged" });
+    doc.data.push({ decision_id: "d-odd", gtin: B, market: "UK", status: "RELEASE", statement: "", decided_at: "2026-10-23T10:00:01+0800", decided_date: "2026-10-23", actor: "officer", contract_id: "c-1", reason: "odd" });
+    writeFileSync(file, JSON.stringify(doc), "utf8");
+    const flagged = await call(base, "/api/recheck");
+    expect(flagged.body.dq.find((d: any) => d.rule === "signed_clear")).toMatchObject({ invalid: 1, invalid_decisions: ["d-forged"] });
+    expect(flagged.body.dq.find((d: any) => d.rule === "known_status")).toMatchObject({ invalid: 1, invalid_decisions: ["d-odd"] });
+  });
+
+  it("schedules polls only while the watch is live, one at a time", async () => {
+    const { base } = await start();
+    expect(app!.schedulePoll()).toBeNull();
+    expect((await call(base, "/api/watch/live", {})).status).toBe(200);
+    const job = app!.schedulePoll();
+    expect(job).toMatchObject({ kind: "watch.poll", input: { scheduled: true } });
+    expect(app!.schedulePoll()).toBeNull();
+    const done = await waitJob(base, job!.id);
+    expect(done.state).toBe("done");
+  });
+
+  it("accepts a UPC-A, EAN-8 or GTIN-14 at intake and clears it as its GTIN-13", async () => {
+    const { base } = await start();
+    const upc = await call(base, "/api/clear", { gtin: A.slice(1), market: "UK" });
+    expect(upc.status).toBe(202);
+    expect(upc.body).toMatchObject({ gtin: A, normalised_from: A.slice(1) });
+    const done = await waitJob(base, upc.body.job_id);
+    expect(done.result).toMatchObject({ gtin: A, market: "UK" });
+    const g14 = await call(base, "/api/clear", { gtin: `0${A}`, market: "UK" });
+    expect(g14.body).toMatchObject({ gtin: A, normalised_from: `0${A}` });
+    await waitJob(base, g14.body.job_id);
+    const plain = await call(base, "/api/clear", { gtin: A, market: "UK" });
+    expect(plain.body.gtin).toBe(A);
+    expect(plain.body.normalised_from).toBeUndefined();
+    await waitJob(base, plain.body.job_id);
+    const caseCode = await call(base, "/api/clear", { gtin: `1${A}`, market: "UK" });
+    expect(caseCode.status).toBe(400);
+    expect(caseCode.body.code).toBe("bad_gtin");
+    const badUpc = await call(base, "/api/clear", { gtin: "012345678906", market: "UK" });
+    expect(badUpc.status).toBe(400);
   });
 
   it("rejecting a proposal holds the listing with the officer's reason", async () => {

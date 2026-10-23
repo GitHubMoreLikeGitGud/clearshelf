@@ -26,7 +26,7 @@ The officer UI talks to the agent server (`agent/src/server.ts`, `npm run dev` i
 | `/api/jobs/:jobId` | `Job`: `{ id, kind, state: queued\|running\|done\|failed, input, created_at, started_at, finished_at, result, error }` |
 | `/api/approvals[?state=pending]` | `{ items: QueueItem[] }` (`agent/src/ops/queue.ts`): proposals (`kind: "proposal"`) and name-only matches (`kind: "name_match"`, with `notice_id`, `similarity`). |
 | `/api/ops/decisions` | `{ rows, current: DecisionRow[] }`, the current decision per GTIN and market. |
-| `/api/recheck` | the closed-loop recheck through Zetaris: `{ rows, sql, sql_sha256, objects, executed_at, elapsed_ms, cache_state }` |
+| `/api/recheck` | the closed-loop recheck through Zetaris: `{ rows, sql, sql_sha256, objects, executed_at, elapsed_ms, cache_state, dq }`. `dq` is Zetaris's write-back DQ on the decision table, one entry per rule (`signed_clear`, `known_status`): `{ rule, invalid, invalid_decisions, sql, sql_sha256, executed_at, elapsed_ms, error }`. |
 | `/api/join-map` | the join map through Zetaris, same envelope as `/api/recheck`; rows are `{ transform, links, in_catalogue }` per GTIN transform (orphans = links − in_catalogue). |
 | `/api/contracts/log[?limit=50]` | `{ entries }`, the contract verifier log (issued, verified, refused). |
 | `/api/watch/state` | `{ state: WatchState\|null, banner, busy }` (`agent/src/watch/recallWatch.ts`) |
@@ -66,14 +66,14 @@ The memory, why, sources and World Model endpoints answer 404 `not_wired` on a s
 
 | Path | Body | Reply |
 |---|---|---|
-| `/api/clear` | `{ gtin, market: "UK"\|"US", as_of? }` | `202 { job_id, state }`. The job result is `{ run_id, gtin, market, status, rules, banner, applied, decision_id?, contract_id?, visible_in_zetaris?, queue_id?, chunks, memory, world }`. HOLD/BLOCK are applied automatically; CLEAR proposals go to the approval queue. |
+| `/api/clear` | `{ gtin, market: "UK"\|"US", as_of? }`; `gtin` may be an EAN-13, a UPC-A (12 digits), an EAN-8 or a GTIN-14 with indicator 0 | `202 { job_id, state, gtin, normalised_from? }`: `gtin` is the GTIN-13 cleared, `normalised_from` the code as sent when it differs. A GTIN-14 with indicator 1 to 9 (a case code) or a failed check digit is `400 bad_gtin`. The job result is `{ run_id, gtin, market, status, rules, banner, applied, decision_id?, contract_id?, visible_in_zetaris?, queue_id?, chunks, memory, world }`. HOLD/BLOCK are applied automatically; CLEAR proposals go to the approval queue. |
 | `/api/approvals/sign` | `{ gtin, market, action: "CLEAR"\|"CLEAR_WITH_STATEMENT"\|"RELEASE", status?, statement?, reason, officer: "officer", queue_id? }` (`status` is required for RELEASE) | `{ contract, queue_id }`. 409 `stale_proposal` when a newer HOLD/BLOCK exists; 409 `release_blocked` with the blockers. |
-| `/api/execute` | `{ gtin, market, status, statement?, action?: "RELEASE", reason, contract }` | `{ decision_id, contract_id, row, visible_in_zetaris, closed_loop_sql, recorded }`. 403 without a valid contract (logged, nothing written). |
+| `/api/execute` | `{ gtin, market, status, statement?, action?: "RELEASE", reason, contract }` | `{ decision_id, contract_id, row, visible_in_zetaris, closed_loop_sql, signed_clear_dq, recorded }`. `signed_clear_dq` is Zetaris's `signed_clear` DQ rule run after the write (the `dq` entry shape of `/api/recheck` plus `row_invalid` for the new row), or null when the row was not yet visible in Zetaris. 403 without a valid contract (logged, nothing written). |
 | `/api/decisions` | `{ gtin, market, status: "HOLD"\|"BLOCK", reason }` | `{ decision_id, row, visible_in_zetaris, superseded }`. Any other status is refused with 403. |
 | `/api/approvals/reject` | `{ queue_id, reason, officer: "officer" }` | rejecting a proposal holds the listing; rejecting a name match dismisses it. `{ item, decision_id?, visible_in_zetaris?, superseded? }` |
 | `/api/approvals/confirm` | `{ queue_id, reason, officer: "officer" }` | confirms a name-only match: the listing is held (R2). |
 | `/api/watch/replay` | `{ as_of, scope?: "scenario"\|"all"\|"none", poll?: boolean, until? }` | `202 { job_id, banner }`; job result `{ baseline, banner, actions, poll?, notices?, poll_actions?, name_matches? }` |
-| `/api/watch/poll` | `{ until? }` | `202 { job_id }`; job result `{ sweep_id, banner, window, notices, exact_matches, name_matches, actions, recheck_rows, gaps }` |
+| `/api/watch/poll` | `{ until? }` | `202 { job_id }`; job result `{ sweep_id, banner, window, notices, exact_matches, name_matches, actions, recheck_rows, gaps }`. With `CLEARSHELF_WATCH_EVERY_MIN` set (5 or more), the server also queues this job on a timer while the watch is live (job input `scheduled: true`), never while it is replaying or already polling. |
 | `/api/watch/live` | `{ since? }` | `{ state }`, leaves replay mode |
 | `/api/memory/conflicts/resolve` | `{ id, winner, rule, reason, officer: "officer" }` | `202 { job_id }` (400 `bad_resolution` when the rule label or winner is not accepted) |
 | `/api/memory/dreams/approve`, `/reject` | `{ id, reason, officer: "officer" }` | `{ id, memory? }` |

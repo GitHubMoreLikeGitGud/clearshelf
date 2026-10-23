@@ -21,3 +21,6 @@ notes/
 # OS files
 Thumbs.db
 .DS_Store
+
+# Demo video (uploaded separately)
+*.mp4

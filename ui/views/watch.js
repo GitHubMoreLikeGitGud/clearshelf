@@ -21,6 +21,11 @@ export function sweepTime(id) {
   return `${Number(m[3])} ${mon} ${m[4]}:${m[5]}:${m[6]}`;
 }
 
+/** "rp-0850041392103-UK-20261023T114636-da74" -> "20261023T114636": decision ids sort by write time. */
+export function idTime(id) {
+  return /-(\d{8}T\d{6})-/u.exec(String(id ?? ""))?.[1] ?? "";
+}
+
 /** Pure: the join map (per GTIN transform: links, in the catalogue, orphans = links - in catalogue). */
 export function renderJoinMap(d) {
   const rows = Array.isArray(d?.rows) ? d.rows : [];
@@ -44,7 +49,20 @@ export function renderRecheck(d, cleared = null) {
   const why = typeof cleared === "number" && cleared === 0 ? ": no listing is cleared at the moment, so there is nothing to recheck" : rows.length ? "" : ": none is affected";
   return `<p class="recheck__n"><strong>${esc(fmtNum(rows.length))}${esc(of)}</strong> cleared listing${(typeof cleared === "number" ? cleared : rows.length) === 1 ? "" : "s"} now named by a recall${esc(why)}</p>
     ${rows.length ? `<div class="table-wrap"><table class="rows"><thead><tr>${cols.map((c) => `<th scope="col">${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${cols.map((c) => `<td>${esc(noAddress(String(r[c] ?? "")))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : ""}
-    <p class="small muted">Through Zetaris in ${esc(fmtMs(d?.elapsed_ms))}, cache ${esc(d?.cache_state ?? "unknown")}, run ${esc(fmtTime(d?.executed_at, true))}</p>${sqlBlock(d?.sql, "sql-recheck")}`;
+    <p class="small muted">Through Zetaris in ${esc(fmtMs(d?.elapsed_ms))}, cache ${esc(d?.cache_state ?? "unknown")}, run ${esc(fmtTime(d?.executed_at, true))}</p>${sqlBlock(d?.sql, "sql-recheck")}${renderWritebackDq(d?.dq)}`;
+}
+
+const DQ_MEANS = { signed_clear: "a clearance without a signed contract", known_status: "a status outside CLEAR, CLEAR_WITH_STATEMENT, HOLD and BLOCK" };
+
+/** Pure: Zetaris's DQ rules on the decisions it reads back (`dq` of GET /api/recheck). */
+export function renderWritebackDq(dq) {
+  if (!Array.isArray(dq) || !dq.length) return "";
+  return `<h3 class="small">Zetaris DQ on the written-back decisions</h3><ul class="claims small">${dq
+    .map(
+      (r) =>
+        `<li><code>${esc(r.rule)}</code> (flags ${esc(DQ_MEANS[r.rule] ?? r.rule)}): ${r.error ? `<span class="cross">could not run</span>: ${esc(r.error)}` : `${r.invalid ? `<span class="cross">${esc(fmtNum(r.invalid))} invalid</span>: ${(r.invalid_decisions ?? []).map((x) => `<code>${idHtml(x)}</code>`).join(", ")}` : `<span class="tick">0 invalid records</span>`}, in ${esc(fmtMs(r.elapsed_ms))}`}${sqlBlock(r.sql, `sql-dq-${r.rule}`)}</li>`,
+    )
+    .join("")}</ul>`;
 }
 
 function reviewForm(item, title, where = "sweep", name = "") {
@@ -95,7 +113,11 @@ export function renderSweep(s, pending = [], opts = {}) {
         ? `<ul class="actions">${actions
             .map((a) => {
               const cur = current?.[`${a.gtin}|${a.market}`] ?? null;
-              const superseded = cur && a.decision_id && cur.decision_id !== a.decision_id;
+              const replaced = cur && a.decision_id && cur.decision_id !== a.decision_id;
+              // Decision ids carry their write time: a current decision written before this one means
+              // the stores were reset after the sweep, not that a later decision replaced it.
+              const withdrawn = replaced && idTime(cur.decision_id) !== "" && idTime(cur.decision_id) < idTime(a.decision_id);
+              const superseded = replaced && !withdrawn;
               const plains = String(a.reason ?? "")
                 .split(/; (?=(?:R\d|ESC) )/u)
                 .map((x) => /(?:^|: )(R\d|ESC) (.*)$/u.exec(x.trim()))
@@ -105,8 +127,9 @@ export function renderSweep(s, pending = [], opts = {}) {
           <div class="action__head">${statusChip(a.status, { proposed: !a.applied })}<span class="rule-list">${(a.rules ?? []).map((r) => ruleBadge(r, { named: true })).join("")}</span><a href="#/sku/${esc(a.gtin)}/${esc(a.market)}"><strong>${esc(names[a.gtin] ?? "")}</strong> <code class="gtin">${esc(a.gtin)}</code> ${esc(a.market)}</a></div>
           <p class="small"><strong>${esc(a.trigger)}</strong></p>
           ${plains.length ? `<ul class="action__why small">${plains.map((p) => `<li>${p}</li>`).join("")}</ul>` : `<p class="small">${esc(noAddress(a.reason))}</p>`}
-          <dl class="kv kv--inline small"><div class="kv__row"><dt>Applied</dt><dd>${a.applied ? "yes, automatically" : a.queue_id ? `waiting for a signature (<code>${esc(a.queue_id)}</code>)` : "no"}</dd></div><div class="kv__row"><dt>Decision</dt><dd>${a.decision_id ? `<code>${idHtml(a.decision_id)}</code>` : "none"}</dd></div><div class="kv__row"><dt>Visible in Zetaris</dt><dd>${yes(a.visible_in_zetaris)}</dd></div></dl>
+          <dl class="kv kv--inline small"><div class="kv__row"><dt>Applied</dt><dd>${a.applied ? "yes, automatically" : a.queue_id ? `waiting for a signature (<code>${esc(a.queue_id)}</code>)` : "no"}</dd></div><div class="kv__row"><dt>Decision</dt><dd>${a.decision_id ? `<code>${idHtml(a.decision_id)}</code>` : "none"}</dd></div><div class="kv__row"><dt>Visible in Zetaris</dt><dd>${yes(a.visible_in_zetaris)}${withdrawn ? " when written" : ""}</dd></div></dl>
           ${superseded ? `<p class="small msg msg--warn">Since superseded: the current decision for this listing is ${statusChip(cur.status)} <code>${idHtml(cur.decision_id)}</code> (${esc(fmtTime(cur.decided_at))}).</p>` : ""}
+          ${withdrawn ? `<p class="small msg msg--warn">No longer in the ops store: the stores were reset after this sweep, so the current decision for this listing is the earlier ${statusChip(cur.status)} <code>${idHtml(cur.decision_id)}</code> (${esc(fmtTime(cur.decided_at))}).</p>` : ""}
           <p class="small">Evidence: ${evidenceSummary(a.run_id, a.evidence_ids)}</p>
           <div class="action__chart" data-mount="token-chart" data-run="${esc(a.run_id)}" data-gtin="${esc(a.gtin)}" data-market="${esc(a.market)}"></div>
         </li>`;

@@ -11,7 +11,7 @@ Lightning SQL for every Zetaris object ClearShelf uses, as `NN_*_create.sql` / `
 .venv/Scripts/python -m gateway.onboard --skip-exists
 ```
 
-- Per SKU: `CREATE LIGHTNING REST TABLE`, `DESCRIBE` (which optional fields the record has), `CACHE TABLE`. Statements that call Open Food Facts are at least 5 s apart (`--off-gap`, never below 2.5 s) and are retried twice on failure.
+- Per SKU: `CREATE LIGHTNING REST TABLE`, `DESCRIBE` (which optional fields the record has), `CACHE TABLE`. Statements that call Open Food Facts are 5 s apart by default (`--off-gap`, never below 2.5 s) and are retried twice on failure.
 - `product` and `declared_allergen` are generated from the manifest and the `DESCRIBE` output; a missing field becomes `CAST(NULL AS STRING)`. The fields seen are recorded in [`off_describe.json`](off_describe.json) (field names only), so `04_off_products_*.sql` and `11_clearance_usl_activate_create.sql` can be regenerated and checked by the tests.
 - An OFF table that is not cached is left out of the activation: every read of the USL would otherwise call Open Food Facts for it.
 - Recall links measured at curation time (`recalls[]` in the manifest) are written to `data/ops/recall_links.json` with `extracted_by` = `manifest`. openFDA food recall numbers start with H- or F-; both are accepted.
