@@ -104,4 +104,4 @@ UPDATE USL lightning.metastore.clearshelf.clearance_usl.market_allergen.market_c
 UPDATE USL lightning.metastore.clearshelf.clearance_usl.fda_recall.recall_number SET COLUMN DESCRIPTION FDA recall number, for example H-1328-2026.;
 UPDATE USL lightning.metastore.clearshelf.clearance_usl.fsa_alert.notation SET COLUMN DESCRIPTION FSA alert id, for example FSA-AA-48-2026.;
 UPDATE USL lightning.metastore.clearshelf.clearance_usl.recall_product_link.transform SET COLUMN DESCRIPTION How the raw code became a GTIN-13, for example upc12_pad13 or ean13_exact.;
-UPDATE USL lightning.metastore.clearshelf.clearance_usl.decision.status SET COLUMN DESCRIPTION CLEAR, CLEAR_WITH_STATEMENT, HOLD, BLOCK or RELEASE.;
+UPDATE USL lightning.metastore.clearshelf.clearance_usl.decision.status SET COLUMN DESCRIPTION CLEAR, CLEAR_WITH_STATEMENT, HOLD or BLOCK. A signed release is stored as the CLEAR or CLEAR_WITH_STATEMENT row it results in.;

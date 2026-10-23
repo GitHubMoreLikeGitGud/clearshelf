@@ -38,5 +38,5 @@ SHOW DQ INVALID RECORD signed_clear TABLE lightning.metastore.clearshelf.clearan
 SHOW DQ INVALID RECORD known_status TABLE lightning.metastore.clearshelf.clearance_usl.decision;
 
 -- DQ-equivalent plain SQL when DQ does not return within the bounded wait.
-SELECT decision_id, gtin, market, status, contract_id FROM lightning.metastore.clearshelf.clearance_usl.decision WHERE NOT (status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT','RELEASE') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0));
+SELECT decision_id, gtin, market, status, contract_id FROM lightning.metastore.clearshelf.clearance_usl.decision WHERE NOT (status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0));
 SELECT decision_id, gtin, market, status, contract_id FROM lightning.metastore.clearshelf.clearance_usl.decision WHERE NOT (status IN ('CLEAR','CLEAR_WITH_STATEMENT','HOLD','BLOCK'));

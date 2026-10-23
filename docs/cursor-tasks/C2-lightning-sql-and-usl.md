@@ -160,3 +160,8 @@ Reviewer changes, in a separate commit:
 - `dq-rules.md` lists all five Day-0 DQ results.
 
 Run against the local instance afterwards (pair 14 only): both `REGISTER DQ` statements succeeded (234 ms, 151 ms); `LIST DQ USL` returned 22 rules; write-back parity 0 = 0; the current-decision and recheck queries ran (0 rows); `RUN DQ` on both rules returned 0 / 0 / 0. No decision has been written yet, so the queries have run but their logic has not yet met a real decision row.
+
+Second review, in a separate commit:
+
+- RELEASE is not a stored status. A signed RELEASE is written back as the CLEAR or CLEAR_WITH_STATEMENT row it results in, with its `contract_id`, so the closed-loop recheck also covers released products. `signed_clear` is back to the two clearance states (the text in "Pair 14" above), the `10_` description of `decision.status` names the four decision states only, and a static test checks that RELEASE is in no pair-14 rule or query and not in the status description.
+- Live, 23 Oct: the `decision.status` description was updated (`UPDATE USL ... SET COLUMN DESCRIPTION`, 83 ms; `LOAD USL` shows the new text). `REGISTER DQ signed_clear` with the new expression was refused because a rule of that name exists (`DataQualityDuplicatedException`), and the onboard allowlist does not admit `UPDATE DQ`, so the instance keeps the first expression, with RELEASE, until it is updated there. The two differ only on a RELEASE row, which `known_status` rejects either way. `LIST DQ USL` still returns 22 rules; `RUN DQ` on both rules returns 0 / 0 / 0.

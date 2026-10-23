@@ -81,5 +81,7 @@ Registered by `14_decision_writeback_create.sql`; not in the Day-0 listing. Regi
 
 | Name | Table | Expression | Invalid means | Gateway templates |
 |---|---|---|---|---|
-| `signed_clear` | `decision` | `status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT','RELEASE') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0)` | CLEAR, CLEAR_WITH_STATEMENT or RELEASE written back without a signed `contract_id` (the safety invariant "no CLEAR or RELEASE without signed approval") | none yet |
-| `known_status` | `decision` | `status IN ('CLEAR','CLEAR_WITH_STATEMENT','HOLD','BLOCK')` | Status outside the four decision states | none yet |
+| `signed_clear` | `decision` | `status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT') OR (contract_id IS NOT NULL AND length(trim(contract_id)) > 0)` | CLEAR or CLEAR_WITH_STATEMENT written back without a signed `contract_id` (the safety invariant "no CLEAR or RELEASE without signed approval": a signed RELEASE is stored as the CLEAR or CLEAR_WITH_STATEMENT row it results in, with its `contract_id`) | none yet |
+| `known_status` | `decision` | `status IN ('CLEAR','CLEAR_WITH_STATEMENT','HOLD','BLOCK')` | Status outside the four decision states (a row written with status RELEASE included) | none yet |
+
+On the instance, `signed_clear` still holds its first registration, which also listed RELEASE (`status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT','RELEASE') OR ...`). On 23 Oct 2026 `REGISTER DQ` with the expression above was refused (`A data quality rule named "signed_clear" already exists in table "decision".`), and the onboard allowlist does not admit `UPDATE DQ`. The registered rule differs only on a RELEASE row, which `known_status` rejects in either version.

@@ -98,7 +98,7 @@ DQ_12 = {
 }
 DQ_14 = {
     "signed_clear": (
-        "status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT','RELEASE') OR "
+        "status NOT IN ('CLEAR','CLEAR_WITH_STATEMENT') OR "
         "(contract_id IS NOT NULL AND length(trim(contract_id)) > 0)"
     ),
     "known_status": "status IN ('CLEAR','CLEAR_WITH_STATEMENT','HOLD','BLOCK')",
@@ -331,6 +331,19 @@ def test_register_dq_expressions():
             assert m, f"expected REGISTER DQ in {path.name}"
             found[m.group(1)] = m.group(3).strip()
         assert found == expected, path.name
+
+
+def test_release_is_never_a_stored_status():
+    # A signed RELEASE is written back as the CLEAR or CLEAR_WITH_STATEMENT row it results in,
+    # so the rules, the recheck and the 10_ status description name only the four decision states.
+    assert "RELEASE" not in DQ_14["signed_clear"] and "RELEASE" not in DQ_14["known_status"]
+    select = split_statements((SQL_DIR / "14_decision_writeback_select.sql").read_text(encoding="utf-8"))
+    recheck = [s for s in select if "recall_product_link" in s]
+    assert len(recheck) == 1 and "d.status IN ('CLEAR','CLEAR_WITH_STATEMENT')" in recheck[0]
+    assert not any("RELEASE" in s for s in select)
+    ddl = split_statements((SQL_DIR / "10_clearance_usl_create.sql").read_text(encoding="utf-8"))
+    status = [s for s in ddl if re.match(r"^\s*UPDATE\s+USL\s+\S+\.decision\.status\s", s, re.I)]
+    assert len(status) == 1 and "RELEASE" not in status[0]
 
 
 def test_off_template_matches_sqlgen_and_committed_04():
