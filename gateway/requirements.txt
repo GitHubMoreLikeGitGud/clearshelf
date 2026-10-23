@@ -1,0 +1,5 @@
+# Zetaris gateway (Python 3.12). Pinned; tested 2026-10-23 with Java 21.
+fastapi==0.161.1
+uvicorn==0.54.0
+JayDeBeApi==1.2.3
+JPype1==1.7.1

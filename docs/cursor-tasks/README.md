@@ -1,6 +1,6 @@
 # Cursor task files
 
-ClearShelf is developed in Cursor. Larger pieces of work are written up as task files in this folder and handed to Cursor Agent, which runs headless against the repository. Each task file is a self-contained brief: Cursor Agent reads it, does the work, and runs the listed checks until they pass. The task files and their commits are the record of how Cursor was used (see `docs/how-cursor-was-used.md`).
+ClearShelf is developed in Cursor. Larger pieces of work are written up as task files in this folder and handed to Cursor Agent, which runs headless against the repository. Each task file is a self-contained brief: Cursor Agent reads it, does the work, and runs the listed checks until they pass. The task files and their commits are the record of how Cursor was used. A summary, `docs/how-cursor-was-used.md`, is planned (written in task C7; the file does not exist yet).
 
 ## File naming
 
@@ -41,17 +41,17 @@ From the repository root, in PowerShell:
 1. Before the run: commit or stash everything, so the diff afterwards shows only Cursor Agent's work.
 2. After the run: review `git status` and `git diff`. Check that only the paths under **Deliverables** changed, that the checks pass when run again by hand, and that no secret, private path or bulk source data was added.
 3. Stage the deliverables by explicit path (`git add <path> ...`, never `git add -A`) and commit with the message from the task file: `Cn: <task> (Cursor Agent)`. Plain messages only, with no trailers.
-4. Transcripts of runs are kept privately, outside the repository.
+4. Transcripts of runs are kept privately, outside the repository. Each transcript starts with the exact command line of the run (no secrets), followed by the start time, wall time and exit code.
 
 ## Task index
 
 | Task | File | Scope | Status |
 |---|---|---|---|
-| C1 | C1-zetaris-preflight.md | read-only Zetaris JDBC preflight | done 2026-10-23 |
-| C2 | C2-lightning-sql-and-usl.md | Lightning SQL create/select pairs, clearance_usl DDL and DQ rules | planned |
+| C1 | C1-zetaris-preflight.md | read-only Zetaris JDBC preflight | done 2026-10-23: preflight NOT READY on Windows (path false negatives); read-only JDBC confirmed directly (see the run record) |
+| C2 | C2-lightning-sql-and-usl.md | review of the Lightning SQL pairs and manifest, static SQL tests | planned |
 | C3 | C3-lexicon-and-verifiers.md | multilingual lexicon, jurisdiction, GTIN normaliser, claim tester and tests | planned |
 | C4 | C4-ui-screens.md | the four UI screens | planned |
 | C5 | C5-evidence-drawer-and-ledger.md | evidence drawer and ledger trace view | planned |
 | C6 | C6-eval-runner.md | eval runner and report | planned |
 | C7 | C7-readme-drafts.md | README and how-cursor-was-used drafts | planned |
-| C8 | C8-rehearsal-fixes.md | interactive fixes during rehearsal | planned |
+| C8 | C8-rehearsal-fixes.md | interactive fixes during rehearsal | planned (file not yet written) |

@@ -1,0 +1,5483 @@
+{
+  "schema": "clearshelf.manifest.v1",
+  "generated_at": "2026-10-23T00:50:37.800Z",
+  "generator": "scripts/curate-manifest.ts build",
+  "notes": [
+    "Real public products only. GTINs are GTIN-13 (UPC-A padded with a leading zero).",
+    "No Open Food Facts ingredient text is stored here: only tags, flags and a sha256 prefix of the text seen at curation time.",
+    "product_truth = label_text adjudicated, then raised to 'contains' by openFDA undeclared-allergen recalls (R-RECALL).",
+    "label_text = what the printed label text declares under the documented rules; score extraction against this.",
+    "role 'eval_only' SKUs never enter the demo catalogue: warm-up and onboarding read role 'demo' only; the eval runner registers or replays eval-only SKUs itself.",
+    "recalls[] dates are openFDA's, as YYYY-MM-DD: report_date, recall_initiation_date and termination_date (null until terminated). FDA recall numbers start with H- or F-.",
+    "Target market(s) for the intake manifest; the jurisdiction module maps groups to market codes (UK:<group>, US:<group>)."
+  ],
+  "sources": {
+    "openfda": {
+      "url": "https://api.fda.gov/food/enforcement.json?search=reason_for_recall:undeclared&sort=report_date:desc&limit=1000",
+      "fetched_meta": {
+        "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+        "terms": "https://open.fda.gov/terms/",
+        "license": "https://open.fda.gov/license/",
+        "last_updated": "2026-10-14",
+        "results": {
+          "skip": 0,
+          "limit": 1000,
+          "total": 6325
+        }
+      },
+      "licence": "public domain / CC0; no FDA endorsement"
+    },
+    "open_food_facts": {
+      "product_endpoint": "https://world.openfoodfacts.org/api/v2/product/<gtin13>.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+      "search": "https://search.openfoodfacts.org/search (dev-time curation only)",
+      "licence": "ODbL 1.0"
+    },
+    "fsa": {
+      "url": "https://data.food.gov.uk/food-alerts/id?type=AA&_sort=-created&_limit=200",
+      "licence": "Open Government Licence v3.0"
+    }
+  },
+  "label_rules": {
+    "version": "2026-10-23.1",
+    "scope": "Reference labels per allergen group (contains | may_contain | none; 'unscored' when the rules disagree). They are derived only from recall texts and the documented rules below, never typed by hand.",
+    "groups": [
+      "milk",
+      "egg",
+      "fish",
+      "crustacean",
+      "mollusc",
+      "tree_nut",
+      "peanut",
+      "gluten_cereal",
+      "wheat",
+      "soy",
+      "sesame",
+      "celery",
+      "mustard",
+      "lupin",
+      "sulphite"
+    ],
+    "recall_rules": {
+      "R-RECALL": "An openFDA enforcement report whose reason_for_recall names an allergen as undeclared makes that group 'contains' in product_truth (regulator or lab ground truth). Matching uses RECALL_TERMS in scripts/curate-manifest.ts on the reason text from its first 'undeclared' onwards (whole reason if that finds nothing); plant milks and cocoa butter are not milk.",
+      "R-RECALL-COCONUT": "A recall reason whose only tree-nut term is coconut is recorded as a rule-against-rule conflict and does not set tree_nut: coconut is not in FDA Q&A Edition 5 Table 1 (Jan 2025) and is not an Annex II nut."
+    },
+    "text_rules": {
+      "R-NAME": "An ingredient name in the label text that the lexicon maps to a group (EN/DE/FR/IT/ES; statutory definitions: Reg. (EU) 1169/2011 Annex II, FD&C Act 201(qq), FDA Q&A Ed. 5) makes it 'contains'. Trap phrases are masked first per group (e.g. cocoa butter for milk, coconut and nutmeg for tree_nut, buckwheat for gluten).",
+      "R-EMPH": "An allergen emphasised in the ingredient list (Reg. (EU) 1169/2011 Art. 21(1)(b); rendered by Open Food Facts as _word_) makes it 'contains'.",
+      "R-CONTAINS": "A 'Contains:' statement (FD&C Act 403(w)(1)(A)) or its DE/FR/IT/ES equivalent makes the named groups 'contains'.",
+      "R-PREC": "A group named only inside a precautionary clause ('may contain', 'traces of', 'kann Spuren ... enthalten', 'peut contenir', 'può contenere', 'puede contener', 'made in a factory that...') is 'may_contain'.",
+      "R-WHEAT-IS-GLUTEN": "Wheat 'contains' implies gluten_cereal 'contains' (Annex II item 1 names wheat as a cereal containing gluten).",
+      "boilerplate": "Allergy-advice boilerplate (UK lines that refer the reader to the allergens printed in bold) and free-from claims (e.g. gluten-free) are masked before matching."
+    },
+    "second_pass": "Pass B maps the Open Food Facts allergens_tags (contains) and traces_tags (may_contain); it has no wheat signal.",
+    "adjudication": {
+      "ADJ-AGREE": "Pass A and pass B agree.",
+      "ADJ-TEXT-ONLY": "Wheat: pass B has no wheat signal, so pass A stands.",
+      "ADJ-TEXT-DECLARED": "Text says contains via emphasis or a Contains statement, tags disagree: the label declaration governs.",
+      "ADJ-TEXT-NAME": "Text says contains via an ingredient name, tags disagree: the ingredient list governs.",
+      "ADJ-TEXT-PRECAUTION": "Text names the group only precautionarily, tags disagree: the label wording governs (may_contain).",
+      "ADJ-TRAP": "Tags say contains, the text names nothing for the group but holds a documented trap word for it (e.g. cocoa butter for milk): none.",
+      "ADJ-DISPUTED": "Tags say contains or may_contain and the text rules find nothing explainable (e.g. a precautionary statement printed outside the ingredient text): the group is unscored."
+    },
+    "limits": [
+      "Pass A is a rule-based reader; a lexicon gap shows up as ADJ-DISPUTED (unscored), not as a silent 'none'.",
+      "Recall-derived positives describe the product, not its printed label: an undeclared allergen is by definition absent from the label text, so extraction is scored against label_text and the recall check is scored separately.",
+      "Open Food Facts text is crowd-sourced and may lag the physical label."
+    ]
+  },
+  "counts": {
+    "total": 40,
+    "demo": 30,
+    "eval_only": 10,
+    "with_label_text": 37,
+    "recall_matched": 18,
+    "not_found_in_off": []
+  },
+  "scenario_picks": {
+    "E1": [
+      "0816929000119"
+    ],
+    "E2": [
+      "0850041392103"
+    ],
+    "AS_OF_REPLAY": [
+      "0850041392103"
+    ],
+    "E3": [
+      "4056489125846"
+    ],
+    "E4": [
+      "4056489125846"
+    ],
+    "E5": [
+      "5000169566558"
+    ],
+    "E6": [
+      "5059319005492"
+    ],
+    "E7": [
+      "4006894512205"
+    ],
+    "E9_NAME_MATCH": [
+      "5056315500204"
+    ]
+  },
+  "scenario_notes": {
+    "AS_OF_REPLAY": "The curated page holds 10 openFDA reports dated after 2026-10-10 (all reported 2026-10-14). Only H-0011-2027 (Donutful) carries a UPC that resolves in Open Food Facts; the UPCs of H-0015-2027 (Queso Palmita, 0094922980045), H-0016-2027 and the four Saint Francis Apizza reports (H-0021..0024-2027) return 404, and H-0009, H-0017 and H-0025-2027 yield no check-digit-valid UPC. No SKU cleared before its recall exists, so the spec default (Donutful: HOLD on has_ingredients, then BLOCK after the poll) stands.",
+    "E9": "FSA-AA-48-2026 (Full On Flapjacks) has no Open Food Facts product (search.openfoodfacts.org brand query returned 0 hits), so its replay ends in 'no catalogue match' with the notice ingested. The name-only review path is shown by FSA-AA-45-2026 (Skinny Crunch, created 2026-10-13, inside the replay window) against 5056315500204, and by FSA-AA-44-2026 (Lambertz, 2026-10-03) against the two Lambertz SKUs.",
+    "E8": "Synthetic injection fixtures are eval-only and live with the guard tests, not in this manifest.",
+    "E5": "Derived from label_text for 5000169566558: contains [], may_contain [milk, tree_nut, peanut]. The precautionary statement names more groups than spec section 9.1's \"May contain: milk\", so the expected UK statement must list every may_contain group."
+  },
+  "curation_stats": {
+    "openfda_page": {
+      "records": 1000,
+      "first_report_date": "2023-12-20",
+      "last_report_date": "2026-10-14",
+      "total_matching": 6325
+    },
+    "records_with_upc_keyword": 533,
+    "records_with_check_digit_valid_upc": 442,
+    "reason_types": {
+      "undeclared_allergen": 842,
+      "other": 158
+    },
+    "unique_gtins": 490,
+    "unique_gtins_scannable": 480,
+    "transforms": {
+      "upc12_pad13": 627,
+      "ean13": 65,
+      "gtin14_strip0": 9,
+      "gtin14_case": 10,
+      "upc11_pad13": 6
+    },
+    "off_product_lookups": {
+      "scanned": 480,
+      "found": 157,
+      "with_ingredients_text": 62,
+      "with_english_text": 58,
+      "allergen_recall_found": 133,
+      "allergen_recall_with_text": 53
+    },
+    "label": "measured"
+  },
+  "skus": [
+    {
+      "gtin": "0816929000119",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [
+        "E1"
+      ],
+      "why": "FDA H-1328-2026 (milk, Class I, Terminated) vs OFF vegan label and no allergens; no ingredient text in OFF.",
+      "display_name": "Plant-Based Puffs",
+      "brand": null,
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0816929000119.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:49:30.177Z",
+        "last_modified_t": 1775064123,
+        "lang": "fr",
+        "has_ingredients_text": false,
+        "has_ingredients_text_en": false,
+        "ingredients_sha256_12": null,
+        "allergens_tags": [],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegan",
+          "en:vegan-action"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-1328-2026",
+          "report_date": "2026-09-09",
+          "recall_initiation_date": "2026-08-05",
+          "termination_date": "2026-09-15",
+          "classification": "Class I",
+          "status": "Terminated",
+          "firm": "Marina Del Rey Foods inc.",
+          "reason": "Product tested positive for undeclared milk.",
+          "reason_groups": [
+            "milk"
+          ],
+          "upc_as_published": "816929000119",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "unscored",
+          "fish": "unscored",
+          "crustacean": "unscored",
+          "mollusc": "unscored",
+          "tree_nut": "unscored",
+          "peanut": "unscored",
+          "gluten_cereal": "unscored",
+          "wheat": "unscored",
+          "soy": "unscored",
+          "sesame": "unscored",
+          "celery": "unscored",
+          "mustard": "unscored",
+          "lupin": "unscored",
+          "sulphite": "unscored"
+        },
+        "label_text": null,
+        "basis": {
+          "milk": [
+            "NO-LABEL-TEXT",
+            "R-RECALL:H-1328-2026"
+          ],
+          "egg": [
+            "NO-LABEL-TEXT"
+          ],
+          "fish": [
+            "NO-LABEL-TEXT"
+          ],
+          "crustacean": [
+            "NO-LABEL-TEXT"
+          ],
+          "mollusc": [
+            "NO-LABEL-TEXT"
+          ],
+          "tree_nut": [
+            "NO-LABEL-TEXT"
+          ],
+          "peanut": [
+            "NO-LABEL-TEXT"
+          ],
+          "gluten_cereal": [
+            "NO-LABEL-TEXT"
+          ],
+          "wheat": [
+            "NO-LABEL-TEXT"
+          ],
+          "soy": [
+            "NO-LABEL-TEXT"
+          ],
+          "sesame": [
+            "NO-LABEL-TEXT"
+          ],
+          "celery": [
+            "NO-LABEL-TEXT"
+          ],
+          "mustard": [
+            "NO-LABEL-TEXT"
+          ],
+          "lupin": [
+            "NO-LABEL-TEXT"
+          ],
+          "sulphite": [
+            "NO-LABEL-TEXT"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 0,
+        "in_extraction_eval": false
+      }
+    },
+    {
+      "gtin": "0850041392103",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [
+        "E2",
+        "AS_OF_REPLAY"
+      ],
+      "why": "FDA H-0011-2027 (milk, Class I, Ongoing, reported 2026-10-14, after the 2026-10-10 as-of date); no ingredient text in OFF.",
+      "display_name": "Chocolate Dipped Vanilla Cake",
+      "brand": "Donutful",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0850041392103.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:49:32.760Z",
+        "last_modified_t": 1750170616,
+        "lang": "en",
+        "has_ingredients_text": false,
+        "has_ingredients_text_en": false,
+        "ingredients_sha256_12": null,
+        "allergens_tags": [],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-0011-2027",
+          "report_date": "2026-10-14",
+          "recall_initiation_date": "2026-08-17",
+          "termination_date": null,
+          "classification": "Class I",
+          "status": "Ongoing",
+          "firm": "The Better Bakehouse Snack Company",
+          "reason": "Undeclared Milk.",
+          "reason_groups": [
+            "milk"
+          ],
+          "upc_as_published": "850041392103",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "unscored",
+          "fish": "unscored",
+          "crustacean": "unscored",
+          "mollusc": "unscored",
+          "tree_nut": "unscored",
+          "peanut": "unscored",
+          "gluten_cereal": "unscored",
+          "wheat": "unscored",
+          "soy": "unscored",
+          "sesame": "unscored",
+          "celery": "unscored",
+          "mustard": "unscored",
+          "lupin": "unscored",
+          "sulphite": "unscored"
+        },
+        "label_text": null,
+        "basis": {
+          "milk": [
+            "NO-LABEL-TEXT",
+            "R-RECALL:H-0011-2027"
+          ],
+          "egg": [
+            "NO-LABEL-TEXT"
+          ],
+          "fish": [
+            "NO-LABEL-TEXT"
+          ],
+          "crustacean": [
+            "NO-LABEL-TEXT"
+          ],
+          "mollusc": [
+            "NO-LABEL-TEXT"
+          ],
+          "tree_nut": [
+            "NO-LABEL-TEXT"
+          ],
+          "peanut": [
+            "NO-LABEL-TEXT"
+          ],
+          "gluten_cereal": [
+            "NO-LABEL-TEXT"
+          ],
+          "wheat": [
+            "NO-LABEL-TEXT"
+          ],
+          "soy": [
+            "NO-LABEL-TEXT"
+          ],
+          "sesame": [
+            "NO-LABEL-TEXT"
+          ],
+          "celery": [
+            "NO-LABEL-TEXT"
+          ],
+          "mustard": [
+            "NO-LABEL-TEXT"
+          ],
+          "lupin": [
+            "NO-LABEL-TEXT"
+          ],
+          "sulphite": [
+            "NO-LABEL-TEXT"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 0,
+        "in_extraction_eval": false
+      }
+    },
+    {
+      "gtin": "4056489125846",
+      "role": "demo",
+      "markets": [
+        "UK",
+        "US"
+      ],
+      "scenarios": [
+        "E3",
+        "E4"
+      ],
+      "why": "FDA H-1275-2026 (Class II, Ongoing, US-only distribution): German-language label, 'tree nut (coconut)' in the recall text, OFF tag de:blé.",
+      "display_name": "Aprikosenkekse mit Kokosraspeln",
+      "brand": "Eridanous",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/4056489125846.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:49:38.774Z",
+        "last_modified_t": 1789056456,
+        "lang": "de",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": false,
+        "ingredients_sha256_12": "9019c5283321",
+        "allergens_tags": [
+          "en:gluten",
+          "en:milk",
+          "en:soybeans",
+          "de:blé"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [
+          "de:blé"
+        ],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-1275-2026",
+          "report_date": "2026-09-02",
+          "recall_initiation_date": "2026-07-22",
+          "termination_date": null,
+          "classification": "Class II",
+          "status": "Ongoing",
+          "firm": "Lidl US TRADING",
+          "reason": "The firm discovered that certain units shipped to the U.S. retail stores only has \"foreign languages\" on the label. Product has undeclared wheat, soy, milk, eggs and tree nut (coconut).",
+          "reason_groups": [
+            "milk",
+            "egg",
+            "tree_nut",
+            "wheat",
+            "gluten_cereal",
+            "soy"
+          ],
+          "upc_as_published": "4056489125846",
+          "transform": "ean13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:H-1275-2026"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-RECALL:H-1275-2026"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:H-1275-2026"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME",
+            "R-RECALL:H-1275-2026"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:H-1275-2026"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "coconut"
+        ],
+        "rule_conflicts": [
+          {
+            "group": "tree_nut",
+            "source": "fda:H-1275-2026",
+            "source_says": "tree nut (coconut)",
+            "rule": "FDA Q&A Edition 5 (Jan 2025) Table 1 omits coconut; Reg. (EU) 1169/2011 Annex II item 8 does not list coconut",
+            "effect": "tree_nut not set from this recall; coconut stays an ingredient-list fact"
+          }
+        ],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "4056489125839",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Sibling SKU of H-1275 under H-1274-2026: same recall reason, German-only label.",
+      "display_name": "Aprikosenkekse mit Schokostreuseln",
+      "brand": "Eridanous",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/4056489125839.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:49:35.771Z",
+        "last_modified_t": 1774505358,
+        "lang": "de",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": false,
+        "ingredients_sha256_12": "2189ae10c532",
+        "allergens_tags": [
+          "en:eggs",
+          "en:gluten",
+          "en:milk",
+          "en:soybeans"
+        ],
+        "traces_tags": [
+          "en:lupin",
+          "en:mustard",
+          "en:nuts",
+          "en:peanuts",
+          "en:sesame-seeds",
+          "en:sulphur-dioxide-and-sulphites"
+        ],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-1274-2026",
+          "report_date": "2026-09-02",
+          "recall_initiation_date": "2026-07-22",
+          "termination_date": null,
+          "classification": "Class II",
+          "status": "Ongoing",
+          "firm": "Lidl US TRADING",
+          "reason": "The firm discovered that certain units shipped to the U.S. retail stores only has \"foreign languages\" on the label. Product has undeclared wheat, soy, milk, eggs and tree nut (coconut).",
+          "reason_groups": [
+            "milk",
+            "egg",
+            "tree_nut",
+            "wheat",
+            "gluten_cereal",
+            "soy"
+          ],
+          "upc_as_published": "4056489125839",
+          "transform": "ean13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "may_contain",
+          "lupin": "may_contain",
+          "sulphite": "may_contain"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "may_contain",
+          "lupin": "may_contain",
+          "sulphite": "may_contain"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:H-1274-2026"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:H-1274-2026"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "peanut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:H-1274-2026"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME",
+            "R-RECALL:H-1274-2026"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:H-1274-2026"
+          ],
+          "sesame": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "lupin": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "sulphite": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter"
+        ],
+        "rule_conflicts": [
+          {
+            "group": "tree_nut",
+            "source": "fda:H-1274-2026",
+            "source_says": "tree nut (coconut)",
+            "rule": "FDA Q&A Edition 5 (Jan 2025) Table 1 omits coconut; Reg. (EU) 1169/2011 Annex II item 8 does not list coconut",
+            "effect": "tree_nut not set from this recall; coconut stays an ingredient-list fact"
+          }
+        ],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5000169566558",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [
+        "E5"
+      ],
+      "why": "UK dark chocolate 90%: cocoa butter among the ingredients and a precautionary statement naming milk (also peanuts and nuts); no contains-level allergen.",
+      "display_name": "Dark Chocolate",
+      "brand": "Waitrose",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5000169566558.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:00:00.191Z",
+        "last_modified_t": 1777320771,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "70abc86fb7b7",
+        "allergens_tags": [],
+        "traces_tags": [
+          "en:milk",
+          "en:nuts"
+        ],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "may_contain",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "may_contain",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "peanut": [
+            "ADJ-TEXT-PRECAUTION",
+            "R-PREC"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5059319005492",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [
+        "E6"
+      ],
+      "why": "OFF vegan label with no ingredient text (state ingredients-to-be-completed); not in any recall.",
+      "display_name": "Kellogs crunchy nut granola red berries",
+      "brand": "Kellogg's",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5059319005492.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:59:03.668Z",
+        "last_modified_t": 1787383517,
+        "lang": "en",
+        "has_ingredients_text": false,
+        "has_ingredients_text_en": false,
+        "ingredients_sha256_12": null,
+        "allergens_tags": [],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegan"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "unscored",
+          "egg": "unscored",
+          "fish": "unscored",
+          "crustacean": "unscored",
+          "mollusc": "unscored",
+          "tree_nut": "unscored",
+          "peanut": "unscored",
+          "gluten_cereal": "unscored",
+          "wheat": "unscored",
+          "soy": "unscored",
+          "sesame": "unscored",
+          "celery": "unscored",
+          "mustard": "unscored",
+          "lupin": "unscored",
+          "sulphite": "unscored"
+        },
+        "label_text": null,
+        "basis": {
+          "milk": [
+            "NO-LABEL-TEXT"
+          ],
+          "egg": [
+            "NO-LABEL-TEXT"
+          ],
+          "fish": [
+            "NO-LABEL-TEXT"
+          ],
+          "crustacean": [
+            "NO-LABEL-TEXT"
+          ],
+          "mollusc": [
+            "NO-LABEL-TEXT"
+          ],
+          "tree_nut": [
+            "NO-LABEL-TEXT"
+          ],
+          "peanut": [
+            "NO-LABEL-TEXT"
+          ],
+          "gluten_cereal": [
+            "NO-LABEL-TEXT"
+          ],
+          "wheat": [
+            "NO-LABEL-TEXT"
+          ],
+          "soy": [
+            "NO-LABEL-TEXT"
+          ],
+          "sesame": [
+            "NO-LABEL-TEXT"
+          ],
+          "celery": [
+            "NO-LABEL-TEXT"
+          ],
+          "mustard": [
+            "NO-LABEL-TEXT"
+          ],
+          "lupin": [
+            "NO-LABEL-TEXT"
+          ],
+          "sulphite": [
+            "NO-LABEL-TEXT"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 0,
+        "in_extraction_eval": false
+      }
+    },
+    {
+      "gtin": "4006894512205",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [
+        "E7"
+      ],
+      "why": "German-only biscuit label (no English text) with wheat, milk, hazelnut, egg, soya; brand Lambertz matches FSA-AA-44-2026 (allergens not declared in English).",
+      "display_name": "Composition",
+      "brand": "Lambertz",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/4006894512205.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:57:13.527Z",
+        "last_modified_t": 1774463255,
+        "lang": "de",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": false,
+        "ingredients_sha256_12": "b23eb9ecc86e",
+        "allergens_tags": [
+          "en:eggs",
+          "en:gluten",
+          "en:milk",
+          "en:nuts"
+        ],
+        "traces_tags": [
+          "en:lupin",
+          "en:nuts",
+          "en:peanuts",
+          "en:sesame-seeds"
+        ],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "may_contain",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "may_contain",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "may_contain",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "may_contain",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-PREC"
+          ],
+          "peanut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-TEXT-NAME",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter",
+          "coconut"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5056315500204",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [
+        "E9_NAME_MATCH"
+      ],
+      "why": "Brand Skinny Crunch matches FSA-AA-45-2026 (Halo Foods, Skinny Crunch Light Peanut Butter Bars, created 2026-10-13, inside the replay window). Different product: name-only review item, never an auto-HOLD.",
+      "display_name": "Skinny Crunch Chololate Orange Snack Bar",
+      "brand": "Skinny crunch",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5056315500204.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:57:18.543Z",
+        "last_modified_t": 1774632083,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "2c445b65c8c2",
+        "allergens_tags": [
+          "en:gluten",
+          "en:milk",
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "shea"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5000128691369",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "UK dark chocolate: cocoa butter plus a precautionary allergy-advice statement naming nuts, peanuts and milk.",
+      "display_name": "Dark chocolate",
+      "brand": "Co Op",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5000128691369.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:00:05.141Z",
+        "last_modified_t": 1774621913,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "2a0a3c360b0d",
+        "allergens_tags": [],
+        "traces_tags": [
+          "en:milk",
+          "en:peanuts"
+        ],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "may_contain",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "may_contain",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-TEXT-PRECAUTION",
+            "R-PREC"
+          ],
+          "peanut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "8717677339990",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Dark chocolate 70%: soya lecithin (contains) plus a precautionary statement naming milk among five groups.",
+      "display_name": "Dark chocolate 70%",
+      "brand": "Tony's Chocolonely",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/8717677339990.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:00:20.164Z",
+        "last_modified_t": 1774624882,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "dea254469a0f",
+        "allergens_tags": [
+          "en:soybeans"
+        ],
+        "traces_tags": [
+          "en:eggs",
+          "en:gluten",
+          "en:milk",
+          "en:nuts",
+          "en:peanuts"
+        ],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegan"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "may_contain",
+          "egg": "may_contain",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "may_contain",
+          "wheat": "none",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "may_contain",
+          "egg": "may_contain",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "may_contain",
+          "wheat": "none",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "peanut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "4006894554106",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Second Lambertz SKU (German-only label, coconut trap, FSA-AA-44 brand match).",
+      "display_name": "Coco-Fleur",
+      "brand": "Lambertz",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/4006894554106.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:57:03.545Z",
+        "last_modified_t": 1778608784,
+        "lang": "de",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": false,
+        "ingredients_sha256_12": "f0f5186d2d26",
+        "allergens_tags": [
+          "en:eggs",
+          "en:gluten",
+          "en:milk",
+          "en:soybeans"
+        ],
+        "traces_tags": [
+          "en:lupin",
+          "en:nuts",
+          "en:peanuts",
+          "en:sesame-seeds"
+        ],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "may_contain",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "may_contain",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "peanut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter",
+          "coconut"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5060100601861",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Trap: coconut milk drink sold as 'milk'; no statutory allergen in the label text.",
+      "display_name": "No Sugar Milk",
+      "brand": "koko",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5060100601861.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:57:43.583Z",
+        "last_modified_t": 1774620365,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "7f196edba32a",
+        "allergens_tags": [],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegan",
+          "en:the-vegan-society"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "coconut",
+          "coconut_milk"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "4088600526065",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Trap: buckwheat in a gluten-free-labelled rice cake; no statutory allergen in the label text.",
+      "display_name": "Multigrain Rice Cakes",
+      "brand": "Savour Bakes",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/4088600526065.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:58:08.586Z",
+        "last_modified_t": 1774642916,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "e1df37cc1354",
+        "allergens_tags": [],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:no-gluten",
+          "en:vegan"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "buckwheat"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5029396003346",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Trap: cream of tartar in a ginger beer; no statutory allergen in the label text.",
+      "display_name": "Fentimans Ginger Beer",
+      "brand": "Fentimans",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5029396003346.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:58:33.694Z",
+        "last_modified_t": 1774645899,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "d3eb0a4261c2",
+        "allergens_tags": [],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cream_of_tartar"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5015285811734",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Trap: 'Egg replacer' with cream of tartar and no egg; gluten-free label.",
+      "display_name": "Egg replacer",
+      "brand": "Free and Easy",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5015285811734.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:58:48.677Z",
+        "last_modified_t": 1774619640,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "cc67231d7bab",
+        "allergens_tags": [],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:no-gluten",
+          "en:vegan"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cream_of_tartar"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5060132285190",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Traps: shea-nut butter and coconut-milk powder next to real peanut, cashew and hazelnut.",
+      "display_name": "Chocca chocolate spread",
+      "brand": "Meridian",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5060132285190.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:57:48.562Z",
+        "last_modified_t": 1774644878,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "00e7d499ab89",
+        "allergens_tags": [
+          "en:nuts",
+          "en:peanuts"
+        ],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegan"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "contains",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "contains",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "peanut": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "coconut",
+          "coconut_milk",
+          "shea"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5050974505259",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Trap: buckwheat next to real rye and sesame (upper-case emphasis).",
+      "display_name": "Multigrain Crispbread",
+      "brand": "RYVITA",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5050974505259.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:57:53.573Z",
+        "last_modified_t": 1787676038,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "e73f7c458b51",
+        "allergens_tags": [
+          "en:gluten",
+          "en:sesame-seeds",
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "none",
+          "soy": "unscored",
+          "sesame": "contains",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "none",
+          "soy": "unscored",
+          "sesame": "contains",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-DISPUTED"
+          ],
+          "sesame": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "buckwheat"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 14,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "8076809580748",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Italian biscuit (burro di cacao trap, emphasis absent) with an English text also on file.",
+      "display_name": "Biscotti Pan di Stelle",
+      "brand": "Barilla G. e R. Fratelli SpA",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/8076809580748.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:56:28.731Z",
+        "last_modified_t": 1791364174,
+        "lang": "it",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "8a0c1ff938b5",
+        "allergens_tags": [
+          "en:eggs",
+          "en:gluten",
+          "en:milk",
+          "en:mustard",
+          "en:nuts",
+          "en:sesame-seeds",
+          "en:soybeans"
+        ],
+        "traces_tags": [
+          "en:mustard",
+          "en:nuts",
+          "en:sesame-seeds"
+        ],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "may_contain",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "may_contain",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-PREC"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-TEXT-PRECAUTION",
+            "R-PREC"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-TEXT-PRECAUTION",
+            "R-PREC"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "8000500310427",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "French label with upper-case emphasis (NOISETTES, LAIT, SOJA, FROMENT) and an English text on file.",
+      "display_name": "Biscuits NUTELLA Biscuits Noisettes et Cacao x22 - 304g",
+      "brand": "Ferrero Technical Services Srl",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/8000500310427.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:56:03.516Z",
+        "last_modified_t": 1791077645,
+        "lang": "fr",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "af399c189d3e",
+        "allergens_tags": [
+          "en:gluten",
+          "en:milk",
+          "en:nuts",
+          "en:soybeans"
+        ],
+        "traces_tags": [
+          "en:mustard"
+        ],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:no-gluten"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "unscored",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "unscored",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-DISPUTED"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 14,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "7622210445346",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Trap: crushed buckwheat inside a wheat/oat/barley/spelt cereal list.",
+      "display_name": "Soft Bakes Choc Chip",
+      "brand": "Belvita",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/7622210445346.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:58:03.583Z",
+        "last_modified_t": 1773486912,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "c7c8579548af",
+        "allergens_tags": [
+          "en:gluten",
+          "en:milk",
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "buckwheat"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0099482502065",
+      "role": "demo",
+      "markets": [
+        "UK",
+        "US"
+      ],
+      "scenarios": [],
+      "why": "FDA H-0941-2026: undeclared shrimp in a minestrone soup, Class I, Ongoing, US distribution only; label text has no crustacean.",
+      "display_name": "Minestrone Soup",
+      "brand": "Whole Foods Market",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0099482502065.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:53:51.030Z",
+        "last_modified_t": 1787786638,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "c22dbd3a29c2",
+        "allergens_tags": [
+          "en:celery",
+          "en:eggs",
+          "en:gluten",
+          "en:milk"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-0941-2026",
+          "report_date": "2026-06-17",
+          "recall_initiation_date": "2026-05-19",
+          "termination_date": null,
+          "classification": "Class I",
+          "status": "Ongoing",
+          "firm": "Kettle Cuisine, LLC",
+          "reason": "Contains undeclared allergen (shrimp).",
+          "reason_groups": [
+            "crustacean"
+          ],
+          "upc_as_published": "099482502065",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "contains",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "contains",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "contains",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE",
+            "R-RECALL:H-0941-2026"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0810001560768",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA H-0903-2026: undeclared egg, Class I, Terminated, reported 2026-06-10; OFF vegan label (claim contradicted by the recall).",
+      "display_name": "Sweet potato pancake mix",
+      "brand": "Birch benders",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0810001560768.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:54:19.948Z",
+        "last_modified_t": 1748689595,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "9f68415791d1",
+        "allergens_tags": [
+          "en:nuts"
+        ],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:no-gluten",
+          "en:vegan"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-0903-2026",
+          "report_date": "2026-06-10",
+          "recall_initiation_date": "2026-05-20",
+          "termination_date": "2026-07-31",
+          "classification": "Class I",
+          "status": "Terminated",
+          "firm": "Hometown Food Company",
+          "reason": "Undeclared egg",
+          "reason_groups": [
+            "egg"
+          ],
+          "upc_as_published": "8 1000156076 8",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "none",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-RECALL:H-0903-2026"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-CONTAINS",
+            "R-NAME"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0850031990074",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA H-0027-2026: undeclared milk, Class I, Completed, reported 2025-10-01; OFF vegan label (claim contradicted by the recall).",
+      "display_name": "Vegan Is Believin' Plant-Based White Cheddar with Spirals",
+      "brand": "Goodles",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0850031990074.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:10:35.394Z",
+        "last_modified_t": 1780968623,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "cea1aede6177",
+        "allergens_tags": [
+          "en:gluten",
+          "en:milk",
+          "en:nuts"
+        ],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegan"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-0027-2026",
+          "report_date": "2025-10-01",
+          "recall_initiation_date": "2025-09-10",
+          "termination_date": null,
+          "classification": "Class I",
+          "status": "Completed",
+          "firm": "Gooder Foods, Inc.",
+          "reason": "Undeclared allergens (milk).",
+          "reason_groups": [
+            "milk"
+          ],
+          "upc_as_published": "850031990074",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:H-0027-2026"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-EMPH",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-EMPH",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "plant_milk",
+          "lactic_acid",
+          "maltodextrin"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0044000882105",
+      "role": "demo",
+      "markets": [
+        "UK",
+        "US"
+      ],
+      "scenarios": [],
+      "why": "FDA H-0326-2025: undeclared peanut due to mispackaging, Class II, Ongoing; peanut already named on this label.",
+      "display_name": "Ritz Cracker Sandwiche Peanut Butter",
+      "brand": "Ritz",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0044000882105.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:14:10.717Z",
+        "last_modified_t": 1777251857,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "70c3e2d9c136",
+        "allergens_tags": [
+          "en:gluten",
+          "en:peanuts",
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-0326-2025",
+          "report_date": "2025-07-30",
+          "recall_initiation_date": "2025-07-08",
+          "termination_date": null,
+          "classification": "Class II",
+          "status": "Ongoing",
+          "firm": "Mondelez Global Llc",
+          "reason": "Undeclared allergens (Peanut) due to mispackaging",
+          "reason_groups": [
+            "peanut"
+          ],
+          "upc_as_published": "0 44000 88210 5",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "contains",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "contains",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:H-0326-2025"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0024739120006",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA H-0063-2025: undeclared milk, Class I, Ongoing; label text has wheat and soy but no milk.",
+      "display_name": "Mix oven style",
+      "brand": null,
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0024739120006.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:16:00.879Z",
+        "last_modified_t": 1662044267,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "24f7b412f993",
+        "allergens_tags": [
+          "en:gluten",
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-0063-2025",
+          "report_date": "2025-07-02",
+          "recall_initiation_date": "2025-05-09",
+          "termination_date": null,
+          "classification": "Class I",
+          "status": "Ongoing",
+          "firm": "Homegrown Family Foods LLC",
+          "reason": "Undeclared Milk.",
+          "reason_groups": [
+            "milk"
+          ],
+          "upc_as_published": "0 24739 12000 6",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-RECALL:H-0063-2025"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0850073087008",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA H-1143-2026: undeclared soy, Class II, Terminated, reported 2026-07-15; cocoa butter trap in the label text.",
+      "display_name": "Brown Butter Chocolate Chunk",
+      "brand": "bakr",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0850073087008.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:52:04.453Z",
+        "last_modified_t": 1768441048,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "cc3f61dcb920",
+        "allergens_tags": [
+          "en:eggs",
+          "en:gluten",
+          "en:milk"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-1143-2026",
+          "report_date": "2026-07-15",
+          "recall_initiation_date": "2026-06-24",
+          "termination_date": "2026-08-06",
+          "classification": "Class II",
+          "status": "Terminated",
+          "firm": "Bear Stewart Co",
+          "reason": "undeclared soy",
+          "reason_groups": [
+            "soy"
+          ],
+          "upc_as_published": "8 50073 08700 8",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-RECALL:H-1143-2026"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0074570306053",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA H-0227-2026: undeclared wheat, Class II, Completed, reported 2025-12-10; label has a US 'Contains' statement without wheat.",
+      "display_name": "Chocolate dark chocolate mini ice cream bars",
+      "brand": "Häagen-Dazs",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0074570306053.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:07:50.147Z",
+        "last_modified_t": 1776643365,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "9955d5e22db6",
+        "allergens_tags": [
+          "en:eggs",
+          "en:milk",
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "H-0227-2026",
+          "report_date": "2025-12-10",
+          "recall_initiation_date": "2025-11-03",
+          "termination_date": null,
+          "classification": "Class II",
+          "status": "Completed",
+          "firm": "Dreyer's Grand Ice Cream, Inc.",
+          "reason": "Undeclared wheat.",
+          "reason_groups": [
+            "wheat",
+            "gluten_cereal"
+          ],
+          "upc_as_published": "0 74570 30605 3",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-CONTAINS",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-CONTAINS",
+            "R-NAME"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-RECALL:H-0227-2026"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-RECALL:H-0227-2026"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-CONTAINS",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "coconut"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0072992042603",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA F-0636-2025: undeclared almonds in a macadamia product, Class I, Terminated, reported 2025-03-19.",
+      "display_name": "Chocolate Covered Macadamia",
+      "brand": "Mauna Loa",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0072992042603.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:19:46.209Z",
+        "last_modified_t": 1791665093,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "924bd677df09",
+        "allergens_tags": [
+          "en:milk",
+          "en:nuts",
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "F-0636-2025",
+          "report_date": "2025-03-19",
+          "recall_initiation_date": "2025-02-14",
+          "termination_date": "2026-01-15",
+          "classification": "Class I",
+          "status": "Terminated",
+          "firm": "Mauna Loa Macadamia Nut Company, LLC",
+          "reason": "Undeclared almonds",
+          "reason_groups": [
+            "tree_nut"
+          ],
+          "upc_as_published": "0 72992 04260 3",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:F-0636-2025"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "maltodextrin"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0857394006220",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA F-0637-2025: wrong dressing, undeclared fish and wheat, Class I, Terminated, reported 2025-03-19.",
+      "display_name": "Southwest Kit",
+      "brand": "Little Leaf",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0857394006220.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:19:56.263Z",
+        "last_modified_t": 1781714446,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "de506cb6a578",
+        "allergens_tags": [
+          "en:eggs",
+          "en:milk",
+          "en:mustard",
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "F-0637-2025",
+          "report_date": "2025-03-19",
+          "recall_initiation_date": "2025-02-28",
+          "termination_date": "2025-04-09",
+          "classification": "Class I",
+          "status": "Terminated",
+          "firm": "LITTLE LEAF FARMS LLC",
+          "reason": "Product may contain incorrect salad dressing, resulting in fish and wheat being undeclared.",
+          "reason_groups": [
+            "fish",
+            "wheat",
+            "gluten_cereal"
+          ],
+          "upc_as_published": "857394006220",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "contains",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "unscored",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "contains",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "unscored",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "contains",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "fish": [
+            "ADJ-AGREE",
+            "R-RECALL:F-0637-2025"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-RECALL:F-0637-2025"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-RECALL:F-0637-2025"
+          ],
+          "soy": [
+            "ADJ-DISPUTED"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "lactic_acid",
+          "maltodextrin"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 14,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "8690766086473",
+      "role": "demo",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA F-0631-2025: undeclared egg, Class I, Terminated, reported 2025-03-19; emphasised allergens in the label text.",
+      "display_name": "Rulokat",
+      "brand": "Ülker",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/8690766086473.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:19:51.237Z",
+        "last_modified_t": 1787492568,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "40101c2782aa",
+        "allergens_tags": [
+          "en:eggs",
+          "en:gluten",
+          "en:milk",
+          "en:nuts",
+          "en:soybeans"
+        ],
+        "traces_tags": [
+          "en:eggs",
+          "en:sesame-seeds",
+          "en:soybeans"
+        ],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "F-0631-2025",
+          "report_date": "2025-03-19",
+          "recall_initiation_date": "2025-02-15",
+          "termination_date": "2025-03-26",
+          "classification": "Class I",
+          "status": "Terminated",
+          "firm": "ZB Importing LLC",
+          "reason": "Undeclared egg",
+          "reason_groups": [
+            "egg"
+          ],
+          "upc_as_published": "8690766086473",
+          "transform": "ean13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "may_contain",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-EMPH",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-EMPH",
+            "R-RECALL:F-0631-2025"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-EMPH"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-EMPH"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-EMPH"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-EMPH"
+          ],
+          "sesame": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "4088600132327",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Allergy-advice boilerplate that refers to the bold allergens, plus a precautionary statement naming milk, peanuts and nuts.",
+      "display_name": "Sea Salt Dark Chocolate",
+      "brand": "Moser Roth",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/4088600132327.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:00:25.186Z",
+        "last_modified_t": 1783012072,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "8ca3ee0784c9",
+        "allergens_tags": [
+          "en:soybeans"
+        ],
+        "traces_tags": [
+          "en:milk",
+          "en:nuts",
+          "en:peanuts"
+        ],
+        "claim_labels": [
+          "en:vegetarian"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "may_contain",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "may_contain",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "may_contain",
+          "peanut": "may_contain",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "peanut": [
+            "ADJ-AGREE",
+            "R-PREC"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5019503023022",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Trap: nutmeg next to real egg white, wheat and milk.",
+      "display_name": "Cocktail sausages",
+      "brand": "Quorn",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5019503023022.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:58:23.611Z",
+        "last_modified_t": 1774620478,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "a5c2916e05f2",
+        "allergens_tags": [
+          "en:eggs",
+          "en:gluten",
+          "en:milk"
+        ],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegetarian-society-approved",
+          "en:vegetarian-society"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "contains",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "nutmeg"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5013803001070",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Traps: shredded coconut and buckwheat next to real oats and almonds (emphasised).",
+      "display_name": "low sugar granola whole grain oats, almonds & seeds",
+      "brand": "EAT NATURAL",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5013803001070.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:57:58.591Z",
+        "last_modified_t": 1776320505,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "0839417b98a8",
+        "allergens_tags": [
+          "en:gluten",
+          "en:nuts"
+        ],
+        "traces_tags": [
+          "en:milk",
+          "en:nuts",
+          "en:peanuts",
+          "en:sesame-seeds",
+          "en:soybeans"
+        ],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegan"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "unscored",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "unscored",
+          "gluten_cereal": "contains",
+          "wheat": "none",
+          "soy": "unscored",
+          "sesame": "unscored",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "unscored",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "unscored",
+          "gluten_cereal": "contains",
+          "wheat": "none",
+          "soy": "unscored",
+          "sesame": "unscored",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-DISPUTED"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-EMPH"
+          ],
+          "peanut": [
+            "ADJ-DISPUTED"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-EMPH"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-DISPUTED"
+          ],
+          "sesame": [
+            "ADJ-DISPUTED"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "coconut",
+          "buckwheat"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 11,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "5052675030009",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "Coconut-milk powder trap next to real dairy milk powder, cashew and mustard (emphasised).",
+      "display_name": "Keralan Coconut Curry",
+      "brand": "THE SPICE TAILOR",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/5052675030009.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:57:38.551Z",
+        "last_modified_t": 1790678535,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "1ab42e64837b",
+        "allergens_tags": [
+          "en:milk",
+          "en:mustard",
+          "en:nuts"
+        ],
+        "traces_tags": [
+          "en:gluten",
+          "en:peanuts",
+          "en:sesame-seeds",
+          "en:soybeans",
+          "en:sulphur-dioxide-and-sulphites"
+        ],
+        "claim_labels": [
+          "en:vegetarian"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "unscored",
+          "gluten_cereal": "unscored",
+          "wheat": "none",
+          "soy": "unscored",
+          "sesame": "unscored",
+          "celery": "none",
+          "mustard": "contains",
+          "lupin": "none",
+          "sulphite": "unscored"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "unscored",
+          "gluten_cereal": "unscored",
+          "wheat": "none",
+          "soy": "unscored",
+          "sesame": "unscored",
+          "celery": "none",
+          "mustard": "contains",
+          "lupin": "none",
+          "sulphite": "unscored"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-EMPH"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-EMPH",
+            "R-NAME"
+          ],
+          "peanut": [
+            "ADJ-DISPUTED"
+          ],
+          "gluten_cereal": [
+            "ADJ-DISPUTED"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-DISPUTED"
+          ],
+          "sesame": [
+            "ADJ-DISPUTED"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE",
+            "R-EMPH"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-DISPUTED"
+          ]
+        },
+        "traps_present": [
+          "coconut",
+          "coconut_milk"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 10,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "4008400551920",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "German-only label (no English text), upper-case emphasis, Kakaobutter trap.",
+      "display_name": "Maxi King 3er-Pack",
+      "brand": "Kinder",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/4008400551920.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:55:48.439Z",
+        "last_modified_t": 1792068641,
+        "lang": "de",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": false,
+        "ingredients_sha256_12": "427d484743b2",
+        "allergens_tags": [
+          "en:gluten",
+          "en:milk",
+          "en:nuts",
+          "en:soybeans",
+          "de:MILCHKARAMELL"
+        ],
+        "traces_tags": [
+          "en:gluten",
+          "en:milk",
+          "en:nuts",
+          "en:soybeans"
+        ],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [
+          "de:MILCHKARAMELL"
+        ],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "3251491787810",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "French-only label (blé, soja, protéines de lait); OFF traces not in the text stay unscored.",
+      "display_name": "Goûter aux raisins",
+      "brand": "Gerblé",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/3251491787810.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-22T23:56:13.541Z",
+        "last_modified_t": 1779776379,
+        "lang": "fr",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": false,
+        "ingredients_sha256_12": "357b26c72c09",
+        "allergens_tags": [
+          "en:gluten",
+          "en:milk",
+          "en:soybeans"
+        ],
+        "traces_tags": [
+          "en:nuts",
+          "en:sesame-seeds"
+        ],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "unscored",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "unscored",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "unscored",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "unscored",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-DISPUTED"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-DISPUTED"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 13,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0041383090738",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA F-0054-2025: lactose-free milk with undeclared almond (from almond milk), Class I, Terminated, reported 2024-10-30.",
+      "display_name": "Whole Milk Lactose Free",
+      "brand": "Lactaid",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0041383090738.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:23:21.579Z",
+        "last_modified_t": 1771371551,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "5fea5f7fd464",
+        "allergens_tags": [
+          "en:milk"
+        ],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:no-gluten"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "F-0054-2025",
+          "report_date": "2024-10-30",
+          "recall_initiation_date": "2024-09-19",
+          "termination_date": "2025-04-11",
+          "classification": "Class I",
+          "status": "Terminated",
+          "firm": "HP Hood LLC",
+          "reason": "Milk may contain undeclared almond from almond milk",
+          "reason_groups": [
+            "tree_nut"
+          ],
+          "upc_as_published": "0 41383 09073 8",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-RECALL:F-0054-2025"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0036800469648",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA F-1702-2024: coconut-milk frozen dessert with undeclared cashews; coconut-milk trap; OFF vegan label.",
+      "display_name": "Chocolate Almond Crunch",
+      "brand": null,
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0036800469648.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:26:56.965Z",
+        "last_modified_t": 1680718389,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "3e97a4112676",
+        "allergens_tags": [
+          "en:nuts"
+        ],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegan",
+          "en:vegan-action"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "F-1702-2024",
+          "report_date": "2024-08-21",
+          "recall_initiation_date": "2024-07-24",
+          "termination_date": "2026-03-23",
+          "classification": "Class II",
+          "status": "Terminated",
+          "firm": "G.S. Gelato and Desserts Inc.",
+          "reason": "Undeclared cashews. The firm was notified by a customer that the top label and the carton labels do not match. The carton label states, \"coconut milk\" while the top label states, \"cashew milk\". The product actually contains the cashew milk product.",
+          "reason_groups": [
+            "tree_nut"
+          ],
+          "upc_as_published": "0 36800 46964 8",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "contains",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "none",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE",
+            "R-NAME",
+            "R-RECALL:F-1702-2024"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "coconut",
+          "maltodextrin"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0072700200387",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA F-0608-2024: dark chocolate coins with undeclared milk (mispackaging); cocoa butter trap.",
+      "display_name": "Magic max's dark chocolate coins",
+      "brand": null,
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0072700200387.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:32:37.514Z",
+        "last_modified_t": 1587661203,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "51416b51d64e",
+        "allergens_tags": [
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "F-0608-2024",
+          "report_date": "2023-12-27",
+          "recall_initiation_date": "2023-12-01",
+          "termination_date": "2024-10-08",
+          "classification": "Class I",
+          "status": "Terminated",
+          "firm": "Kenover Marketing Corp.",
+          "reason": "Undeclared milk due to mispackaging",
+          "reason_groups": [
+            "milk"
+          ],
+          "upc_as_published": "072700200387",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "none",
+          "wheat": "none",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-RECALL:F-0608-2024"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "cocoa_butter"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    },
+    {
+      "gtin": "0099482518707",
+      "role": "eval_only",
+      "markets": [
+        "UK"
+      ],
+      "scenarios": [],
+      "why": "FDA F-0776-2024: vegan pizza with undeclared milk, Class III, Terminated, reported 2024-01-31; pea milk and lactic acid traps.",
+      "display_name": "Vegan Ultimate Veggie",
+      "brand": "365 Whole Foods Market",
+      "off_snapshot": {
+        "source_url": "https://world.openfoodfacts.org/api/v2/product/0099482518707.json?fields=code,product_name,brands,lang,ingredients_text,ingredients_text_en,allergens_tags,traces_tags,labels_tags,countries_tags,last_modified_t",
+        "fetched_at": "2026-10-23T00:31:52.378Z",
+        "last_modified_t": 1779984166,
+        "lang": "en",
+        "has_ingredients_text": true,
+        "has_ingredients_text_en": true,
+        "ingredients_sha256_12": "4b147b2763ef",
+        "allergens_tags": [
+          "en:gluten",
+          "en:soybeans"
+        ],
+        "traces_tags": [],
+        "claim_labels": [
+          "en:vegetarian",
+          "en:vegan"
+        ],
+        "unmapped_allergen_tags": [],
+        "licence": "Open Food Facts, ODbL 1.0 (attribution). Only tags and flags kept here; no ingredient text."
+      },
+      "recalls": [
+        {
+          "recall_number": "F-0776-2024",
+          "report_date": "2024-01-31",
+          "recall_initiation_date": "2023-12-29",
+          "termination_date": "2024-05-29",
+          "classification": "Class III",
+          "status": "Terminated",
+          "firm": "Richelieu Foods, Inc.",
+          "reason": "Undeclared milk",
+          "reason_groups": [
+            "milk"
+          ],
+          "upc_as_published": "0 99482-51870 7",
+          "transform": "upc12_pad13",
+          "licence": "openFDA, public domain / CC0; no FDA endorsement"
+        }
+      ],
+      "reference_labels": {
+        "product_truth": {
+          "milk": "contains",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "label_text": {
+          "milk": "none",
+          "egg": "none",
+          "fish": "none",
+          "crustacean": "none",
+          "mollusc": "none",
+          "tree_nut": "none",
+          "peanut": "none",
+          "gluten_cereal": "contains",
+          "wheat": "contains",
+          "soy": "contains",
+          "sesame": "none",
+          "celery": "none",
+          "mustard": "none",
+          "lupin": "none",
+          "sulphite": "none"
+        },
+        "basis": {
+          "milk": [
+            "ADJ-AGREE",
+            "R-RECALL:F-0776-2024"
+          ],
+          "egg": [
+            "ADJ-AGREE"
+          ],
+          "fish": [
+            "ADJ-AGREE"
+          ],
+          "crustacean": [
+            "ADJ-AGREE"
+          ],
+          "mollusc": [
+            "ADJ-AGREE"
+          ],
+          "tree_nut": [
+            "ADJ-AGREE"
+          ],
+          "peanut": [
+            "ADJ-AGREE"
+          ],
+          "gluten_cereal": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "wheat": [
+            "ADJ-TEXT-ONLY",
+            "R-NAME"
+          ],
+          "soy": [
+            "ADJ-AGREE",
+            "R-NAME"
+          ],
+          "sesame": [
+            "ADJ-AGREE"
+          ],
+          "celery": [
+            "ADJ-AGREE"
+          ],
+          "mustard": [
+            "ADJ-AGREE"
+          ],
+          "lupin": [
+            "ADJ-AGREE"
+          ],
+          "sulphite": [
+            "ADJ-AGREE"
+          ]
+        },
+        "traps_present": [
+          "coconut",
+          "plant_milk",
+          "lactic_acid"
+        ],
+        "rule_conflicts": [],
+        "scored_groups_label_text": 15,
+        "in_extraction_eval": true
+      }
+    }
+  ]
+}

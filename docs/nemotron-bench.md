@@ -1,0 +1,257 @@
+# Nemotron bench: Day-0 gates G8 and G8b
+
+The main run was on Fri 23 Oct 2026, 07:50–08:09 SGT. The follow-up runs (Q8 A/B, host-RAM soak) were at 08:26–08:42 SGT. All runs used the development PC with the four Zetaris containers (`ui`, `api`, `driver`, `postgres`) up and healthy. Every number below is measured unless it is labelled `estimated`: Ollama's own token counts and durations, `nvidia-smi` at 1 s, OS CPU and available-RAM counters at 1 s, and, in the soak runs, the private memory of the Ollama processes at 1 s. The raw results are in `data/bench/` (local, gitignored): `g8-*.json`, `g8b-*.json` and `soak-*.json`. The follow-up files include every 1 s sample; the main-run files hold per-phase statistics only. (In the two Q8 A/B files the process-memory fields read 0, because the sampler did not yet find the runner process; it was fixed before the soak, and nothing below uses those fields.)
+
+## Verdict
+
+| Gate | Criterion | Result | Decision |
+|---|---|---|---|
+| **G8** | JSON valid on ≥95% of 20 extraction and 10 planner calls, think on and off, with Zetaris running; tok/s and VRAM recorded | **Pass, by one call.** With the adopted settings (think off for extraction, think on for the planner), 29/30 calls returned valid JSON (96.7%; n = 30) in the main run. The one failure was the multilingual Lidl label. After a schema fix, 20/20 extraction calls were valid in a re-run, but the Lidl reply is valid only in form (see "Fix applied after the run"). | Primary model `nemotron-3-nano:4b` (Q4_K_M). No fallback model needed. |
+| G8, think on | `think` and `format` work together on this Ollama build | **Yes for planning and briefs**: 10/10 planner and 3/3 brief calls valid with think on. **No for ingredient extraction**: 2/10 valid, because the thinking reaches the 4,096-token cap before any answer, with or without `format`. | `think: true` for the planner and adjudication briefs; `think: false` for ingredient extraction, notice extraction, mining and classification. |
+| **G8b** | 30B at ≥8 tok/s with Zetaris running and ≥3,072 MiB free host RAM | **Fail on RAM.** The 30B needs about 11.8 GB of its weights in host RAM (`estimated`), but only 7,971 MiB was available, which projects to −3,851 MiB free. The model was not loaded, so **30B tok/s was not measured**. | **30B tier cut.** It was optional and off unless this gate passed. |
+| Host-RAM soak | Find out why available RAM fell to 617 MiB in the G8 think-on pass | **Reproduced and explained.** The model runner's private memory rose from 4,396 to 9,903 MiB (+5,507 MiB) over 30 calls. The cause is the runner's prompt cache in host RAM, which grows with each new prompt in both think modes. With the cache disabled, 10 of the same planner calls left the runner flat (+8 MiB). | **RAM guard on by default** in the Ollama client: below 2,048 MiB available, it unloads the model before the next call (fired once in the soak and recovered 6,542 MiB). Think on is kept for the planner and briefs. Capping the cache is an option for the PC owner. |
+| Optional Q8 tier | Adopt only if JSON validity and span grounding are no worse, at ≥40 tok/s | **Meets the rule on 10 texts:** 10/10 valid, 0 spans dropped, 117.4 tok/s. (group, relation) precision / recall 1.000 / 0.867, against 0.958 / 0.767 for Q4 in the same session. | **Not adopted in this pass.** Q4 stays the default until the lead decides; the costs are listed in the Q8 section. |
+
+## Setup
+
+| Item | Value |
+|---|---|
+| GPU | NVIDIA GeForce RTX 4070 Ti SUPER, 16,376 MiB, driver 616.64 |
+| Host | 16 logical cores, 31,849 MiB RAM |
+| Ollama | 0.40.7, `/api/chat`, `stream: false`, one request at a time from the bench. Each loaded model runs in a bundled `llama-server` process, a child of `ollama serve`. |
+| Primary model | `nemotron-3-nano:4b`, digest `d94b6dfae26d…`, 2.84 GB on disk, Q4_K_M; loaded size 3.02 GB, 100% in VRAM |
+| Q8 model | `nemotron-3-nano:4b-q8_0`, digest `c534497d032c…`, 4.23 GB on disk; loaded size 4.26 GB, 100% in VRAM |
+| 30B model | `nemotron-3-nano:30b`, digest `7487f38ecf24…`, 24.27 GB on disk (23,148 MiB) |
+| Options | `temperature 0`, `seed 7`, `num_ctx 8192`, `keep_alive 30m`; `num_predict` 1,536 (think off) or 4,096 (think on) in G8 |
+| Structured output | Ollama `format` = the job's JSON schema (`agent/src/llm/schemas.ts`); each reply is also parsed and validated host-side, and an invalid reply is retried once |
+| Prompts | `agent/src/llm/prompts/{extraction,notice,planner,brief}.md` |
+
+### Concurrent load on the PC
+
+- CPU across all 16 logical cores: 31% on average in the idle window before G8, 33% during the G8 run (100% at one moment).
+- The top-CPU snapshots (3 s windows at idle, at the start of think-off extraction and at the start of think-on extraction) show the Ollama runner at about 6% of all cores and one unrelated Python service at about 6%. No other heavy CPU or GPU workload appeared in any snapshot.
+- VRAM before the model loaded: 3,520 MiB (desktop and other apps).
+
+## Inputs
+
+| Job | Calls per think mode | Source (fetched at dev time; not committed) |
+|---|---|---|
+| Ingredient extraction | 10 | Open Food Facts product API, `ingredients_text` of 10 real products, `User-Agent: ClearShelf/0.1`: 4 English (UK dark chocolates, an Italian biscuit in English), 2 French (incl. the Lidl shortbread from H-1275-2026, with label text in five languages), 2 German, 2 Italian. `off.json` holds 13 products; the bench uses 10.¹ |
+| Notice extraction | 10 | One openFDA call (`food/enforcement`, `reason_for_recall:undeclared`, 200 records): H-1328-2026, H-0011-2027, H-1275-2026, H-1335-2026, H-1198-2026, H-1325-2026, H-0016-2027, H-1172-2026, H-0941-2026, H-1383-2026 |
+| Planner | 10 | **Constructed investigation states (synthetic bench input).** The product fields and the FDA and FSA rows quoted in them come from the fetched records. The tool results around them were written by hand to put the planner at each checklist step, because no pipeline existed yet: guard and verifier outcomes, DQ invalid records, "no officer rulings", FSA counts by brand and policy proposals. Only 3 FSA alerts were fetched, so "0 FSA alerts" for a brand is part of the constructed state, not a search result. 8 SKU-clearance steps (Frankie's puffs UK, Lidl shortbread US) and 2 recall-sweep steps (FDA H-0011-2027; FSA-AA-48-2026). |
+| Brief (G8b baseline) | 3 | **Constructed adjudication inputs**, built the same way: real FDA rows and product fields, hand-written DQ, extraction and policy states. |
+
+¹ The fetch requests for this run were not logged, so their spacing cannot be shown from saved data. `agent/src/llm/benchFetch.ts` now recreates the inputs. It writes to a new directory, spaces Open Food Facts calls 3 s apart, and logs every request's start time, HTTP status and duration to `fetch-log.jsonl`.
+
+**Expected values** (`agent/src/llm/bench.cases.ts`) record what each text plainly says, read from the fetched text. They are not the evaluation's reference labels. With 10 texts per job these are smoke-level accuracy figures, not the evaluation.
+
+**Scoring rules:**
+- `wheat` and `gluten_cereal` count as one group.
+- Two allergens are scored as neither right nor wrong: egg on the Lidl label, where it appears only as a scanning error, and coconut, which is the FDA/EU rule conflict.
+- Ingredient scores cover **the model alone**, after the grounding rule but before the lexicon verifier.
+
+**Disclosure.** The prompts were revised once after a 3-call smoke test on bench items, then frozen before the main run. The revision added the evidence-id enum, a rule to split listed allergens into one span each, and a rule to read the text in order. Changes after the main run:
+- The span `maxItems` fix (below), with its own re-run.
+- The `--think` and `--jobs` bench flags, added to run that re-run. They select which calls run and do not change any call (the main-run file has no `selection` field because of this).
+- After review: process-memory sampling and raw samples in the result files, the `soak` gate, the RAM guard and refused-host counter in `ollama.ts`, `dedupeSpans` in `grounding.ts`, the per-job settings in `settings.ts`, and `benchFetch.ts`. None of these changes a prompt or a schema. The prompt token counts are identical between the main run and the re-run, and 19/20 outputs are byte-identical.
+
+## G8 results: `nemotron-3-nano:4b`
+
+### Validity, speed and latency
+
+| Job | Think | JSON valid, 1st try | Valid after 1 retry | Wall time², median / p95 / max | tok/s, median | Output tokens², median | Prompt tokens², median |
+|---|---|---|---|---|---|---|---|
+| Ingredient | off | 9/10 | 9/10 | 1.22 / 19.38 / 19.38 s | 160.3 | 171 | 1,531 |
+| Notice | off | 10/10 | 10/10 | 0.70 / 2.06 / 2.06 s | 161.8 | 93 | 717 |
+| Planner | off | 10/10 | 10/10 | 2.25 / 2.89 / 2.89 s | 152.9 | 316 | 1,112 |
+| **All, think off** | off | **29/30 (96.7%)** | 29/30 | 1.80 / 2.89 / 19.38 s | 159.2 | 255 | 1,112 |
+| Ingredient | on | 2/10 | 2/10 | 51.59 / 52.85 / 52.85 s | 159.4 | 8,192 (cap hit on both tries) | 1,531 |
+| Notice | on | 10/10 | 10/10 | 3.11 / 7.42 / 7.42 s | 159.8 | 477 | 717 |
+| Planner | on | 10/10 | 10/10 | 3.50 / 4.67 / 4.67 s | 156.1 | 515 | 1,112 |
+| **All, think on** | on | **22/30 (73.3%)** | 22/30 | 3.85 / 51.88 / 52.85 s | 158.4 | 573 | 1,112 |
+| **Adopted** (extraction off + planner on) | mixed | **29/30 (96.7%)** | 29/30 | | | | |
+
+² Wall time and output tokens are summed over both attempts when a call was retried. Prompt tokens are per attempt. The raw files sum prompt tokens over attempts too, so they show 3,062 for think-on ingredient extraction, which is 2 × 1,531.
+
+- Throughput is flat across jobs and think modes: 151.5–165.2 tok/s per call, from `eval_count / eval_duration`.
+- The model loaded fully in VRAM (`size_vram` = `size` = 3.02 GB).
+
+### VRAM, CPU and RAM during the run
+
+| Window | GPU memory used: median / peak | GPU utilisation, mean | CPU, mean / max | Available RAM, minimum |
+|---|---|---|---|---|
+| Idle, before load | 3,520 / 3,541 MiB | 6% | 31% / 47% | 7,864 MiB |
+| Think-off pass | 6,674 / 6,695 MiB | 89% | 30% / 59% | 4,560 MiB |
+| Think-on pass | 6,698 / **7,131 MiB** | 93% | 33% / 100% | **617 MiB** |
+
+The drop to 617 MiB available RAM is explained in "Host RAM: the runner's prompt cache" below.
+
+### Field accuracy against what the text says
+
+**Ingredient extraction (model alone):**
+
+| Think | Texts scored | (group, relation) precision / recall | Group precision / recall | Exact texts | Spans dropped as ungrounded | Trap false alarms³ |
+|---|---|---|---|---|---|---|
+| off | 9 (1 invalid) | 0.955 / 0.778 (21 TP, 1 FP, 6 FN) | 1.000 / 0.815 | 5/9 | 0 of 36 | 0 |
+| on | 2 (8 invalid) | 1.000 / 1.000 | 1.000 / 1.000 | 2/2 | 0 of 2 | 0 |
+
+³ The traps were cocoa butter (in four texts), sunflower lecithin, an emulsifier with no source named, and coconut. None was labelled as milk, soy or tree nut. Coconut appears only in the Lidl text, which was invalid in both modes of the main run, so the coconut trap was exercised only in the re-run and the follow-up runs.
+
+**Misses with think off.** These are why the lexicon verifier stays in the loop, and why the absence of a model span never counts as "free from":
+- German texts: the German words for butter, whey powder, whole-milk powder and whole-egg powder were not read as milk or egg, and a misspelt "nuts" in a may-contain line was labelled `none`.
+- English chocolates: soya lecithin was missed once and labelled `may_contain` once.
+
+**Notice extraction:**
+
+| Think | UPCs precision / recall | UPCs invented | Allergens precision / recall | Lots precision / recall | reason_type correct |
+|---|---|---|---|---|---|
+| off | 1.000 / 0.957 (22 of 23) | 0 | 0.875 / 0.933 | 1.000 / 1.000 (7 of 7) | 9/10 |
+| on | 1.000 / 0.826 (19 of 23) | 0 | 1.000 / 1.000 | 1.000 / 0.857 | 10/10 |
+
+**UPC notes:**
+- Three of the 23 UPCs printed in the notices fail the GTIN check digit: an 11-digit code on H-1335-2026, and a 13-digit and an 11-digit code on H-1172-2026. The model copied them as written; `verify/gtin.ts` must drop them.
+- The UPCs missed were on H-1172-2026, the notice with 16 codes.
+
+**Allergen errors with think off:**
+- H-0941-2026: "undeclared allergen (shrimp)" became `soy` with `reason_type: other`.
+- H-1172-2026: `peanut` was added to pecans and pistachios.
+- Think on got both right.
+
+**Planner** (10 constructed states each):
+
+| Think | Valid | Tool advances an open checklist item | Tool completes the *first* open item | `done` correct | Input id correct | Evidence ids all real⁴ | Contradiction surfaced (when expected) | Checklist echoed unchanged | Thought ≤60 words |
+|---|---|---|---|---|---|---|---|---|---|
+| off | 10/10 | 9/10 | 8/10 | 10/10 | 9/9 | 10/10 | 3/4 | 8/10 | 10/10 |
+| on | 10/10 | 10/10 | 10/10 | 10/10 | 9/9 | 10/10 | 2/4 | 5/10 | 10/10 |
+
+⁴ Enforced by the schema: `evidence_ids` is an enum of the ids the host has recorded, so a valid reply cannot cite any other id. This column shows that the constraint works, not that the model chose the right evidence.
+
+**What the planner results mean for the build:**
+- **The host owns the checklist.** The model's echo of the checklist was changed in 2/10 (think off) and 5/10 (think on) calls, so `loop/checklist.ts` overwrites it and never reads it back.
+- **Evidence ids are a dynamic enum, like the tool enum.** In the smoke test, before the enum, the model cited `ev-3-01` for `ev-p3-01`.
+
+## Fix applied after the run, and its re-run
+
+**What failed.** The single think-off extraction failure was the multilingual Lidl label (the H-1275-2026 product). The model kept repeating the same soy span until `num_predict` cut the reply, on both tries.
+
+**The fix.** The span array's `maxItems` went from 40 to 32. Pretty-printed spans cost about 38 tokens each, so 32 spans fit inside 1,536 tokens and a repeating reply now closes as valid JSON. This makes the reply parse; it does not stop the repetition.
+
+**Re-run** (20 think-off extraction calls, same inputs as the fix was made on, `--think off --jobs ingredient,notice`):
+
+| Metric | Result |
+|---|---|
+| JSON valid | **20/20** |
+| Wall time, median / max | 0.83 / 8.78 s |
+| tok/s, median | 160.3 |
+| GPU memory peak | 6,697 MiB |
+| Ingredient (group, relation) precision / recall | 0.958 / 0.767 over all 10 texts |
+| Group precision / recall | 1.000 / 0.800 |
+| Lidl label | **Valid but degenerate.** 32 spans, 29 of them the same soy span; wheat and soy found, milk (`lait entier en poudre`) missed. 4 distinct spans after dedupe. |
+| Notice scores | Identical to the main run (temperature 0, seed 7) |
+
+**What the build does about it:**
+- `dedupeSpans` (`agent/src/llm/grounding.ts`) removes repeated spans (same normalised text, group and relation) before verifying. Extraction must call it.
+- The lexicon verifier is mandatory on every text, and a missing model span never means "free from". On the Lidl label it is the verifier, not the model, that has to catch milk.
+- A repeat penalty and splitting long multilingual labels into chunks were not tried.
+
+## Host RAM: the runner's prompt cache
+
+**Why.** In the main run, available RAM fell to 617 MiB during the think-on pass. That run saved only per-phase statistics, so the bench now samples the private memory of `ollama serve` and its `llama-server` runner every second and saves every sample.
+
+**Soak** (`bench.ts soak`, 4B Q4, client RAM guard on, watchdog at 1,536 MiB for 3 s). The growth rule was set before the run: growth counts as reproduced if the runner's private memory rises more than 2,048 MiB above its level after the first call, or the guard or watchdog fires.
+
+| Run | Calls | Runner private memory | Available RAM, min | Notes |
+|---|---|---|---|---|
+| Think on, cache on (`soak-2026-10-23T00-39-25-107Z`) | 20 planner (the 10 states twice), then 10 ingredient at 4,096 tokens with one retry | 4,396 MiB after call 1 → 6,866 after the 10 distinct planner prompts → 7,310 after the repeat pass → **9,903 MiB peak** (+5,507) | 1,848 MiB | **Reproduced.** The RAM guard fired once, before the last call: 1,904 MiB available, then 8,446 MiB after the unload. The model reloaded at 4,801 MiB. |
+| Think off, cache on (`soak-2026-10-23T00-40-35-782Z`) | 10 planner | 4,390 → 5,700 MiB (+1,310) | 5,836 MiB | Same pattern, about half the step per prompt. |
+| Think on, cache off (`soak-2026-10-23T00-41-56-565Z`) | 10 planner | 4,395 → 4,403 MiB (peak 4,728) | 6,924 MiB | Temporary second Ollama server on 127.0.0.1:11435 with `LLAMA_ARG_CACHE_RAM=0`, stopped afterwards. Same output tokens on every call; median wall time 3.85 s, against 3.86 s with the cache on. |
+
+**What the samples show:**
+- On the first pass over the 10 planner prompts, the runner grew by 0–525 MiB per call (median 265 MiB). When the same 10 prompts were sent again, 9 of 10 calls changed it by 10 MiB or less, and one rose 435 MiB. In the long phase, the 8 calls that ran to the token cap on both attempts added 603 MiB (the first) and then about 331 MiB each; the 2 short valid calls added under 3 MiB.
+- Unloading the model returned the memory within the guard's wait (1,904 → 8,446 MiB available).
+- The bundled `llama-server` keeps a prompt cache in host RAM (`--cache-ram`, default cap 8,192 MiB, settable through the `LLAMA_ARG_CACHE_RAM` environment variable). It also saves idle slots to that cache on each new task. Ollama's runner command line does not set it. With the cache disabled, the growth disappeared.
+- **Cause:** the runner's prompt cache. It is not think mode: think off grows too, at about half the step (its replies are shorter). In the agent every planner step is a new prompt, so with the cache on, the runner can grow to about 4.4 GB plus the 8 GB cap in either think mode (`estimated`). That is more than this PC has available (about 8.5 GB at idle in these runs).
+
+**Decisions:**
+- **RAM guard, on by default** (`OllamaClient`, `agent/src/llm/ollama.ts`). Before each call, if available host RAM is below `CLEARSHELF_MIN_AVAILABLE_RAM_MIB` (default 2,048) and the model is loaded, the guard unloads it and the call reloads it, about 2 s. At most one guard unload per 60 s, so RAM pressure from other programs does not reload the model on every call. Each unload is recorded in `ramGuardEvents`. It fired once in the soak, as designed.
+- **Think on stays** for the planner and briefs. Turning think off everywhere would halve the growth rate without stopping it, and the planner is better with think on (10/10 against 8/10 on completing the first open checklist item). `CLEARSHELF_THINK=off` (`agent/src/llm/settings.ts`) switches every job to think off if the lead wants it.
+- **Option for the PC owner:** set `LLAMA_ARG_CACHE_RAM` in Ollama's environment (0, or a small cap) and restart Ollama. With 0, the soak stayed flat at no measured speed cost. This changes every Ollama model on the PC, so it is the owner's setting, not something the repo changes.
+
+## Optional Q8 A/B
+
+Same session, same 10 ingredient texts, think off, `num_predict` 1,536, Q4 first (`g8-2026-10-23T00-27-21-006Z`), then Q8 (`g8-2026-10-23T00-28-24-686Z`). The prompts were tuned on Q4, on these same texts.
+
+| Metric | Q4_K_M | Q8_0 |
+|---|---|---|
+| JSON valid | 10/10 | 10/10 |
+| Spans dropped as ungrounded | 0 of 68 | 0 of 76 |
+| (group, relation) precision / recall | 0.958 / 0.767 (23 TP, 1 FP, 7 FN) | 1.000 / 0.867 (26 TP, 0 FP, 4 FN) |
+| Group precision / recall | 1.000 / 0.800 | 1.000 / 0.867 |
+| Exact texts | 5/10 | 8/10 |
+| Trap false alarms | 0 | 0 |
+| Lidl label | valid but degenerate (29 repeated soy spans), milk missed | valid but degenerate (27 repeated soy spans), milk found |
+| tok/s, median | 162.5 | 117.4 |
+| Wall time, median / max | 1.20 / 8.65 s | 2.55 / 11.78 s |
+| GPU memory peak | 6,885 MiB | 8,071 MiB |
+| Available RAM, minimum (idle level before load) | 6,744 MiB (8,449) | 6,213 MiB (8,203) |
+
+Q8 meets the adoption rule: validity and grounding are no worse, at 117 tok/s. Its gain is 3 more correct (group, relation) pairs out of 30, on the texts the prompts were tuned on. It costs about 1.2 GB more VRAM, a 531 MiB lower minimum of available host RAM in this run (the idle level was already 246 MiB lower), and about twice the median wall time. Notice extraction, the planner and the soak were measured on Q4 only. **Q4 stays the default.** Switching is the lead's decision, and it would need the notice, planner and soak runs repeated on Q8.
+
+## G8b: `nemotron-3-nano:30b`
+
+**4B baseline on the brief job** (same constructed inputs, think off then on):
+
+| Think | Valid | Wall time, median / max | tok/s, median | Output tokens, median |
+|---|---|---|---|---|
+| off | 3/3 | 1.10 / 2.55 s (including 1.85 s load) | 154.1 | 101 |
+| on | 3/3 | 4.17 / 4.30 s | 160.2 | 654 |
+
+**Citation format in the brief text.**
+- With think off, ids inside the prose came out malformed in all 3 briefs (`ev-2-02`, `ev-01`, `ev- b3-01`).
+- With think on, 2 of 3 cited exact ids.
+- The brief should gain a `cited_ids` array constrained to the evidence-id enum, as the planner's is.
+
+**Escalations.** Three of the six briefs escalated a HOLD proposal to BLOCK (inputs 1 and 3). The policy allows escalation only in the stricter direction.
+
+**30B pre-check** (measured inputs, `estimated` projection; RAM figure measured after the 4B was unloaded):
+
+| Item | Value |
+|---|---|
+| Model size (Ollama tags) | 23,148 MiB |
+| Free VRAM | 12,350 MiB |
+| VRAM reserve for KV cache and compute | 1,024 MiB |
+| Weights left in host RAM (`estimated`) | 11,822 MiB |
+| Available host RAM before load | 7,971 MiB |
+| Projected free host RAM with the 30B loaded (`estimated`) | **−3,851 MiB** (the gate needs ≥3,072) |
+
+**Why the 30B was not loaded.** The gate cannot pass on this machine with Zetaris and the other host services running. Loading it would only have pushed the PC into paging. The bench therefore skips the load. `--force` loads it anyway, with a watchdog that stops the run and unloads the model if available RAM stays under 2 GB for 3 s. **No 30B throughput figure exists.**
+
+## Adopted settings for the build
+
+The per-job values are in `agent/src/llm/settings.ts` (`jobSettings`).
+
+| Job | Model | think | num_predict | Notes |
+|---|---|---|---|---|
+| Ingredient extraction | 4B Q4_K_M | off | 1,536 | Span `maxItems` 32. `dedupeSpans`, then the grounding drop rule. Lexicon verifier always runs. |
+| Notice extraction | 4B Q4_K_M | off | 1,536 | UPCs digits-only by schema. Check digit and literal-presence checks in `verify/gtin.ts`. |
+| Planner (Markovian step) | 4B Q4_K_M | on | 2,048 (observed max 777) | Dynamic tool enum and evidence-id enum. The host owns the checklist. Two invalid replies lead to a fallback step. |
+| Adjudication brief | 4B Q4_K_M | on | 2,048 (observed max 680) | Add a `cited_ids` enum. Escalation only. |
+| H-MEM miner | 4B Q4_K_M | off | 1,536 | Bare JSON string array (`minerSchema`). Not benched. |
+| All jobs | | | | RAM guard on (2,048 MiB). `CLEARSHELF_THINK=off` forces think off everywhere. Every non-loopback model host is refused and counted (`refusedModelHostAttempts()`), for the "0 cloud model calls" figure. |
+| 30B tier | none | | | Cut (G8b). |
+| Q8 tier | not adopted | | | Meets the rule; lead's decision (see the Q8 section). |
+
+## Reproduce
+
+```bash
+cd agent
+npx vitest run test/llm.test.ts                                        # offline unit tests (mocked Ollama)
+npx tsx src/llm/bench.ts g8                                            # 60 calls: 20 extraction + 10 planner, think off then on
+npx tsx src/llm/bench.ts g8 --think off --jobs ingredient,notice       # the re-run
+npx tsx src/llm/bench.ts g8 --model nemotron-3-nano:4b-q8_0 --think off --jobs ingredient   # Q8 arm (run the Q4 arm the same way)
+npx tsx src/llm/bench.ts g8b                                           # 4B brief baseline, then the 30B pre-check (add --force to load)
+npx tsx src/llm/bench.ts soak                                          # host-RAM soak: 20 planner + 10 long think-on calls
+npx tsx src/llm/bench.ts soak --think off --calls 10 --long 0          # think-off control
+```
+
+The bench reads `data/bench/off.json` and `data/bench/fda_200.json`. These are gitignored, because Open Food Facts ingredient text is never committed. `npx tsx src/llm/benchFetch.ts` fetches them again into a new `data/bench/fetch-<time>/` directory, with a request log. It makes one openFDA call, one FSA call and one Open Food Facts call per bench barcode, 3 s apart. Product data changes over time, so results on a fresh fetch can differ from the ones above.

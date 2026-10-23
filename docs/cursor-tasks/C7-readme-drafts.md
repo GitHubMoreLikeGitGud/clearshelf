@@ -33,19 +33,22 @@ This repository.
 
 The Cursor statement, used only for the parts that the task records show actually happened (drop any clause that is not yet true and list it as TODO):
 
-> ClearShelf was developed in Cursor. The repository is a Cursor workspace with project rules in `.cursor/rules`. Cursor Agent ran the Zetaris getting-started JDBC preflight against our local instance, drafted the Lightning SQL onboarding scripts and the clearance_usl model from sample API responses, wrote the multilingual allergen lexicon and its tests, built the four UI screens and the evidence drawer, and wrote the evaluation runner. Each task and its commit are listed in docs/how-cursor-was-used.md.
+> ClearShelf was developed in Cursor. The repository is a Cursor workspace with project rules in `.cursor/rules`. Cursor Agent ran the Zetaris getting-started JDBC preflight against our local instance, reviewed the Lightning SQL onboarding scripts and the clearance_usl model against sample API responses and wrote their static tests, wrote the multilingual allergen lexicon and its tests, built the four UI screens and the evidence drawer, and wrote the evaluation runner. Each task and its commit are listed in docs/how-cursor-was-used.md.
+
+Cursor Agent did not draft the Lightning SQL scripts or the clearance_usl model: they were written and run during the Day-0 gates, before C2. Never write "drafted the Lightning SQL onboarding scripts and the clearance_usl model". The C2 clause above is used only if a C2 commit exists; otherwise it is dropped and listed as TODO.
 
 ### `docs/how-cursor-was-used.md`
 
 - How the workspace is set up (`AGENTS.md`, the five `.cursor/rules/*.mdc` files and what each covers).
 - The task-file convention (link `docs/cursor-tasks/README.md`) and the headless command.
 - A table: task, task file, what Cursor Agent did, commit hash(es) from `git log --grep "(Cursor Agent)"`, and the checks that passed. Only tasks with a commit or a run record are listed as done; the rest are "planned".
-- Interactive use in the Cursor editor (C8) as a placeholder for the owner to fill in.
+- Interactive use in the Cursor editor (C8) as a placeholder for the owner to fill in. If `docs/cursor-tasks/C8-rehearsal-fixes.md` does not exist yet, name it as planned and do not link it.
 
 ## Constraints
 
 - Every number comes from a committed record (`docs/conformance.md`, `docs/eval-report.md`, `zetaris/README.md`, task run records). Never invent or round a number; write "TODO (measured)" where none exists yet.
 - Public text names no development tool other than Cursor, and never claims replayed events were live.
+- The C1 result is summarised in exactly these words, never as "preflight passed": "Preflight NOT READY on Windows (bin/java and .venv/bin/python path false negatives, verified); read-only JDBC confirmed directly: SELECT 1, SHOW LIGHTNING DATABASES, SHOW NAMESPACES".
 - No credentials, no local private paths, no contact e-mail addresses.
 - Keep `metadata.json` as it is; report any mismatch with the README instead of editing it.
 

@@ -69,7 +69,9 @@ This task changes no files in this repository; the task file and its run record 
 
 ## Run record (2026-10-23)
 
-Cursor Agent CLI 2026.10.22, model `Auto`, headless (`-p --trust --force`), workspace = the getting-started clone. Wall time 65.8 s; the CLI reported 59.8 s of agent time, 20,930 input tokens, 2,862 output tokens and 127,744 cached input tokens. Exit code 0.
+**Result:** preflight NOT READY on Windows (`bin/java` and `.venv/bin/python` path false negatives, verified); read-only JDBC confirmed directly: `SELECT 1`, `SHOW LIGHTNING DATABASES`, `SHOW NAMESPACES`. The preflight itself did not pass; the direct connection is the fallback allowed by the Goal line of the prompt above.
+
+Cursor Agent CLI 2026.10.22, model `Auto`, headless, workspace = the getting-started clone. The private trace is in the CLI's stream-json format. The exact command line was not logged for this run, so its flags are not part of the record; later runs log it at the top of the private transcript. Wall time 65.8 s; the CLI reported 59.8 s of agent time, 20,930 input tokens, 2,862 output tokens and 127,744 cached input tokens. Exit code 0.
 
 What Cursor Agent did, in order:
 
@@ -98,7 +100,7 @@ What Cursor Agent did, in order:
    | `SHOW LIGHTNING DATABASES` | 6 rows: `CLEARSHELF_FDA`, `CLEARSHELF_FSA`, `CLEARSHELF_OFF`, `CLEARSHELF_OPS` (created earlier the same morning by the onboarding gates), `NY_TAXI`, `TPCDS_DB` |
    | `SHOW NAMESPACES OR TABLES IN lightning.metastore` | 1 row: namespace `clearshelf`, 0 USLs |
 
-5. Reported JDBC as ready and REST as not configured, installed nothing, changed no files, and stopped to wait for a go-ahead before any create work.
+5. Reported read-only JDBC access as confirmed by the direct connection, the preflight's Java and `.venv` failures as Windows path detection only, and REST as not configured (no API key). It installed nothing, changed no files, and stopped to wait for a go-ahead before any create work.
 
 Afterwards `git status` in the getting-started clone showed no tracked changes; the only new file is Python's gitignored `scripts/__pycache__/`. No credential value appears in the run output.
 

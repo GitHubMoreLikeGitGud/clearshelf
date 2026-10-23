@@ -1,0 +1,348 @@
+{
+  "schema": "clearshelf.market_allergens.v1",
+  "version": "2026-10-23.1",
+  "description": "Statutory allergen lists per market: the UK/EU 14 and the US 9. Source of data/ops/market_allergens.json (ops writer adds the __schema__ sentinel). Codes are <market>:<group>, using the extraction groups milk, egg, fish, crustacean, mollusc, tree_nut, peanut, gluten_cereal, wheat, soy, sesame, celery, mustard, lupin, sulphite.",
+  "sources": {
+    "UK": {
+      "statute": "Regulation (EU) No 1169/2011 on the provision of food information to consumers, Annex II (assimilated law in Great Britain since 1 January 2024)",
+      "statute_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "guidance": "Food Standards Agency, Allergen guidance for food businesses, section 1 '14 allergens' (GOV.UK, last updated 17 July 2026)",
+      "guidance_url": "https://www.gov.uk/government/publications/allergen-guidance-for-food-businesses/allergen-guidance-for-food-businesses",
+      "transcribed_from": "The FSA guidance page, fetched 2026-10-23. The legislation.gov.uk and EUR-Lex pages answered automated fetches with an anti-bot challenge (HTTP 202, empty body), so Annex II item numbers follow the regulation's numbering and are not machine-verified here.",
+      "licence": "Open Government Licence v3.0"
+    },
+    "US": {
+      "statute": "FD&C Act section 201(qq) (21 U.S.C. 321(qq)) as added by FALCPA 2004 (Public Law 108-282) and amended by the FASTER Act 2021 (Public Law 117-11, sesame)",
+      "statute_url": "https://www.fda.gov/food/food-allergensgluten-free-guidance-documents-regulatory-information/food-allergen-labeling-and-consumer-protection-act-2004-falcpa",
+      "guidance": "FDA, Questions and Answers Regarding Food Allergens, Including the Food Allergen Labeling Requirements of the Federal Food, Drug, and Cosmetic Act (Edition 5): Guidance for Industry, January 2025 (nonbinding)",
+      "guidance_url": "https://www.fda.gov/media/117410/download",
+      "faq": "FDA, Frequently Asked Questions: Food Allergen Labeling Guidance for Industry (content current as of 03/26/2025)",
+      "faq_url": "https://www.fda.gov/food/food-allergensgluten-free-guidance-documents-regulatory-information/frequently-asked-questions-food-allergen-labeling-guidance-industry",
+      "sesame_effective": "The FDA Food Allergies page states the sesame change 'was effective on January 1, 2023' (https://www.fda.gov/food/nutrition-food-labeling-and-critical-foods/food-allergies).",
+      "transcribed_from": "Edition 5 PDF fetched 2026-10-23 (27 pages): A.1 list of major food allergens (p. 4), C.1 milk, C.3 eggs (p. 13), C.7 and Table 1 tree nuts (pp. 14-15), C.8 (pp. 15-16), C.9 wheat and C.11 soy synonyms (p. 16), D.9 highly refined oils (pp. 20-21). FAQ page fetched 2026-10-23 for the coconut answer and the removed-nut list.",
+      "licence": "US federal government work, public domain"
+    }
+  },
+  "rule_conflicts": [
+    {
+      "id": "coconut-tree-nut",
+      "summary": "Coconut is not a tree nut for labelling in either market, but older US labels and FDA recall texts may still call it one.",
+      "US": "FDA FAQ: 'No, coconut is no longer listed in the Tree Nut List (Table 1) in the 5th edition of the Food Allergen Q&A Guidance.' FDA expects 'a transitional period before firms remove coconut from the Contains statement'. Table 1 tree nuts not listed 'should not be included in the Contains statement' but must stay in the ingredient list (Q&A C.8).",
+      "UK": "Annex II item 8 (Nuts) names almonds, hazelnuts, walnuts, cashews, pecans, Brazil nuts, pistachios and macadamia (Queensland) nuts; coconut is not listed.",
+      "example": "openFDA H-1274-2026 / H-1275-2026 (Lidl Eridanous shortbread) give the reason 'undeclared ... tree nut (coconut)'.",
+      "handling": "Surface as a rule-against-rule conflict; never list coconut under 'Contains' for either market; keep it in the ingredient list."
+    },
+    {
+      "id": "pine-nut-scope",
+      "summary": "Pine nuts are a US Table 1 tree nut but are not an Annex II nut.",
+      "US": "Table 1 lists 'Pine nut/Pinon nut' (Pinus spp.).",
+      "UK": "Annex II item 8 does not list pine nuts.",
+      "handling": "US:tree_nut covers pine nut; UK statements name pine nut only in the ingredient list."
+    },
+    {
+      "id": "gluten-vs-wheat",
+      "summary": "The UK declares 'cereals containing gluten' (wheat, rye, barley, oats); the US declares 'wheat' only (any Triticum species).",
+      "handling": "US:gluten_cereal is deliberately absent, so a US-market gluten tag becomes an FK DQ orphan and the US statement must say 'wheat'. Barley, rye and oats are not US major food allergens."
+    }
+  ],
+  "data": [
+    {
+      "market_code": "UK:gluten_cereal",
+      "market": "UK",
+      "allergen": "gluten_cereal",
+      "display_name": "Cereals containing gluten",
+      "annex_item": 1,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 1 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": ["wheat (such as spelt and khorasan wheat)", "rye", "barley", "oats"],
+      "notes": "FSA wording: 'cereals containing gluten (such as wheat, rye, barley and oats)'. Annex II lists exceptions (e.g. wheat-based glucose syrups and maltodextrins); buckwheat is not a cereal containing gluten."
+    },
+    {
+      "market_code": "UK:crustacean",
+      "market": "UK",
+      "allergen": "crustacean",
+      "display_name": "Crustaceans",
+      "annex_item": 2,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 2 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": ["prawns", "crabs", "lobsters"],
+      "notes": "FSA wording: 'crustaceans (such as prawns, crabs and lobsters)'."
+    },
+    {
+      "market_code": "UK:egg",
+      "market": "UK",
+      "allergen": "egg",
+      "display_name": "Eggs",
+      "annex_item": 3,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 3 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": [],
+      "notes": "FSA wording: 'eggs'."
+    },
+    {
+      "market_code": "UK:fish",
+      "market": "UK",
+      "allergen": "fish",
+      "display_name": "Fish",
+      "annex_item": 4,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 4 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": [],
+      "notes": "FSA wording: 'fish'."
+    },
+    {
+      "market_code": "UK:peanut",
+      "market": "UK",
+      "allergen": "peanut",
+      "display_name": "Peanuts",
+      "annex_item": 5,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 5 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": [],
+      "notes": "FSA wording: 'peanuts'."
+    },
+    {
+      "market_code": "UK:soy",
+      "market": "UK",
+      "allergen": "soy",
+      "display_name": "Soybeans",
+      "annex_item": 6,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 6 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": [],
+      "notes": "FSA wording: 'soybeans'. UK labels usually say 'soya'."
+    },
+    {
+      "market_code": "UK:milk",
+      "market": "UK",
+      "allergen": "milk",
+      "display_name": "Milk",
+      "annex_item": 7,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 7 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": [],
+      "notes": "FSA wording: 'milk'. Cocoa butter, coconut milk and lactic acid are not milk."
+    },
+    {
+      "market_code": "UK:tree_nut",
+      "market": "UK",
+      "allergen": "tree_nut",
+      "display_name": "Nuts",
+      "annex_item": 8,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 8 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": ["almonds", "hazelnuts", "walnuts", "brazil nuts", "cashews", "pecans", "pistachios", "macadamia nuts"],
+      "excludes": ["coconut", "pine nut", "nutmeg", "peanut (separate item 5)"],
+      "notes": "FSA wording: 'tree nuts (such as almonds, hazelnuts, walnuts, brazil nuts, cashews, pecans, pistachios and macadamia nuts)'."
+    },
+    {
+      "market_code": "UK:celery",
+      "market": "UK",
+      "allergen": "celery",
+      "display_name": "Celery",
+      "annex_item": 9,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 9 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": ["celeriac"],
+      "notes": "FSA wording: 'celery'."
+    },
+    {
+      "market_code": "UK:mustard",
+      "market": "UK",
+      "allergen": "mustard",
+      "display_name": "Mustard",
+      "annex_item": 10,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 10 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": [],
+      "notes": "FSA wording: 'mustard'."
+    },
+    {
+      "market_code": "UK:sesame",
+      "market": "UK",
+      "allergen": "sesame",
+      "display_name": "Sesame seeds",
+      "annex_item": 11,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 11 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": [],
+      "notes": "FSA wording: 'sesame'."
+    },
+    {
+      "market_code": "UK:sulphite",
+      "market": "UK",
+      "allergen": "sulphite",
+      "display_name": "Sulphur dioxide and sulphites",
+      "annex_item": 12,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 12 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": ["E220-E228"],
+      "notes": "FSA wording: 'sulphur dioxide and sulphites (if the sulphur dioxide and sulphites are at a concentration of more than ten parts per million)'. Concentration cannot be measured from a label."
+    },
+    {
+      "market_code": "UK:lupin",
+      "market": "UK",
+      "allergen": "lupin",
+      "display_name": "Lupin",
+      "annex_item": 13,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 13 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": [],
+      "notes": "FSA wording: 'lupin'."
+    },
+    {
+      "market_code": "UK:mollusc",
+      "market": "UK",
+      "allergen": "mollusc",
+      "display_name": "Molluscs",
+      "annex_item": 14,
+      "statute": "Reg. (EU) 1169/2011 Annex II item 14 (assimilated law, GB)",
+      "edition": "Annex II as retained; FSA guidance updated 2026-07-17",
+      "citation_url": "https://www.legislation.gov.uk/eur/2011/1169/annex/II",
+      "includes": ["mussels", "oysters"],
+      "notes": "FSA wording: 'molluscs (such as mussels and oysters)'."
+    },
+    {
+      "market_code": "US:milk",
+      "market": "US",
+      "allergen": "milk",
+      "display_name": "Milk",
+      "statute": "FD&C Act 201(qq), 21 U.S.C. 321(qq) (FALCPA 2004, Pub. L. 108-282)",
+      "edition": "FDA Food Allergen Q&A Edition 5, Jan 2025, Q&A C.1",
+      "citation_url": "https://www.fda.gov/media/117410/download",
+      "includes": ["milk from domesticated cows, goats, sheep, or other ruminants"],
+      "notes": "Q&A C.1: FDA considers 'milk' as milk from domesticated cows, goats, sheep, or other ruminants; C.2: name the animal for non-cow milk (e.g. 'goat milk')."
+    },
+    {
+      "market_code": "US:egg",
+      "market": "US",
+      "allergen": "egg",
+      "display_name": "Egg",
+      "statute": "FD&C Act 201(qq), 21 U.S.C. 321(qq) (FALCPA 2004, Pub. L. 108-282)",
+      "edition": "FDA Food Allergen Q&A Edition 5, Jan 2025, Q&A C.3",
+      "citation_url": "https://www.fda.gov/media/117410/download",
+      "includes": ["eggs from domesticated chickens, ducks, geese, quail, and other fowl"],
+      "notes": "Q&A C.4: name the bird for non-chicken eggs (e.g. 'duck egg')."
+    },
+    {
+      "market_code": "US:fish",
+      "market": "US",
+      "allergen": "fish",
+      "display_name": "Fish",
+      "statute": "FD&C Act 201(qq), 21 U.S.C. 321(qq) (FALCPA 2004, Pub. L. 108-282)",
+      "edition": "FDA Food Allergen Q&A Edition 5, Jan 2025, Q&A C.5-C.6",
+      "citation_url": "https://www.fda.gov/media/117410/download",
+      "includes": ["such as bass, flounder, cod"],
+      "notes": "Section 403(w)(2): the species must be declared (e.g. 'cod'); 'fish' alone is not enough."
+    },
+    {
+      "market_code": "US:crustacean",
+      "market": "US",
+      "allergen": "crustacean",
+      "display_name": "Crustacean shellfish",
+      "statute": "FD&C Act 201(qq), 21 U.S.C. 321(qq) (FALCPA 2004, Pub. L. 108-282)",
+      "edition": "FDA Food Allergen Q&A Edition 5, Jan 2025, Q&A C.5-C.6",
+      "citation_url": "https://www.fda.gov/media/117410/download",
+      "includes": ["such as crab, lobster, shrimp"],
+      "excludes": ["molluscs (not a US major food allergen)"],
+      "notes": "Section 403(w)(2): the species must be declared (e.g. 'shrimp')."
+    },
+    {
+      "market_code": "US:tree_nut",
+      "market": "US",
+      "allergen": "tree_nut",
+      "display_name": "Tree nuts",
+      "statute": "FD&C Act 201(qq), 21 U.S.C. 321(qq) (FALCPA 2004, Pub. L. 108-282)",
+      "edition": "FDA Food Allergen Q&A Edition 5, Jan 2025, Table 1 and Q&A C.7-C.8",
+      "citation_url": "https://www.fda.gov/media/117410/download",
+      "includes": [
+        "Almond",
+        "Black walnut",
+        "Brazil nut",
+        "California walnut",
+        "Cashew",
+        "Filbert/Hazelnut",
+        "Heartnut/Japanese walnut",
+        "Macadamia nut/Bush nut",
+        "Pecan",
+        "Pine nut/Pinon nut",
+        "Pistachio",
+        "Walnut (English, Persian)"
+      ],
+      "excludes": [
+        "coconut",
+        "beech nut",
+        "butternut",
+        "chestnut",
+        "chinquapin",
+        "cola/kola nut",
+        "ginkgo nut",
+        "hickory nut",
+        "palm nut",
+        "pili nut",
+        "shea nut",
+        "lichee nut"
+      ],
+      "excludes_source": "https://www.fda.gov/food/food-allergensgluten-free-guidance-documents-regulatory-information/frequently-asked-questions-food-allergen-labeling-guidance-industry",
+      "notes": "includes = Table 1 common or usual names transcribed from the Edition 5 PDF (p. 15). Coconut was removed from the tree-nut list in Edition 5. Section 403(w)(2): the type of tree nut must be named (e.g. 'almond'); Q&A C.8: nuts not in Table 1 stay in the ingredient list but not in 'Contains'."
+    },
+    {
+      "market_code": "US:wheat",
+      "market": "US",
+      "allergen": "wheat",
+      "display_name": "Wheat",
+      "statute": "FD&C Act 201(qq), 21 U.S.C. 321(qq) (FALCPA 2004, Pub. L. 108-282)",
+      "edition": "FDA Food Allergen Q&A Edition 5, Jan 2025, Q&A C.9",
+      "citation_url": "https://www.fda.gov/media/117410/download",
+      "includes": ["any species in the genus Triticum: common wheat, durum wheat, club wheat, spelt, semolina, Einkorn, emmer, Khorasan, triticale"],
+      "excludes": ["barley", "rye", "oats", "buckwheat"],
+      "notes": "Q&A C.9 defines wheat as any Triticum species. Gluten is not itself a US major food allergen; the US statement says 'wheat'."
+    },
+    {
+      "market_code": "US:peanut",
+      "market": "US",
+      "allergen": "peanut",
+      "display_name": "Peanuts",
+      "statute": "FD&C Act 201(qq), 21 U.S.C. 321(qq) (FALCPA 2004, Pub. L. 108-282)",
+      "edition": "FDA Food Allergen Q&A Edition 5, Jan 2025, Q&A A.1",
+      "citation_url": "https://www.fda.gov/media/117410/download",
+      "includes": [],
+      "notes": ""
+    },
+    {
+      "market_code": "US:soy",
+      "market": "US",
+      "allergen": "soy",
+      "display_name": "Soybeans",
+      "statute": "FD&C Act 201(qq), 21 U.S.C. 321(qq) (FALCPA 2004, Pub. L. 108-282)",
+      "edition": "FDA Food Allergen Q&A Edition 5, Jan 2025, Q&A A.1, C.11, D.9",
+      "citation_url": "https://www.fda.gov/media/117410/download",
+      "includes": ["soybean", "soy", "soya"],
+      "notes": "Q&A C.11: 'Soybean,' 'soy,' and 'soya' are reasonable synonyms. Q&A D.9: highly refined oils derived from a major food allergen are exempt from section 403(w), but the source still appears in the ingredient list (e.g. 'soybean oil')."
+    },
+    {
+      "market_code": "US:sesame",
+      "market": "US",
+      "allergen": "sesame",
+      "display_name": "Sesame",
+      "statute": "FD&C Act 201(qq), 21 U.S.C. 321(qq), as amended by the FASTER Act 2021 (Pub. L. 117-11)",
+      "edition": "Effective 2023-01-01; FDA Food Allergen Q&A Edition 5, Jan 2025",
+      "citation_url": "https://www.fda.gov/food/nutrition-food-labeling-and-critical-foods/food-allergies",
+      "includes": [],
+      "notes": "FDA Food Allergies page: the sesame change 'was effective on January 1, 2023'. Q&A B.5: sesame in a spice mix must be declared ('Contains sesame' or 'spices (sesame)')."
+    }
+  ]
+}
