@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  agent:
+    name: agent tests and type check
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+
+  gateway:
+    name: gateway tests and onboarding dry run
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r gateway/requirements-dev.txt
+      - run: python -m pytest gateway/tests -q
+      - run: python -m gateway.onboard --dry-run --offline
+
+  meterless-conformance:
+    name: Meterless conformance (vendored engines)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: H-MEM
+        working-directory: engines/hmem/reference
+        run: |
+          npm install
+          npx tsx ../conformance/runner.ts
+      - name: Markovian
+        working-directory: engines/markovian/reference
+        run: |
+          npm install
+          npx tsx ../conformance/runner.ts
+      - name: World Model and idempotency check
+        working-directory: engines/world-model/reference
+        run: |
+          npm install
+          npx tsx ../conformance/runner.ts
+          npx tsx scripts/idempotency-check.ts
