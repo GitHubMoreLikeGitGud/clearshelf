@@ -1,5 +1,7 @@
 # ClearShelf
 
+[![ci](https://github.com/GitHubMoreLikeGitGud/clearshelf/actions/workflows/ci.yml/badge.svg)](https://github.com/GitHubMoreLikeGitGud/clearshelf/actions/workflows/ci.yml)
+
 **Allergen clearance and recall watch for online grocers. Every decision is cited and every release is signed.**
 
 Open Agent Hackathon 2026, Track 3: Reasoning Architecture. Team: Umar Mohktar, Singapore - solo.
