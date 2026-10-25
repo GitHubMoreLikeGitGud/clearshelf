@@ -4,15 +4,29 @@
 
 Open Agent Hackathon 2026, Track 3: Reasoning Architecture. Team: Umar Mohktar, Singapore - solo.
 
-- **User:** the product-compliance officer at a UK online grocer that also sells US- and EU-made packaged foods. They sign off the allergen information shown before purchase, which FIC Art. 14 requires for distance selling. They also pull or relabel live listings when the FSA or FDA publishes an allergy alert.
-- **Problem:** label data and recall notices contradict each other, and the officer reconciles them by hand. For example, Open Food Facts lists Frankie's Plant-Based Puffs (UPC 816929000119) as vegan with no allergens, while FDA recall H-1328-2026 says the product tested positive for undeclared milk.
-- **Measured on the demo catalogue** (30 products, 33 listings; details in [`docs/eval-report.md`](docs/eval-report.md) section 7):
-  - All 17 listings whose barcode an FDA recall names exactly were held or blocked automatically at intake. None was proposed for clearance.
-  - In a replayed recall poll, ClearShelf read 15 new notices, held the one exact-barcode match and queued 2 name-only matches for the officer. Each run took 57.5 to 93.5 s (median 68.5 s over 10 runs), and the hold was visible in Zetaris at the end. These were replays of past notices, not live alerts.
-  - Each listing's decision rests on a median of 21 cited evidence records, 10 of them Zetaris SQL. An investigation takes 48 to 94 s per product on one local GPU.
-  - The UK FSA published about 7 allergy alerts a month: 200 between July 2024 and October 2026.
+**[Demo video (3:27)](https://youtu.be/p9bATVx6YsA)** · **[Deck (PDF, 12 slides)](docs/deck/ClearShelf.pdf)** · **[Evaluation report](docs/eval-report.md)** · **[How Cursor was used](docs/how-cursor-was-used.md)**
 
-Demo video: https://youtu.be/p9bATVx6YsA (3:27)
+![The ClearShelf card for Plant-Based Puffs (UK): HOLD, applied automatically, on an FDA milk recall (R1), a missing ingredient list and a non-English label (R3) and two contradictions (R4). Every line carries a chip that opens its evidence.](docs/deck/img/hero-puffs-top.png)
+
+**The problem.** The user is the product-compliance officer at a UK online grocer that also sells US- and EU-made packaged foods. They sign off the allergen information shown before purchase, which FIC Art. 14 requires for distance selling, and pull or relabel listings when the FSA or FDA publishes an allergy alert. The sources disagree, and the officer reconciles them by hand: Open Food Facts lists Frankie's Plant-Based Puffs (UPC 816929000119) as vegan with no allergens, while Class I FDA recall H-1328-2026 says the product tested positive for undeclared milk. openFDA holds 6,325 food enforcement reports whose recall reason says "undeclared", and 842 of the newest 1,000 concern an allergen.
+
+**What the demo shows** (measured on 23 Oct 2026 on a demo catalogue of 30 products and 33 listings that deliberately includes 14 barcodes taken from FDA recalls; [eval report, section 7](docs/eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)). In a replayed recall poll, ClearShelf read 15 new notices, held the one exact-barcode match automatically and visibly in Zetaris in a median 68.5 s over 10 runs (57.5 to 93.5 s), and queued 2 name-only matches for the officer. At intake, all 17 listings whose barcode a recall names were held or blocked, 10 more were held or blocked for other reasons with the rule cited, and 6 were proposed for clearance and are waiting for the officer's signature, because nothing clears without one.
+
+**HOLD or BLOCK?** Both are applied automatically. BLOCK means an active recall of this barcode covers this market. HOLD means the listing waits for the officer: a US-only or past recall, a failed data-quality rule, an unresolved contradiction or an incomplete investigation. CLEAR and CLEAR_WITH_STATEMENT run only under an officer-signed, single-use contract.
+
+- **Zetaris** is the only data path. Open Food Facts, openFDA and the UK FSA are Lightning REST tables, joined in the 9-table `clearance_usl` semantic layer with 22 data-quality rules; an invalid record for a product holds it (R3). Every claim cites the Lightning SQL that produced it (95 of 95 cited records re-ran with their rows), and the agent's own decisions are federated back and checked by the `signed_clear` DQ rule.
+- **Meterless:** every clearance is a Markovian chain on the vendored engine (unchanged; planner prompts stay at 1,322 to 1,788 tokens per chunk). H-MEM keeps officer rulings and source facts with provenance, and the World Model answers "what did we know when?". Conformance: 13/13, 8/8, 8/8.
+- **NVIDIA Nemotron 3 Nano 4B** runs locally in 2,881 MiB of VRAM with 0 cloud model calls. On 27 real labels it reads "contains" at precision 1.00 against 0.71 for a keyword rule (recall 0.78 against 0.99), with 0 of 15 trap false alarms against 5. It reads and plans; it never decides.
+- **Cursor:** developed in a Cursor workspace with project rules in `.cursor/rules` and `AGENTS.md`. Every Cursor Agent task (G9, C1 to C3, and C9 after the plan upgrade) and its commit is listed in [`docs/how-cursor-was-used.md`](docs/how-cursor-was-used.md).
+
+**Verify in three minutes, with no Zetaris and no GPU** (Node 22.12+, Python 3.12; all steps in [Quickstart](#quickstart)). Expected output, measured on a fresh clone on 25 Oct 2026:
+
+```bash
+cd agent && npm ci && npm test && npm run typecheck && cd ..   # Tests 419 passed (419); tsc exits 0
+python -m venv .venv && .venv/Scripts/pip install -r gateway/requirements-dev.txt
+.venv/Scripts/python -m pytest gateway/tests -q                # 199 passed, 4 skipped
+.venv/Scripts/python -m gateway.onboard --dry-run --offline    # "statements": 125
+```
 
 ![ClearShelf architecture: public sources are read only through Zetaris; a Markovian loop planned by local Nemotron gathers evidence through a gateway; deterministic policy decides; actions are signed; decisions are written back and read again through Zetaris.](docs/architecture.png)
 
@@ -35,7 +49,7 @@ For each product (GTIN) and market (UK or US), ClearShelf runs an investigation 
 ## What is new
 
 - **Zetaris DQ results are a policy input.** Data-quality rules on the semantic layer do more than report: an invalid record for a GTIN blocks a CLEAR (rule R3), and the DQ rule is quoted on the card.
-- **Citations can be re-run.** The evidence for a claim is the Lightning SQL that produced it. Re-running every cited query returned every cited row (95 of 95).
+- **Citations can be re-run.** The evidence for a claim is the Lightning SQL that produced it. Re-running every cited query returned every cited row (95 of 95; 36 of them cite 0 rows).
 - **The agent's own decisions are federated data.** Decisions become a Zetaris table, and a new recall is joined against them inside Zetaris. After every signed write and on every recheck, the `signed_clear` and `known_status` DQ rules check the decisions Zetaris reads back.
 - **Conflicts between rules are on the record.** Coconut is a tree nut in a 2026 recall text, but not in FDA's current guidance or on the UK list. ClearShelf queues that conflict instead of picking a side.
 - **Autonomy only in the safe direction.** Holds and blocks happen on their own. Clearing needs a signed, single-use contract, which the agent server checks before the write. Zetaris checks again afterwards: the `signed_clear` DQ rule runs after the write and flags any clearance row without a contract. In a test, a signed clearance passed, and an unsigned row written into the ops file directly was flagged ([eval report, section 7](docs/eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)).
