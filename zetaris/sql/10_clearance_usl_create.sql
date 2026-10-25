@@ -87,7 +87,7 @@ CREATE TABLE decision (
     reason varchar(1000)
 );
 
--- Descriptions: the planner prompt is built from LOAD USL output, so these are the agent's map.
+-- Descriptions: shown in the Zetaris UI and returned by LOAD USL (gateway template usl_model). The agent's planner prompt is not built from them; no agent code calls usl_model.
 -- Unquoted text: a quoted string is stored with its quotes. No semicolons in the text.
 UPDATE USL lightning.metastore.clearshelf.clearance_usl SET DESCRIPTION ClearShelf allergen clearance model - catalogue products from Open Food Facts, openFDA undeclared-allergen recalls, UK FSA allergy alerts, the market allergen reference and the agent ops store. Foreign keys and DQ rules gate CLEAR decisions.;
 UPDATE USL lightning.metastore.clearshelf.clearance_usl.market_allergen SET TABLE DESCRIPTION Statutory allergen list per market. market_code is MARKET:allergen, for example UK:milk or US:wheat, with statute, edition and citation URL.;

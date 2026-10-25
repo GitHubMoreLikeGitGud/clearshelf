@@ -200,7 +200,7 @@ TEMPLATES: dict[str, Template] = {
             (f"{U}.decision",), (OPS_RAW["decision"],), "DQ invalid records: decisions whose status is not one of the four decision states.",
         ),
         _t("dq_rules", f"LIST DQ USL {U}", {}, (U,), (), "Every key constraint and DQ rule in clearance_usl."),
-        _t("usl_model", "LOAD USL clearance_usl NAMESPACE lightning.metastore.clearshelf", {}, (U,), (), "The clearance_usl model as JSON (planner map)."),
+        _t("usl_model", "LOAD USL clearance_usl NAMESPACE lightning.metastore.clearshelf", {}, (U,), (), "The clearance_usl model as JSON (LOAD USL); not called by the agent."),
     ]
 }
 
