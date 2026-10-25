@@ -55,6 +55,7 @@
       "extraction_recall_by_language_q4_q8_lexicon": "en (21 labels) 0.90 / 0.90 / 0.98; de (4) 0.50 / 0.70 / 0.95; fr (1) 0.60 / 0.80 / 1.00; it (1) 0.83 / 0.83 / 1.00",
       "q8_0_against_q4_k_m": "113.1 against 154.1 tokens/s, 2.55 against 2.09 s per extraction call, 4,066 against 2,881 MiB of VRAM; Q4 stays the default",
       "recall_notices_at_scale_2026_10_26": "505 cached openFDA notices that print a barcode: UPC precision / recall GS1 scan 0.996 / 0.994, Nemotron 0.981 / 0.879 after the host check (raw 0.757 precision, 21 codes not in the text); allergen groups exactly right: lexicon 499 / 505, Nemotron 412 / 505; Nemotron found 4 true codes the scan missed (docs/eval/notices-2026-10-26.json)",
+      "second_reader_holding_on_either": "with the deterministic readers, a code or allergen either reader finds holds the listing: 705 of 705 pooled recall-notice barcodes (GS1 scan 701, Nemotron 620; 15 wrong codes, none a catalogue barcode; docs/eval/notices-2026-10-26.json) and 79 of 80 contains pairs on 27 labels (lexicon 78, Nemotron 62; the reference labels' text rule is the lexicon's word list; docs/eval/extraction-q4-2026-10-25.json); 0.78 s per notice and 2.09 s per label, median",
       "planner_switched_off_2026_10_26": "8 investigations with fallbackStep() only (CLEARSHELF_PLANNER=off), two pairs of runs: same decision, rules, contradiction kinds, claim verdicts and statement in 8 of 8; 163.9 and 158.5 s against 569.9 and 530.6 s with the planner; the planner added 1 optional World Model lookup in 16 planned investigations (docs/eval/planner-ablation-2026-10-26.json)"
     },
     "cloud_model_calls": 0,
@@ -67,6 +68,14 @@
     "not_run_by_cursor_agent": ["C4", "C5", "C6", "C7", "C8"],
     "details": "docs/how-cursor-was-used.md"
   },
+  "decisions_at_intake_2026_10_23": {
+    "listings": 33,
+    "held_or_blocked": "27 (24 HOLD, 3 BLOCK); 6 proposed and waiting for an officer's signature",
+    "why_held": "17 on R1 (a recall names the barcode), 3 more on R3 (a Zetaris DQ rule failed), 7 on contradictions only (R4; 6 of them include a model/verifier disagreement)",
+    "caveat": "the demo catalogue was built to include 14 barcodes taken from FDA recalls, so the R1 count checks the barcode join on a planted set",
+    "source": "docs/eval/intake-holds-2026-10-23.json"
+  },
+  "scenario_pass_rule": "exact decision status and every expected rule (rules beyond the expectation do not fail a scenario); expectations written by the author, so 10 of 10 is a regression check, not an accuracy score (docs/eval-report.md section 1)",
   "data_sources": [
     {"name": "Open Food Facts product API v2", "licence": "ODbL-1.0", "attribution": "Data from Open Food Facts (openfoodfacts.org), ODbL", "access": "through Zetaris only"},
     {"name": "openFDA food enforcement", "licence": "Public domain / CC0-1.0", "attribution": "U.S. Food and Drug Administration; no FDA endorsement", "access": "through Zetaris only"},

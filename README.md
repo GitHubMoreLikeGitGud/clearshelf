@@ -61,7 +61,7 @@ How to read it: on notices the truth set is pooled (a code counts as true when b
 | Meterless conformance on the vendored engines | the `engines/*/conformance` runners ([Quickstart A](#a-three-minute-check-no-zetaris-no-gpu)) | 13/13, 8/8, 8/8, then `diff: empty` |
 | ClearShelf's H-MEM subclass through the engine's own runner | `cd engines/hmem/reference && npm install && HMEM_IMPL=../../../agent/src/memory/hmemFacade.ts npx tsx ../conformance/runner.ts` | `13/13 checks passed` |
 | The vendored engines are unchanged | `bash scripts/check-engines-upstream.sh` | `59 files ... blob ids identical: yes` against Meterless/Meterless@1742dec |
-| This README's headline numbers match the committed measurements | `cd agent && npm run check:readme` | `11 of 11 checks passed` (each number recomputed from `docs/eval/*.json`) |
+| This README's headline numbers match the committed measurements | `cd agent && npm run check:readme` | `17 of 17 checks passed` (each number recomputed from `docs/eval/*.json`) |
 
 The measured runs behind the numbers are committed as score-only JSON (counts, ids and timings; no source text) in [`docs/eval/`](docs/eval/):
 

@@ -218,6 +218,79 @@ const CHECKS = [
       };
     },
   },
+  {
+    id: "notices-upc-recall",
+    file: "docs/eval/notices-2026-10-26.json",
+    field: "upc.scan.recall / upc.model_after_host_check.recall",
+    expected(data) {
+      const { scan, model_after_host_check: model } = data.upc;
+      return `recall ${scan.recall.toFixed(3)} against ${model.recall.toFixed(3)}`;
+    },
+  },
+  {
+    id: "notices-allergens",
+    file: "docs/eval/notices-2026-10-26.json",
+    field: "allergens.exact_group_match + hand_check_{lexicon,model}_exactly_right",
+    expected(data) {
+      const a = data.allergens;
+      const lexicon = a.exact_group_match + a.hand_check_lexicon_exactly_right;
+      const model = a.exact_group_match + a.hand_check_model_exactly_right;
+      return `${lexicon} against ${model} notices exactly right`;
+    },
+  },
+  {
+    id: "notices-either-reader",
+    file: "docs/eval/notices-2026-10-26.json",
+    field: "upc.agreed_by_both + single_reader_true / true_in_pool",
+    expected(data) {
+      const u = data.upc;
+      const either = u.agreed_by_both + u.single_reader_true.scan_only + u.single_reader_true.model_only;
+      return `${either} of ${u.true_in_pool} pooled recall barcodes`;
+    },
+  },
+  {
+    id: "planner-off-walls",
+    file: "docs/eval/planner-ablation-2026-10-26.json",
+    field: "arms[].real_8.wall_s_sum",
+    expected(data) {
+      const sums = (planner) =>
+        data.arms.filter((a) => a.planner === planner).map((a) => a.real_8.wall_s_sum.toFixed(1));
+      const off = sums("off");
+      const model = sums("model");
+      return `${off[0]} s and ${off[1]} s for the 8 against ${model[0]} s and ${model[1]} s`;
+    },
+  },
+  {
+    id: "planner-off-same",
+    file: "docs/eval/planner-ablation-2026-10-26.json",
+    field: "comparisons_against_first_model_arm[].cases (without the synthetic E8)",
+    expected(data) {
+      let same = Infinity;
+      let total = 0;
+      for (const cmp of data.comparisons_against_first_model_arm) {
+        const real = cmp.cases.filter((c) => c.id !== "E8");
+        const n = real.filter(
+          (c) => c.same_status && c.same_rules && c.same_contradiction_kinds && c.same_statement,
+        ).length;
+        same = Math.min(same, n);
+        total = real.length;
+      }
+      return `statement in ${same} of ${total}`;
+    },
+  },
+  {
+    id: "intake-holds",
+    file: "docs/eval/intake-holds-2026-10-23.json",
+    field: "listings[].hold_block_rules (listings with an intake decision row)",
+    expected(data) {
+      const held = data.listings.filter((l) => l.decision_row_status);
+      const has = (l, r) => l.hold_block_rules.includes(r);
+      const r1 = held.filter((l) => has(l, "R1")).length;
+      const r3 = held.filter((l) => !has(l, "R1") && has(l, "R3")).length;
+      const rest = held.filter((l) => !has(l, "R1") && !has(l, "R3")).length;
+      return `${r1} cite a recall of the listing's barcode (R1), ${r3} more a failed Zetaris data-quality rule (R3: no ingredient list, or a label not in English), and ${rest} hold only on unresolved contradictions`;
+    },
+  },
 ];
 
 function runCheck(check, readme) {
