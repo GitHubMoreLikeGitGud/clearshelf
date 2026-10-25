@@ -153,8 +153,10 @@ async function run(): Promise<void> {
 interface Adjudication {
   /** "<recall_number>|<gtin13>" -> true (a product barcode the notice prints) or false. */
   codes: Record<string, { verdict: boolean; why: string }>;
-  /** Allergen disagreements: "<recall_number>" -> which reader is right, per group. */
+  /** Allergen disagreements: "<recall_number>" -> the groups the reason text names as undeclared, read by hand. */
   allergens?: Record<string, { truth: string[]; why: string }>;
+  /** Notices read in full by hand: "<recall_number>" -> every product barcode printed (GTIN-13). */
+  full_read?: Record<string, { gtin13: string[]; why?: string }>;
 }
 
 function score(runFile: string, adjFile?: string): void {
@@ -173,6 +175,7 @@ function score(runFile: string, adjFile?: string): void {
     unadjudicated = 0,
     xOnlyTrue = 0,
     nOnlyTrue = 0,
+    rawTrue = 0,
     printedNotUsable = 0;
   const pending: { key: string; who: "scan" | "model" }[] = [];
   const perNotice: { recall_number: string; x_missed: number; n_missed: number }[] = [];
@@ -217,14 +220,28 @@ function score(runFile: string, adjFile?: string): void {
       }
     }
     if (xm || nm) perNotice.push({ recall_number: r.recall_number, x_missed: xm, n_missed: nm });
+    for (const u of r.model.upcs) {
+      if (!u.kept || !u.gtin13) continue;
+      const t = x.has(u.gtin13) || adj.codes[`${r.recall_number}|${u.gtin13}`]?.verdict === true;
+      if (t) rawTrue++;
+    }
   }
+  // Notices read in full by hand: codes printed that neither reader returned.
+  const fullRead = Object.entries(adj.full_read ?? {}).map(([id, f]) => {
+    const r = recs.find((x) => x.recall_number === id);
+    const pool = new Set([...(r?.scan.gtin13 ?? []), ...(r?.model.upcs.filter((u) => u.kept).map((u) => u.gtin13!) ?? [])]);
+    return { recall_number: id, printed: f.gtin13.length, missed_by_both: f.gtin13.filter((g) => !pool.has(g)), scan_found: f.gtin13.filter((g) => r?.scan.gtin13.includes(g)).length, model_found: f.gtin13.filter((g) => r?.model.upcs.some((u) => u.kept && u.gtin13 === g)).length };
+  });
   // Allergen typing against the lexicon's reading of the reason text.
   let exact = 0,
     modelOnly = 0,
     reasonOnly = 0,
     agreedGroups = 0,
     okCalls = 0,
-    rtAgree = 0;
+    rtAgree = 0,
+    handChecked = 0,
+    modelRight = 0,
+    lexRight = 0;
   const allergenDiff: { recall_number: string; model: string[]; reason: string[] }[] = [];
   for (const r of recs) {
     if (!r.model.ok) continue;
@@ -240,6 +257,14 @@ function score(runFile: string, adjFile?: string): void {
     else allergenDiff.push({ recall_number: r.recall_number, model: [...m].sort(), reason: [...l].sort() });
     const lexType = l.size ? "undeclared_allergen" : "other";
     if (r.model.reason_type === lexType) rtAgree++;
+    const a = adj.allergens?.[r.recall_number];
+    if (a && (mo.length || lo.length)) {
+      const t = new Set<string>(a.truth.map((g) => allergenFamily(g as never)));
+      const same = (s: Set<string>) => s.size === t.size && [...s].every((g) => t.has(g));
+      handChecked++;
+      if (same(m)) modelRight++;
+      if (same(l)) lexRight++;
+    }
   }
   const walls = recs.map((r) => r.model.wall_ms);
   const out = {
@@ -259,6 +284,7 @@ function score(runFile: string, adjFile?: string): void {
       scan: { precision: round(xTp + xFp ? xTp / (xTp + xFp) : null), recall: round(truePool ? xTp / truePool : null), tp: xTp, fp: xFp, fn: truePool - xTp },
       model_after_host_check: { precision: round(nTp + nFp ? nTp / (nTp + nFp) : null), recall: round(truePool ? nTp / truePool : null), tp: nTp, fp: nFp, fn: truePool - nTp },
       model_raw_codes: rawModel,
+      model_raw_precision: round(rawModel ? rawTrue / rawModel : null),
       model_invented_not_in_text: invented,
       model_copied_but_fails_check_digit: failsCheck,
       scan_rejected_check_digit: printedNotUsable,
@@ -271,7 +297,11 @@ function score(runFile: string, adjFile?: string): void {
       model_only_groups: modelOnly,
       reason_only_groups: reasonOnly,
       reason_type_agrees_with_lexicon: rtAgree,
+      disagreements_hand_checked: handChecked,
+      hand_check_model_exactly_right: modelRight,
+      hand_check_lexicon_exactly_right: lexRight,
     },
+    full_read_sample: fullRead,
     timing: {
       model_wall_ms_median: median(walls),
       model_wall_ms_p95: pct(walls, 95),
