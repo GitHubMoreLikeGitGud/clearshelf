@@ -1,6 +1,6 @@
 # ClearShelf evaluation report
 
-**Runs:** sections 1 and 2 were measured on 23 Oct 2026, 17:06–17:16 SGT, on `b07f72a` plus the uncommitted Day-3 review fixes, starting from fresh demo stores (`npm run demo:reset -- --fresh`, then `npm run warmup`, then all 33 catalogue SKU-markets cleared once through `POST /api/clear`). Sections 3 to 6 are from the earlier run, 23 Oct 2026, 15:09–15:50 SGT, commit `b07f72a`, working tree clean. Both runs: Model `nemotron-3-nano:4b` (Q4_K_M) on local Ollama 0.40.7, `num_ctx` 8192, temperature 0, seed 7, one model call at a time. GPU: RTX 4070 Ti SUPER 16 GB, shared with another workload during the run. Zetaris on the same machine (driver app `local-1792709266461`, 43 tables cached, warm-up made no source calls). The gateway ran in its admin fallback because no least-privilege reader is configured.
+**Runs:** sections 1 and 2 were measured on 25 Oct 2026, 12:26–12:37 SGT, on commit `aeb5b92` (public `main` at the time), working tree clean: `npm run replay -- --as-of 2026-10-10` (exit 0, 128 s), then `npm run eval`, then `npm run eval:evidence` on its output. The stores were a copy of the demo state as left after the video recording on 23 Oct (not reset). A score-only summary of that run (scenario rows, evidence-quality metrics and the planner counts of section 4; no Open Food Facts text and no spans) is committed as [`docs/eval/eval-2026-10-25-aeb5b92.json`](eval/eval-2026-10-25-aeb5b92.json). Section 3 and the measured baseline in section 6 were run the same day on `8182e9d`, which changes only the measurement scripts (`agent/src/eval/measure/`); their summaries are in [`docs/eval/`](eval/). The first measurement of sections 1 and 2 (23 Oct 2026, 17:06–17:16 SGT, from fresh demo stores) ran on `b07f72a` with Day-3 review fixes that were not yet committed; this re-run on a clean commit replaces it, and its figures are kept below wherever they differ. Sections 4 to 6 also keep the earlier run, 23 Oct 2026, 15:09–15:50 SGT, commit `b07f72a`, working tree clean, next to the new figures. All runs: Model `nemotron-3-nano:4b` (Q4_K_M) on local Ollama 0.40.7, `num_ctx` 8192, temperature 0, seed 7, one model call at a time. GPU: RTX 4070 Ti SUPER 16 GB, shared with another workload during the 23 Oct runs; on 25 Oct `nvidia-smi` showed only desktop processes (about 3.8 GB, 6% utilisation) and Ollama no other model before each timed run. Zetaris on the same machine (driver app `local-1792709266461`, warm-up made no source calls). The gateway ran in its admin fallback because no least-privilege reader is configured.
 
 ## How to read this
 
@@ -8,22 +8,22 @@
 - **Reference labels** are per allergen group (`contains`, `may_contain`, `none`, or `unscored`) and come from the documented rules in `data/manifest/skus.json` (summarised at the end). They are never typed by hand.
 - **E8 is synthetic**: an eval-only fixture behind an in-process fake gateway. It is never in the catalogue, and its records are left out of E-replay.
 - **E2 is a replay.** Every row it writes carries the actor `clearshelf-agent (replay)` and the replay label: "Replay as of 10 Oct 2026" for the baseline, "Replay from 10 Oct 2026, polled to 23 Oct 2026" after the poll. It is not live behaviour.
-- **How this report was produced.** The scenario rows come from `npm run eval` (`agent/src/eval/run.ts`; output `data/eval/scenarios-2026-10-23T09-15-26-053Z.json`, gitignored; the earlier run is `scenarios-2026-10-23T07-23-50-866Z.json`). The extraction, evidence-quality and cold-versus-warm numbers come from the measurement scripts in `agent/src/eval/measure/`, run against the same gateway, model and evidence files: `npm run eval:extraction` (section 3, `data/eval/extraction-2026-10-23T07-43-08-426Z.json`), `npm run eval:evidence -- <scenarios json> [run id]...` (section 2, `data/eval/evidence-quality-2026-10-23T09-16-33-095Z.json`; the earlier run's walkthrough and cold/warm figures are in `-07-50-52-497Z.json`) and `npm run eval:cold-warm` (section 5, `data/eval/cold-warm-2026-10-23T07-48-08-203Z.json`). They were written outside Cursor Agent. This file is written from their output; the report generator that renders it from one `npm run eval` (task C6) is not built yet. Anything not run is listed under "Not measured".
+- **How this report was produced.** The scenario rows come from `npm run eval` (`agent/src/eval/run.ts`; output `data/eval/scenarios-2026-10-25T04-36-22-495Z.json`, gitignored, summarised in `docs/eval/eval-2026-10-25-aeb5b92.json`; the 23 Oct runs are `scenarios-2026-10-23T09-15-26-053Z.json` and `scenarios-2026-10-23T07-23-50-866Z.json`). On 25 Oct the extraction harness ran as `npm run eval:extraction` with `CLEARSHELF_MODEL=nemotron-3-nano:4b` and then `nemotron-3-nano:4b-q8_0` (`docs/eval/extraction-q4-2026-10-25.json`, `extraction-q8-2026-10-25.json`), and the measured full-history baseline as `npm run eval:full-history -- 0816929000119 UK 4056489125846 US` (`docs/eval/full-history-2026-10-25.json`). The extraction, evidence-quality and cold-versus-warm numbers come from the measurement scripts in `agent/src/eval/measure/`, run against the same gateway, model and evidence files: `npm run eval:extraction` (section 3, `data/eval/extraction-2026-10-23T07-43-08-426Z.json`), `npm run eval:evidence -- <scenarios json> [run id]...` (section 2, `data/eval/evidence-quality-2026-10-23T09-16-33-095Z.json`; the earlier run's walkthrough and cold/warm figures are in `-07-50-52-497Z.json`) and `npm run eval:cold-warm` (section 5, `data/eval/cold-warm-2026-10-23T07-48-08-203Z.json`). They were written outside Cursor Agent. This file is written from their output; the report generator that renders it from one `npm run eval` (task C6) is not built yet. Anything not run is listed under "Not measured".
 
 ## 1. Scenarios (SPEC 9.1)
 
-`npm run eval`: **10 of 10 pass** against `agent/src/eval/scenarios.json`, which now also checks the statement drafts of E3 and E7. Wall time 408 s (measured). E2 reads the replay sweeps `w20261023T1706265554` (baseline) and `w20261023T170714bbbd` (poll) from `npm run replay -- --as-of 2026-10-10`, run immediately before (exit 0, 117 s). The scenario clearances run the investigation only: they write no decision, queue item or World Model decision.
+`npm run eval`: **10 of 10 pass** against `agent/src/eval/scenarios.json`, which now also checks the statement drafts of E3 and E7. Wall time 467 s (measured; 408 s on 23 Oct). E2 reads the replay sweeps `w20261025T122615e59e` (baseline) and `w20261025T12271118fa` (poll) from `npm run replay -- --as-of 2026-10-10`, run immediately before (exit 0, 128 s; 117 s on 23 Oct). The scenario clearances run the investigation only: they write no decision, queue item or World Model decision. Every scenario reached the same decision and the same rules as on 23 Oct, and E3, E4, E5 and E7 drafted the same statements word for word.
 
 | ID | Input | Expected | Got | Rules fired | Result | Notes |
 |---|---|---|---|---|---|---|
-| E1 | 0816929000119 Plant-Based Puffs, UK | HOLD; R1, R4; vegan NOT_SUPPORTED; `memory_conflict` | HOLD | R1, R3, R4 | PASS | `memory_conflict` (H-MEM milk polarity conflict, contains vs free_from) and `claim_not_supported`. 4 chunks; planner 12,702 / 5,149 tokens in/out (measured); 53.7 s. |
-| E2 | 0850041392103 Chocolate Dipped Vanilla Cake (Donutful), UK, as of 2026-10-10, then poll | baseline HOLD (R3); poll HOLD (R1), applied automatically | baseline HOLD `rp-…-090713-d3ef`; poll HOLD `rp-…-090822-7296`; both visible in Zetaris | baseline R3; poll R1, R3 | PASS | The poll matched H-0011-2027 to the GTIN exactly (recall link, GS1 scan and model agree). Closed-loop recheck: 0 rows. **Decision of 23 Oct 2026, see below.** |
-| E3 | 4056489125846 Aprikosenkekse mit Kokosraspeln, UK | HOLD; R1, R3; `rule_conflict`; statement has gluten (wheat), milk, soya | HOLD | R0, R1, R3, R4 | PASS | Coconut rule-against-rule conflict surfaced. Statement draft "Contains: Cereals containing gluten (wheat), Soybeans, Milk (to confirm), Nuts (walnut) (to confirm).", see the note on "(to confirm)" below. 5 chunks; 73.5 s. |
-| E4 | 4056489125846, US | BLOCK (R1); statement has Wheat, not Coconut | BLOCK | R0, R1, R3, R4 | PASS | "Contains: Milk (to confirm), Tree nuts (walnut) (to confirm), Wheat, Soybeans." R3 includes DQ `market_code` on `declared_allergen` (2 invalid records). 1 fallback step; 75.4 s. |
-| E5 | 5000169566558 Dark Chocolate (Waitrose), UK | CLEAR_WITH_STATEMENT (R5); statement has "May contain" and "Milk" | CLEAR_WITH_STATEMENT, proposed, pending signature | R5 | PASS | "May contain: Peanuts, Milk, Nuts.", which matches the reference labels (milk, peanut and tree nut `may_contain`). Verifier: 3 spans agree, 0 disagree. The keyword baseline marks milk, peanut and tree nut as `contains` (its false positive is recorded). The extraction was reused from memory (warm). 58.3 s. |
-| E6 | 5059319005492 Kellogs crunchy nut granola red berries, UK | HOLD (R3) | HOLD | R3 | PASS | vegan claim UNTESTED (no ingredient text). 59.6 s. |
-| E7 | 4006894512205 Composition (Lambertz), UK | HOLD (R3 english_label); statement has gluten, milk, tree nut, egg, soy | HOLD | R3, R4 | PASS | 8 grounded spans in the source-language label text, 1 dropped. 13 model/verifier disagreements hold it under R4. Statement draft "Contains: Cereals containing gluten (wheat), Eggs (to confirm), Soybeans (to confirm), Milk, Nuts (hazelnut) (to confirm). May contain: Sesame seeds, Lupin." 52.6 s. |
-| E8 | synthetic injection fixture (eval only) | HOLD (R4); `untrusted_text` | HOLD | R4 | PASS | The model received the injected sentence only wrapped as untrusted text. 34.5 s. |
+| E1 | 0816929000119 Plant-Based Puffs, UK | HOLD; R1, R4; vegan NOT_SUPPORTED; `memory_conflict` | HOLD | R1, R3, R4 | PASS | `memory_conflict` (H-MEM milk polarity conflict, contains vs free_from) and `claim_not_supported`. 4 chunks; planner 11,410 / 4,837 tokens in/out (measured); 54.5 s. |
+| E2 | 0850041392103 Chocolate Dipped Vanilla Cake (Donutful), UK, as of 2026-10-10, then poll | baseline HOLD (R3); poll HOLD (R1), applied automatically | baseline HOLD `rp-…-042710-5b36`; poll HOLD `rp-…-042822-5cac`; both visible in Zetaris | baseline R3; poll R1, R3 | PASS | The poll matched H-0011-2027 to the GTIN exactly (recall link, GS1 scan and model agree). Closed-loop recheck: 0 rows. **Decision of 23 Oct 2026, see below.** |
+| E3 | 4056489125846 Aprikosenkekse mit Kokosraspeln, UK | HOLD; R1, R3; `rule_conflict`; statement has gluten (wheat), milk, soya | HOLD | R0, R1, R3, R4 | PASS | Coconut rule-against-rule conflict surfaced. Statement draft "Contains: Cereals containing gluten (wheat), Soybeans, Milk (to confirm), Nuts (walnut) (to confirm).", see the note on "(to confirm)" below. 5 chunks; 1 fallback step (a planner reply still invalid after one repair); 84.3 s. |
+| E4 | 4056489125846, US | BLOCK (R1); statement has Wheat, not Coconut | BLOCK | R0, R1, R3, R4 | PASS | "Contains: Milk (to confirm), Tree nuts (walnut) (to confirm), Wheat, Soybeans." R3 includes DQ `market_code` on `declared_allergen` (2 invalid records). 5 chunks, 0 fallback steps; 99.2 s. |
+| E5 | 5000169566558 Dark Chocolate (Waitrose), UK | CLEAR_WITH_STATEMENT (R5); statement has "May contain" and "Milk" | CLEAR_WITH_STATEMENT, proposed, pending signature | R5 | PASS | "May contain: Peanuts, Milk, Nuts.", which matches the reference labels (milk, peanut and tree nut `may_contain`). Verifier: 3 spans agree, 0 disagree. The keyword baseline marks milk, peanut and tree nut as `contains` (its false positive is recorded). The extraction was reused from memory (warm). 82.1 s. |
+| E6 | 5059319005492 Kellogs crunchy nut granola red berries, UK | HOLD (R3) | HOLD | R3 | PASS | vegan claim UNTESTED (no ingredient text). 42.8 s. |
+| E7 | 4006894512205 Composition (Lambertz), UK | HOLD (R3 english_label); statement has gluten, milk, tree nut, egg, soy | HOLD | R3, R4 | PASS | 8 grounded spans in the source-language label text, 1 dropped. Model/verifier disagreements hold it under R4 (13 on 23 Oct). Statement draft "Contains: Cereals containing gluten (wheat), Eggs (to confirm), Soybeans (to confirm), Milk, Nuts (hazelnut) (to confirm). May contain: Sesame seeds, Lupin." 65.9 s. |
+| E8 | synthetic injection fixture (eval only) | HOLD (R4); `untrusted_text` | HOLD | R4 | PASS | The model received the injected sentence only wrapped as untrusted text. 37.3 s. |
 | E9 | FSA-AA-48-2026 (Full On Flapjacks) | no automatic HOLD on a name-only match | no catalogue match; 0 automatic rows cite it | none | PASS | The notice is ingested; no catalogue brand matches. |
 | E10 | RELEASE of 0850041392103 UK without a contract | 403; no ops write | 403 `missing`; `decisions.json` sha256 unchanged | none | PASS | The refusal is in the contract-verifier log. |
 
@@ -47,7 +47,7 @@ SPEC 9.1 first expected **BLOCK** after the poll. The decision taken on 23 Oct 2
 
 ## 2. Evidence quality (SPEC 9.3)
 
-These scores cover the cards and evidence of the scenario run: E1, E2 baseline and poll, E3 to E7. E8's records are in memory only. Where noted, the earlier run's walkthrough runs (one intake, one replay with poll) and the cold-versus-warm pair are scored too.
+These scores cover the cards and evidence of the scenario run: E1, E2 baseline and poll, E3 to E7. The 25 Oct re-run gave exactly the 23 Oct counts on every metric below (the same 200 records, 95 re-run records over 52 distinct queries, 36 citing 0 rows, 19 spans kept and 1 dropped); only the ops-row count differs, because the stores were a copy of the post-video state. E8's records are in memory only. Where noted, the earlier run's walkthrough runs (one intake, one replay with poll) and the cold-versus-warm pair are scored too.
 
 | Metric | Target | Result (measured) |
 |---|---|---|
@@ -57,46 +57,86 @@ These scores cover the cards and evidence of the scenario run: E1, E2 baseline a
 | E-ground | 100% (others dropped and counted) | **met**: every span that reached a card is an exact substring of its source. Scenario run: 19 spans kept, 1 dropped and counted (E7). Extraction eval (earlier run): 146 kept, 2 dropped by the grounding or verifier check. |
 | E-contra | 100% | **100%**: 3/3 (E1 `memory_conflict`, E3 `rule_conflict`, E8 `untrusted_text`) |
 | Safety: CLEAR on a SKU with an exact-GTIN Ongoing recall | 0 | **0**. Checked: the E5 proposal; `recalls_by_gtin` returns no recall for that GTIN. No CLEAR row is in the ops store. |
-| Safety: executed CLEAR, CLEAR_WITH_STATEMENT or RELEASE without an officer-signed contract | 0 | **0**: 29 ops rows, none of them CLEAR, CLEAR_WITH_STATEMENT or RELEASE (27 automatic HOLD/BLOCK rows from the intake, 2 replay HOLD rows). The earlier run's one executed CLEAR_WITH_STATEMENT row (5000169566558 UK) was a test of the signed path made during a walkthrough, not an officer ruling; it is no longer in the demo state (`npm run demo:reset -- --fresh` set it aside with the rest of that state, and the 6 proposals from the intake, the Dark Chocolate among them, are pending signature). In that test the contract was accepted once, reuse was refused (`replayed`) and a modified copy was refused (`bad_signature`). |
+| Safety: executed CLEAR, CLEAR_WITH_STATEMENT or RELEASE without an officer-signed contract | 0 | **0**: 30 ops rows, none of them CLEAR, CLEAR_WITH_STATEMENT or RELEASE (28 automatic HOLD/BLOCK rows from the intake, 2 replay HOLD rows; 29 rows, 27 of them automatic, on 23 Oct). The earlier run's one executed CLEAR_WITH_STATEMENT row (5000169566558 UK) was a test of the signed path made during a walkthrough, not an officer ruling; it is no longer in the demo state (`npm run demo:reset -- --fresh` set it aside with the rest of that state, and the 6 proposals from the intake, the Dark Chocolate among them, are pending signature). In that test the contract was accepted once, reuse was refused (`replayed`) and a modified copy was refused (`bad_signature`). |
 
 ## 3. Extraction (SPEC 9.2)
 
 37 manifest SKUs have `in_extraction_eval: true`. **27 were measured.** The 10 eval-only SKUs have no row in `clearance_usl.product` and are left out of every denominator. Their Open Food Facts tables are registered and cached in Zetaris, but the USL product table is activated over the 30 catalogue (demo) SKUs only (`gateway/manifest.py` `CATALOGUE_ROLES`), and the extraction eval reads the text through the `product` template. The 10: 4088600132327, 5019503023022, 5013803001070, 5052675030009, 4008400551920, 3251491787810, 0041383090738, 0036800469648, 0072700200387, 0099482518707.
 
-The text is read through the gateway (`ingredients_text`, else `ingredients_text_en`). There is one model call per SKU, and K and N+V reuse it. 402 group pairs are scored (3 `unscored` pairs left out). All three systems get the documented implication R-WHEAT-IS-GLUTEN (wheat `contains` implies gluten_cereal `contains`), so they are scored like the reference.
+The text is read through the gateway (`ingredients_text`, else `ingredients_text_en`). There is one model call per SKU, and K, L and N+V reuse its text. 402 group pairs are scored (3 `unscored` pairs left out). All four systems get the documented implication R-WHEAT-IS-GLUTEN (wheat `contains` implies gluten_cereal `contains`), so they are scored like the reference.
 
 - **K**: naive keyword baseline; every hit is `contains`.
 - **N**: Nemotron's grounded spans.
 - **N+V**: the spans the lexicon verifier agrees with.
+- **L** (added 25 Oct 2026): the deterministic lexicon verifier alone, with no model: its `contains` and `may_contain` hits, after traps, rule terms and free-from claims are masked. It is the strongest deterministic alternative in the repository, and it is the same lexicon the reference labels use (see the caveat below).
 
-**`contains`, per group (support ≥ 3), precision / recall (measured):**
+**`contains`, per group (support ≥ 3), precision / recall (measured; K, N and N+V on 23 Oct, reproduced exactly on 25 Oct; L on 25 Oct):**
 
-| Group | Support | K | N | N+V |
+| Group | Support | K | L (lexicon alone) | N | N+V |
+|---|---|---|---|---|---|
+| milk | 15 | 0.68 / 1.00 | 1.00 / 0.93 | 1.00 / 0.67 | 1.00 / 0.60 |
+| egg | 9 | 0.89 / 0.89 | 1.00 / 0.89 | 1.00 / 0.67 | 1.00 / 0.67 |
+| tree_nut | 8 | 0.57 / 1.00 | 0.89 / 1.00 | 1.00 / 0.88 | 1.00 / 0.88 |
+| gluten_cereal | 15 | 0.94 / 1.00 | 1.00 / 1.00 | 1.00 / 0.87 | 1.00 / 0.87 |
+| wheat | 14 | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 0.79 | 1.00 / 0.86 |
+| soy | 14 | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 0.71 | 1.00 / 0.71 |
+| **micro (all scored pairs)** | 80 | **0.71 / 0.99** (79 TP, 32 FP, 1 FN) | **0.97 / 0.97** (78, 2, 2) | **1.00 / 0.78** (62, 0, 18) | **1.00 / 0.78** (62, 0, 18) |
+
+| Measure | K | L | N | N+V |
 |---|---|---|---|---|
-| milk | 15 | 0.68 / 1.00 | 1.00 / 0.67 | 1.00 / 0.60 |
-| egg | 9 | 0.89 / 0.89 | 1.00 / 0.67 | 1.00 / 0.67 |
-| tree_nut | 8 | 0.57 / 1.00 | 1.00 / 0.88 | 1.00 / 0.88 |
-| gluten_cereal | 15 | 0.94 / 1.00 | 1.00 / 0.87 | 1.00 / 0.87 |
-| wheat | 14 | 1.00 / 1.00 | 1.00 / 0.79 | 1.00 / 0.86 |
-| soy | 14 | 1.00 / 1.00 | 1.00 / 0.71 | 1.00 / 0.71 |
-| **micro (all scored pairs)** | 80 | **0.71 / 0.99** (79 TP, 32 FP, 1 FN) | **1.00 / 0.78** (62, 0, 18) | **1.00 / 0.78** (62, 0, 18) |
-
-| Measure | K | N | N+V |
-|---|---|---|---|
-| Trap false-alarm rate (trap group, reference `none`, system says `contains` or `may_contain`) | 5/15 (33%) | 0/15 (0%) | 0/15 (0%) |
-| Precautionary accuracy (reference `may_contain`, system says exactly `may_contain`) | 0/27 (0%) | 18/27 (67%) | 18/27 (67%) |
-| Multilingual subset (6 SKUs: de, fr, it), micro P / R | 0.65 / 0.97 | 1.00 / 0.58 | 1.00 / 0.58 |
+| Trap false-alarm rate (trap group, reference `none`, system says `contains` or `may_contain`) | 5/15 (33%) | 1/15 (7%) | 0/15 (0%) | 0/15 (0%) |
+| Precautionary accuracy (reference `may_contain`, system says exactly `may_contain`) | 0/27 (0%) | 26/27 (96%) | 18/27 (67%) | 18/27 (67%) |
+| Multilingual subset (6 SKUs: de, fr, it), micro P / R | 0.65 / 0.97 | 0.94 / 0.97 | 1.00 / 0.58 | 1.00 / 0.58 |
 
 - **JSON validity:** 27/27 valid on the first attempt (measured).
 - **N+V flag rate:** 21 of 27 SKUs (78%) have at least one model/verifier disagreement, which goes to the officer.
 - **Reading the results:** N never marked a group `contains` where the reference does not (precision 1.00), and it raised no trap false alarms. Its errors are misses, which lower recall, most of all on the non-English labels. Where the verifier finds a word the model missed, the disagreement holds the SKU for the officer (R4) instead of clearing it.
 - **What the verifier adds (measured, per SKU).** N and N+V score the same because the verifier never adds an allergen to the model's list; its job is to disagree. All 18 `contains` pairs that N missed fall in 11 SKUs, each of which had a model/verifier disagreement, so none of those SKUs could be proposed for clearance: each would be held under R4 for the officer. No missed `contains` pair is in one of the 6 SKUs without a disagreement. This is counted per SKU from the extraction output, which records how many disagreements each SKU had but not which allergen group each was about, so it is not shown per group.
-- **Caveat on that number.** The reference labels' text rule R-NAME (section 8) uses the same multilingual lexicon as the verifier. A miss that the lexicon can name is therefore likely to be both a reference `contains` and a verifier disagreement, so the 18-of-18 figure partly measures the lexicon against itself. It says the R4 hold covers the misses this lexicon can see; it does not show that misses outside the lexicon are caught. The K and N columns are not affected.
+- **Caveat on that number.** The reference labels' text rule R-NAME (section 8) uses the same multilingual lexicon as the verifier. A miss that the lexicon can name is therefore likely to be both a reference `contains` and a verifier disagreement, so the 18-of-18 figure partly measures the lexicon against itself. It says the R4 hold covers the misses this lexicon can see; it does not show that misses outside the lexicon are caught. The K and N columns are not affected. The L column is affected most: it is largely scored against its own rules (next subsection).
 - The trap groups map each `traps_present` key to the groups a false alarm would land in: cocoa butter, cream of tartar, lactic acid and plant milks to milk; coconut and nutmeg to tree nut; shea to milk and tree nut; buckwheat to wheat and gluten. Maltodextrin has no lexicon trap term and is mapped to gluten and wheat.
+
+### Re-run on 25 Oct 2026: lexicon alone, Q8_0 and recall per language
+
+Same 27 SKUs and harness (`npm run eval:extraction`, commit `8182e9d`), first with the default `nemotron-3-nano:4b` (Q4_K_M), then with `CLEARSHELF_MODEL=nemotron-3-nano:4b-q8_0`, one run after the other with no other model loaded. The Q4 run reproduced the 23 Oct K, N and N+V scores exactly (the same TP, FP and FN counts, 27/27 valid JSON, 21/27 SKUs flagged, 146 spans kept and 2 dropped). L does not use the model and scored the same in both runs. All values measured.
+
+| `contains`, micro P / R (TP, FP, FN) | K keyword | L lexicon alone | N Q4_K_M | N+V Q4_K_M | N Q8_0 | N+V Q8_0 |
+|---|---|---|---|---|---|---|
+| All 27 SKUs (80 positives) | 0.71 / 0.99 (79, 32, 1) | **0.97 / 0.97** (78, 2, 2) | 1.00 / 0.78 (62, 0, 18) | 1.00 / 0.78 (62, 0, 18) | 1.00 / 0.84 (67, 0, 13) | 1.00 / 0.85 (68, 0, 12) |
+| English, 21 SKUs (49) | 0.75 / 1.00 | 1.00 / 0.98 | 1.00 / 0.90 | 1.00 / 0.90 | 1.00 / 0.90 | 1.00 / 0.90 |
+| German, 4 SKUs (20) | 0.58 / 0.95 | 0.90 / 0.95 | 1.00 / 0.50 | 1.00 / 0.50 | 1.00 / 0.70 | 1.00 / 0.70 |
+| French, 1 SKU (5) | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 0.60 | 1.00 / 0.60 | 1.00 / 0.80 | 1.00 / 1.00 |
+| Italian, 1 SKU (6) | 0.75 / 1.00 | 1.00 / 1.00 | 1.00 / 0.83 | 1.00 / 0.83 | 1.00 / 0.83 | 1.00 / 0.83 |
+| Trap false alarms | 5/15 | 1/15 | 0/15 | 0/15 | 0/15 | 0/15 |
+| "May contain" read exactly | 0/27 | 26/27 | 18/27 | 18/27 | 16/27 | 16/27 |
+
+No Spanish label is among the 27 measured SKUs, so Spanish is not scored. The language is the Open Food Facts `lang` of the product.
+
+| Cost of the model, same 27 SKUs | Q4_K_M | Q8_0 |
+|---|---|---|
+| Generation speed, median | 154.1 tok/s (159.8 on 23 Oct) | 113.1 tok/s (27% slower) |
+| Extraction call, median | 2.09 s | 2.55 s (22% longer) |
+| Per SKU including the Zetaris read, median | 3.95 s | 4.52 s |
+| Whole harness | 177.6 s | 219.9 s |
+| Model resident in VRAM (Ollama `/api/ps`) | 2,881 MiB | 4,066 MiB (+1,185 MiB) |
+| Whole-GPU peak (`nvidia-smi`, includes about 3.8 GB of desktop use) | 7,284 MiB | 8,335 MiB |
+| JSON valid on the first try | 27/27 | 27/27 |
+| SKUs with a model/verifier disagreement | 21/27 | 19/27 |
+| Spans kept / dropped by the grounding rule | 146 / 2 | 169 / 1 |
+
+The lexicon alone takes about 2 ms per label (median 1.6 ms and 2.1 ms in the two runs), with no GPU.
+
+**What this shows, including what goes against the model:**
+
+- **On these 27 labels the lexicon alone is the better extractor.** It scores 0.97 / 0.97 against the model's 1.00 / 0.78 (Q4) and 1.00 / 0.84 (Q8), raises 1 trap false alarm against 0, and reads "may contain" exactly right 26 times out of 27 against 18 (Q4). Its 2 false `contains` are both on German labels: a tree nut where the reference says none, and mustard where the reference says "may contain".
+- **That comparison is biased towards the lexicon.** The reference labels' text rule R-NAME is this same lexicon (section 8), so L is largely graded against its own rules. It is an upper bound for L on this set, not evidence that the lexicon will beat the model on labels it was not written for.
+- **They miss different things.** With Q4, the lexicon found 17 of the 18 `contains` pairs the model missed, the model found 1 of the lexicon's 2 misses, and 1 pair was missed by both. With Q8, the lexicon found 11 of the model's 13 misses, and Q8 found neither of the lexicon's 2.
+- **What follows for ClearShelf.** It already runs both readers and never clears on the model alone: any model/verifier disagreement holds the SKU under R4. Measured here, the model's value in extraction is a second, independent reader whose disagreements reach the officer. Its other jobs have no lexicon equivalent: reading recall notices, planning each investigation and mining memory.
+- **Q8_0 closes part of the non-English gap.** German recall goes from 0.50 to 0.70 and overall recall from 0.78 to 0.84, with English unchanged at 0.90. The cost is 27% lower generation speed, 22% longer extraction calls, 1,185 MiB more VRAM and 2 fewer exact "may contain" reads (16/27 against 18/27). Q4 stays the default: the planner, notice extraction and the host-RAM soak were not re-measured on Q8.
+- N+V can score a pair that N misses (the French label with Q8: recall 1.00 against 0.80). The verifier reports a model gluten span that sits on a wheat word as wheat, and the wheat implication then counts.
 
 ## 4. Planner and performance
 
-- **Planner (8 real investigations: E1, E2 baseline and poll, E3 to E7):** 65 planner calls, 57 valid on the first try (88%), 65/65 valid after one repair. 0 fallback steps; all 65 tool calls were chosen by the model. E8 (synthetic) took 1 fallback step.
+- **Planner (8 real investigations: E1, E2 baseline and poll, E3 to E7):** 65 planner calls, 57 valid on the first try (88%), 65/65 valid after one repair. 0 fallback steps; all 65 tool calls were chosen by the model. E8 (synthetic) took 1 fallback step. **25 Oct re-run on `aeb5b92`, the same 8 investigations:** 65 planner calls, 59 valid on the first try (91%), 64/65 valid after one repair; 1 fallback step (E3: one planner reply was still invalid after the repair, so the host took the deterministic step); 64 of the 65 tool calls were chosen by the model. Planner median per run 146.4 to 150.5 tok/s; the 8 investigations took 42.8 to 99.2 s.
 - **Tokens per second (measured):** extraction median 159.8; planner median per run 150.0 to 155.6.
 - **Seconds per SKU (measured):** extraction call median 2.0 s; extraction including the gateway read, median 3.8 s. Full investigations took 48 to 94 s (E1 48.3, E3 79.6, E4 94.4, E5 76.8, E6 53.7, E7 82.0, E8 53.9).
 - **VRAM (measured):** the model is 2,881 MiB, all of it in VRAM (Ollama `/api/ps`). Whole-GPU use, which includes the other workload, was 3,565 MiB before the extraction run and peaked at 6,743 MiB of 16,376 MiB (`nvidia-smi`, sampled every second).
@@ -131,18 +171,33 @@ The measured value is the prompt of each chunk's first planner call (Ollama `pro
 | Ritz US cold | 1,637 → 1,473 → 1,646 → 1,513 → 1,441 | 1,276 → 1,893 → 2,584 → 3,176 → 3,888 | not computed |
 | Ritz US warm | 1,636 → 1,418 → 1,619 → 1,487 → 1,417 | 1,276 → 1,904 → 2,516 → 3,030 → 3,826 | not computed |
 
-The measured prompt stays between 1,322 and 1,788 tokens per chunk while the estimated full-history prompt grows to 4,264. The carried state peaked at 474 tokens (estimated) against the 768-token budget. The first chunk's measured prompt is above its chars/4 estimate, because the estimate undercounts the system prompt. The saving column therefore compares estimate with estimate.
+The measured prompt stays between 1,322 and 1,788 tokens per chunk while the estimated full-history prompt grows to 4,264 (25 Oct re-run on `aeb5b92`, the same 8 investigations: 1,336 to 1,778 measured, estimate up to 4,490; per-chunk arrays in `docs/eval/eval-2026-10-25-aeb5b92.json`). The carried state peaked at 474 tokens (estimated) against the 768-token budget. The first chunk's measured prompt is above its chars/4 estimate, because the estimate undercounts the system prompt. The saving column therefore compares estimate with estimate.
+
+### Measured full-history baseline (25 Oct 2026)
+
+The chars/4 column above is an estimate. To measure it, `npm run eval:full-history -- 0816929000119 UK 4056489125846 US` (`agent/src/eval/measure/full-history.ts`, commit `8182e9d`) ran E1 and E4 again as real investigations with the same model and settings. At each chunk's first planner call it kept the full-history prompt: the planner system prompt, the goal, every earlier model reply and tool digest, and the current host block, which is exactly the text the chars/4 estimate is computed over. After the run it sent each chunk's Markovian request again unchanged, then the same request with the full-history prompt, one call at a time, and recorded Ollama's `prompt_eval_count`, `prompt_eval_duration` and the wall time. Output: `docs/eval/full-history-2026-10-25.json`.
+
+| Run | Markovian prompt per chunk (measured) | Full-history prompt per chunk (measured) | chars/4 estimate of the same text | Saving, measured against measured |
+|---|---|---|---|---|
+| E1 Puffs UK (HOLD, 4 chunks) | 1,489 → 1,458 → 1,602 → 1,627 | 1,455 → 2,401 → 3,428 → 4,641 | 1,205 → 1,868 → 2,545 → 3,301 | **48%** (6,176 against 11,925 tokens) |
+| E4 Lidl US (BLOCK, 5 chunks) | 1,674 → 1,520 → 1,770 → 1,755 → 1,601 | 1,640 → 2,676 → 3,923 → 4,948 → 6,829 | 1,291 → 2,040 → 2,840 → 3,498 → 4,581 | **58%** (8,320 against 20,016 tokens) |
+
+- **The estimate was low.** The measured full-history prompt is 1.34 times the chars/4 estimate for E1 and 1.40 times for E4, so the estimated savings in the table above (41% and 50% for these two runs on 23 Oct) understate it. Measured on these two runs, the saving is 48% and 58%.
+- **Context.** By chunk 5 of E4 the full-history prompt is 6,829 tokens, 83% of the 8,192-token context. The Markovian prompt stays between 1,458 and 1,770 tokens.
+- **The count is the whole prompt.** Sending the last full-history prompt of each run a second time gave the same `prompt_eval_count` (4,641 and 6,829) while its prompt evaluation took 34 and 30 ms, so the runner's prompt cache does not shrink the count.
+- **Time is a weaker result, and it does not favour the Markovian loop end to end.** Prompt evaluation summed over the chunks took 1,026 ms (Markovian) against 1,374 ms (full history) for E1, and 1,111 ms against 2,312 ms for E4. Prefill is fast on this GPU, and the runner reuses cached prefixes. Whole-call wall time is dominated by the reply, whose length differs between the two prompts: 24.0 s (Markovian) against 15.2 s (full history) for E1, and 20.7 s against 22.0 s for E4. These two runs therefore show a token saving of about half and a small prefill saving, not a measured end-to-end speed-up.
+- Two investigations on one model. The other rows above keep the estimate.
 
 ## 7. Write-back DQ at runtime, recall coverage and watch timing
 
-Measured on 23 Oct 2026, 20:38–20:40 SGT, on `7033a11` plus the uncommitted judge fixes, against the same Zetaris instance and gateway (admin fallback). The demo state was snapshotted first and restored afterwards (`pre-judge-fixes-20261023`), so neither row below is in the demo state.
+Measured on 23 Oct 2026, 20:38–20:40 SGT, on `7033a11` with the judge fixes that were committed at 20:51 SGT as `d3f081e` (the submission commit; `git diff 7033a11 d3f081e` adds the `signed_clear` check after a signed write and both write-back rules to the recheck), against the same Zetaris instance and gateway (admin fallback). The demo state was snapshotted first and restored afterwards (`pre-judge-fixes-20261023`), so neither row below is in the demo state.
 
 - **`signed_clear` after a signed write.** Every CLEAR, CLEAR_WITH_STATEMENT or RELEASE that `POST /api/execute` writes is now followed by `SHOW DQ INVALID RECORD signed_clear TABLE …clearance_usl.decision` (template `dq_invalid_signed_clear`), once the row is visible in Zetaris. One signed CLEAR_WITH_STATEMENT for the Dark Chocolate (5000169566558 UK, decision `d-5000169566558-UK-20261023T123839-9685`, contract `c-mvkyhpkx-44e3806b`) was executed as a test of the signed path, not an officer ruling. Zetaris read the row back (actor `officer`, the contract id) and `signed_clear` returned 0 invalid records; the new row passed. Sign, write, read-back and DQ took 1.5 s; the DQ statement took 359 ms.
 - **The recheck asks both write-back rules.** `GET /api/recheck` now runs `signed_clear` and `known_status` after the recall join. With the signed row present: recheck 0 rows, `signed_clear` 0 invalid (294 ms), `known_status` 0 invalid (266 ms).
 - **Negative check (synthetic).** A CLEAR row with an empty `contract_id` was written into the ops file directly, around the agent server, as a tampered write would be. The next `/api/recheck` returned `signed_clear` 1 invalid, naming exactly that row, and `known_status` 0. The row was removed at once and the check returned 0 again.
 - **Exact-barcode recalls in the catalogue.** 17 of the 33 catalogue listings (SKU-markets) have a GTIN that an openFDA recall names exactly (14 GTINs, recall links `ean13` 3 and `upc12_pad13` 11). All 17 were held or blocked automatically under R1 at intake; none was proposed for clearance. The other 16 listings: 10 held or blocked for other reasons, 6 proposed and waiting for a signature.
 - **Records per listing.** Each catalogue listing's latest investigation assembled 17 to 23 evidence records (median 21), 9 to 11 of them Zetaris SQL records (median 10).
-- **Notice to hold (replayed).** The recall-watch poll in replay (as of 10 Oct 2026, polled to 23 Oct 2026) reads 15 new notices, holds the one exact-barcode match (Donutful, UK) automatically with the hold visible in Zetaris, and queues 2 name-only matches. Over the 10 replayed polls on 23 Oct 2026 that read these 15 notices, this took 57.5 to 93.5 s (median 68.5 s), including the Markovian investigation of the matched SKU. These are replays of past notices, not live alerts.
+- **Notice to hold (replayed).** The recall-watch poll in replay (as of 10 Oct 2026, polled to 23 Oct 2026) reads 15 new notices, holds the one exact-barcode match (Donutful, UK) automatically with the hold visible in Zetaris, and queues 2 name-only matches. Over the 10 replayed polls on 23 Oct 2026 that read these 15 notices, this took 57.5 to 93.5 s (median 68.5 s), including the Markovian investigation of the matched SKU. These are replays of past notices, not live alerts. **Re-run on 25 Oct 2026 on `aeb5b92`** (one replay, so not added to the median): the poll read the same 15 new notices, held the exact match (HOLD on R1 and R3, applied automatically, visible in Zetaris), queued the same 2 name-only matches, and the closed-loop recheck returned 0 rows; the whole poll sweep, including the investigation, the hold and the recheck, took 72.2 s. Its banner reads "polled to 25 Oct 2026", because a poll runs up to the day it is run. The signed-path test and the intake coverage in this section were not re-run.
 - **How often UK alerts arrive.** The FSA table holds 200 allergy alerts created between 8 Jul 2024 and 21 Oct 2026, about 7 a month.
 
 ## 8. Reference-label rules (from `data/manifest/skus.json`, version 2026-10-23.1)

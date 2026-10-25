@@ -1,4 +1,4 @@
-# Nemotron bench: Day-0 gates G8 and G8b
+# Nemotron bench: Day-0 gates G8 and G8b, and the 25 Oct extraction re-run
 
 The main run was on Fri 23 Oct 2026, 07:50–08:09 SGT. The follow-up runs (Q8 A/B, host-RAM soak) were at 08:26–08:42 SGT. All runs used the development PC with the four Zetaris containers (`ui`, `api`, `driver`, `postgres`) up and healthy. Every number below is measured unless it is labelled `estimated`: Ollama's own token counts and durations, `nvidia-smi` at 1 s, OS CPU and available-RAM counters at 1 s, and, in the soak runs, the private memory of the Ollama processes at 1 s. The raw results are in `data/bench/` (local, gitignored): `g8-*.json`, `g8b-*.json` and `soak-*.json`. The follow-up files include every 1 s sample; the main-run files hold per-phase statistics only. (In the two Q8 A/B files the process-memory fields read 0, because the sampler did not yet find the runner process; it was fixed before the soak, and nothing below uses those fields.)
 
@@ -11,6 +11,30 @@ The main run was on Fri 23 Oct 2026, 07:50–08:09 SGT. The follow-up runs (Q8 A
 | **G8b** | 30B at ≥8 tok/s with Zetaris running and ≥3,072 MiB free host RAM | **Fail on RAM.** The 30B needs about 11.8 GB of its weights in host RAM (`estimated`), but only 7,971 MiB was available, which projects to −3,851 MiB free. The model was not loaded, so **30B tok/s was not measured**. | **30B tier cut.** It was optional and off unless this gate passed. |
 | Host-RAM soak | Find out why available RAM fell to 617 MiB in the G8 think-on pass | **Reproduced and explained.** The model runner's private memory rose from 4,396 to 9,903 MiB (+5,507 MiB) over 30 calls. The cause is the runner's prompt cache in host RAM, which grows with each new prompt in both think modes. With the cache disabled, 10 of the same planner calls left the runner flat (+8 MiB). | **RAM guard on by default** in the Ollama client: below 2,048 MiB available, it unloads the model before the next call (fired once in the soak and recovered 6,542 MiB). Think on is kept for the planner and briefs. Capping the cache is an option for the PC owner. |
 | Optional Q8 tier | Adopt only if JSON validity and span grounding are no worse, at ≥40 tok/s | **Meets the rule on 10 texts:** 10/10 valid, 0 spans dropped, 117.4 tok/s. (group, relation) precision / recall 1.000 / 0.867, against 0.958 / 0.767 for Q4 in the same session. | **Not adopted in this pass.** Q4 stays the default until the lead decides; the costs are listed in the Q8 section. |
+
+## 25 Oct 2026: the 27-SKU extraction harness with the lexicon alone, Q8_0 and recall per language
+
+The Day-0 bench above used 10 texts and expected values read by hand. The evaluation harness (`npm run eval:extraction`, [eval report, section 3](eval-report.md#3-extraction-spec-92)) scores 27 real labels against reference labels derived by documented rules. On 25 Oct it gained a lexicon-only system (L: the deterministic verifier alone, no model) and a split by label language, and it was run on Q4_K_M and on Q8_0 one after the other, with no other model loaded (commit `8182e9d`; summaries in [`docs/eval/extraction-q4-2026-10-25.json`](eval/extraction-q4-2026-10-25.json) and [`extraction-q8-2026-10-25.json`](eval/extraction-q8-2026-10-25.json)). All values measured.
+
+| `contains` precision / recall | L lexicon alone | Nemotron Q4_K_M | Nemotron Q8_0 | Keyword baseline |
+|---|---|---|---|---|
+| All 27 SKUs (80 positives) | **0.97 / 0.97** | 1.00 / 0.78 | 1.00 / 0.84 | 0.71 / 0.99 |
+| English, 21 SKUs (49) | 1.00 / 0.98 | 1.00 / 0.90 | 1.00 / 0.90 | 0.75 / 1.00 |
+| German, 4 SKUs (20) | 0.90 / 0.95 | 1.00 / 0.50 | 1.00 / 0.70 | 0.58 / 0.95 |
+| French, 1 SKU (5) | 1.00 / 1.00 | 1.00 / 0.60 | 1.00 / 0.80 | 1.00 / 1.00 |
+| Italian, 1 SKU (6) | 1.00 / 1.00 | 1.00 / 0.83 | 1.00 / 0.83 | 0.75 / 1.00 |
+| Trap false alarms | 1/15 | 0/15 | 0/15 | 5/15 |
+| "May contain" read exactly | 26/27 | 18/27 | 16/27 | 0/27 |
+| Generation speed, median | none (about 2 ms per label on the CPU) | 154.1 tok/s | 113.1 tok/s (27% slower) | none |
+| Extraction call, median | | 2.09 s | 2.55 s (22% longer) | |
+| Model resident in VRAM | 0 | 2,881 MiB | 4,066 MiB | 0 |
+
+No Spanish label is among the 27 measured SKUs.
+
+- **The lexicon alone beats the model on these labels**, and that result is published as measured. It is also biased in the lexicon's favour: the reference labels' text rule uses the same lexicon, so L is largely graded against its own rules. On labels it was not written for, the lexicon's advantage is not shown.
+- **The two readers miss different things.** With Q4, the lexicon found 17 of the model's 18 missed `contains` pairs, and the model found 1 of the lexicon's 2. ClearShelf runs both and holds any disagreement for the officer (R4), so the model's measured role in extraction is a second, independent reader. Its other jobs (recall notices, the planner, memory mining) have no lexicon equivalent.
+- **Q8_0 on 27 labels** confirms the Day-0 direction (better recall, slower): German recall 0.50 → 0.70, overall 0.78 → 0.84, English unchanged, 2 fewer exact "may contain" reads, 1,185 MiB more VRAM. **Q4 stays the default**, for the reasons in the Q8 section below; the planner, notice extraction and the soak were still measured on Q4 only.
+- The Q4 re-run reproduced the 23 Oct K, N and N+V scores exactly; generation speed was 154.1 tok/s against 159.8 on 23 Oct.
 
 ## Setup
 

@@ -17,8 +17,8 @@ Open Agent Hackathon 2026, Track 3: Reasoning Architecture. Team: Umar Mohktar, 
 **HOLD or BLOCK?** Both are applied automatically. BLOCK means an active recall of this barcode covers this market. HOLD means the listing waits for the officer: a US-only or past recall, a failed data-quality rule, an unresolved contradiction or an incomplete investigation. CLEAR and CLEAR_WITH_STATEMENT run only under an officer-signed, single-use contract.
 
 - **Zetaris** is the only data path. Open Food Facts, openFDA and the UK FSA are Lightning REST tables, joined in the 9-table `clearance_usl` semantic layer with 22 data-quality rules; an invalid record for a product holds it (R3). Every claim cites the Lightning SQL that produced it (95 of 95 cited records re-ran with their rows), and the agent's own decisions are federated back and checked by the `signed_clear` DQ rule.
-- **Meterless:** every clearance is a Markovian chain on the vendored engine (unchanged; planner prompts stay at 1,322 to 1,788 tokens per chunk). H-MEM keeps officer rulings and source facts with provenance, and the World Model answers "what did we know when?". Conformance: 13/13, 8/8, 8/8.
-- **NVIDIA Nemotron 3 Nano 4B** runs locally in 2,881 MiB of VRAM with 0 cloud model calls. On 27 real labels it reads "contains" at precision 1.00 against 0.71 for a keyword rule (recall 0.78 against 0.99), with 0 of 15 trap false alarms against 5. It reads and plans; it never decides.
+- **Meterless:** every clearance is a Markovian chain on the vendored engine (unchanged; planner prompts stay at 1,322 to 1,788 tokens per chunk, while a measured full-history prompt reached 4,641 and 6,829 tokens on two investigations: 48% and 58% fewer prompt tokens). H-MEM keeps officer rulings and source facts with provenance, and the World Model answers "what did we know when?". Conformance: 13/13, 8/8, 8/8.
+- **NVIDIA Nemotron 3 Nano 4B** runs locally in 2,881 MiB of VRAM with 0 cloud model calls. On 27 real labels it reads "contains" at precision 1.00 against 0.71 for a keyword rule (recall 0.78 against 0.99), with 0 of 15 trap false alarms against 5. The deterministic lexicon verifier alone scores 0.97 / 0.97 on the same labels (it shares its rules with the reference labels), so the model runs as a second reader beside it: any disagreement holds the listing. It reads and plans; it never decides.
 - **Cursor:** developed in a Cursor workspace with project rules in `.cursor/rules` and `AGENTS.md`. Every Cursor Agent task (G9, C1 to C3, and C9 after the plan upgrade) and its commit is listed in [`docs/how-cursor-was-used.md`](docs/how-cursor-was-used.md).
 
 **Verify in three minutes, with no Zetaris and no GPU** (Node 22.12+, Python 3.12; all steps in [Quickstart](#quickstart)). Expected output, measured on a fresh clone on 25 Oct 2026:
@@ -55,7 +55,7 @@ For each product (GTIN) and market (UK or US), ClearShelf runs an investigation 
 - **The agent's own decisions are federated data.** Decisions become a Zetaris table, and a new recall is joined against them inside Zetaris. After every signed write and on every recheck, the `signed_clear` and `known_status` DQ rules check the decisions Zetaris reads back.
 - **Conflicts between rules are on the record.** Coconut is a tree nut in a 2026 recall text, but not in FDA's current guidance or on the UK list. ClearShelf queues that conflict instead of picking a side.
 - **Autonomy only in the safe direction.** Holds and blocks happen on their own. Clearing needs a signed, single-use contract, which the agent server checks before the write. Zetaris checks again afterwards: the `signed_clear` DQ rule runs after the write and flags any clearance row without a contract. In a test, a signed clearance passed, and an unsigned row written into the ops file directly was flagged ([eval report, section 7](docs/eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)).
-- **A 4B model on a bounded context.** Markovian chunks keep each planner prompt flat, between 1,322 and 1,788 tokens, on a model that runs in 2,881 MiB of VRAM.
+- **A 4B model on a bounded context.** Markovian chunks keep each planner prompt flat, between 1,322 and 1,788 tokens, on a model that runs in 2,881 MiB of VRAM. Measured against the same investigation re-sent with its full history, that is 48% (E1) and 58% (E4) fewer prompt tokens ([eval report, section 6](docs/eval-report.md#6-tokens-per-chunk-chart-data)).
 
 ## Quickstart
 
@@ -207,7 +207,7 @@ The engines come from [Meterless/Meterless](https://github.com/Meterless/Meterle
 
 | Engine | How ClearShelf uses it | Where | Conformance |
 |---|---|---|---|
-| **Markovian**, vendored | Every SKU clearance and recall sweep is a Markovian chain. Nemotron plans each chunk, a NEEDS_TOOL executor runs the tool, and the carried state is capped at 768 tokens. Measured: the planner prompt stays between 1,322 and 1,788 tokens per chunk, while a full-history prompt grows to an estimated 4,264. | `agent/src/loop/` | 8/8 |
+| **Markovian**, vendored | Every SKU clearance and recall sweep is a Markovian chain. Nemotron plans each chunk, a NEEDS_TOOL executor runs the tool, and the carried state is capped at 768 tokens. Measured: the planner prompt stays between 1,322 and 1,788 tokens per chunk. The same investigations re-sent with their full history measured 4,641 tokens at chunk 4 (E1) and 6,829 at chunk 5 (E4); summed over the chunks, the Markovian prompts were 48% and 58% smaller. The chars/4 estimate had said 3,301 and 4,581. | `agent/src/loop/` | 8/8 |
 | **H-MEM**, vendored and extended by subclass | Facts with Zetaris provenance (`source: zetaris:<object>`, SQL hash), officer rulings, the trust ledger and "why" traces. Allergen conflicts are always queued, never auto-resolved. Dreaming is human-approved, and an approved invariant can only make a decision stricter. | `agent/src/memory/` | 13/13 vendored; 13/13 with ClearShelf's subclass loaded through the engine's own runner |
 | **World Model**, vendored and wrapped | A graph of products, brands, firms, notices and allergens, with edges dated by source time. Each decision gets a snapshot, so the timeline shows what was known when. A name match of 0.85 or more becomes a review link that never changes a listing; one between 0.82 and 0.85 goes to a merge queue for approval. | `agent/src/world/` | 8/8; idempotency check `diff: empty`; re-ingesting live Zetaris rows (30 products, 9 FSA alerts) appended 0 events after 378 the first time |
 | **Scout Intent**, partial reimplementation (no reference engine is vendored) | An injection guard on every untrusted text before the model sees it, and risk classes. Signed single-use execution contracts (HMAC) are high-risk for CLEAR, CLEAR_WITH_STATEMENT and RELEASE, which the agent server verifies, and medium-risk for Zetaris registrar calls, which the Python gateway verifies (`gateway/contracts.py`). This is an integrity check, as in Scout's own documentation, not cryptographic-grade security. | `agent/src/contract/` | The guard passes the 10 Scout injection regression cases (7 injections, 3 clean) vendored from the Meterless repository, plus synthetic food-domain cases |
@@ -225,13 +225,18 @@ Nemotron does four jobs and decides nothing:
 
 | Measured (`docs/eval-report.md`, `docs/nemotron-bench.md`) | Value |
 |---|---|
-| Extraction speed, median | 159.8 tokens/s; 2.0 s per call (3.8 s including the Zetaris read) |
-| Planner speed, median per run | 150.0 to 155.6 tokens/s |
+| Extraction speed, median | 159.8 tokens/s; 2.0 s per call (3.8 s including the Zetaris read). 25 Oct re-run: 154.1 tokens/s; 2.1 s (3.9 s) |
+| Planner speed, median per run | 150.0 to 155.6 tokens/s (25 Oct re-run: 146.4 to 150.5) |
 | Full investigation of one SKU | 48 to 94 s |
-| JSON valid on the first attempt | extraction 27/27; planner 57/65 (88%), 65/65 after one repair; 0 fallback steps in the 8 real investigations |
+| JSON valid on the first attempt | extraction 27/27; planner 57/65 (88%), 65/65 after one repair, 0 fallback steps in the 8 real investigations. 25 Oct re-run on `aeb5b92`: 59/65 (91%), 64/65 after one repair, 1 fallback step (E3) |
 | VRAM | 2,881 MiB, all of the model in VRAM |
 | Cloud model calls | 0. The model client accepts loopback URLs only. |
 | Cold vs warm (same SKU) | reusing H-MEM's verified extraction cut tool-model tokens by 67% in and 94% out; 61.1 s vs 48.1 s |
+| Extraction on 27 labels, `contains` precision / recall | Nemotron Q4_K_M 1.00 / 0.78; Q8_0 1.00 / 0.84; **the lexicon verifier alone, no model, 0.97 / 0.97**; keyword rule 0.71 / 0.99 |
+| Recall by label language (Q4 / Q8 / lexicon alone) | English, 21 labels: 0.90 / 0.90 / 0.98; German, 4: 0.50 / 0.70 / 0.95; French, 1: 0.60 / 0.80 / 1.00; Italian, 1: 0.83 / 0.83 / 1.00 |
+| Q8_0 against Q4_K_M | 113.1 against 154.1 tokens/s (27% slower), 2.55 against 2.09 s per extraction call, 4,066 against 2,881 MiB of VRAM; Q4 stays the default |
+
+**What the 25 Oct re-run shows against the model.** On these 27 labels the deterministic lexicon verifier alone reads `contains` and "may contain" better than Nemotron (26/27 exact "may contain" reads against 18/27). The comparison favours the lexicon, because the reference labels' text rule uses the same lexicon. The two readers miss different things (the lexicon found 17 of the model's 18 misses; the model found 1 of the lexicon's 2), and ClearShelf holds every disagreement for the officer. Q8_0 recovers part of the non-English gap at a speed and memory cost. Details in [`docs/nemotron-bench.md`](docs/nemotron-bench.md).
 
 The Day-0 bench chose these settings. With think on, extraction gave valid JSON on only 2 of 10 calls, because the thinking ran into the 4,096-token cap, so think is off for extraction. The optional 30B tier was cut: its weights needed about 11.8 GB of host RAM (estimated) against 7,971 MiB available.
 
@@ -241,9 +246,9 @@ ClearShelf was developed in a Cursor workspace with project rules in `.cursor/ru
 
 ## Evaluation
 
-All numbers are measured unless labelled otherwise. The full report is [`docs/eval-report.md`](docs/eval-report.md), from runs on 23 Oct 2026 with the model, the gateway and Zetaris on one machine.
+All numbers are measured unless labelled otherwise. The full report is [`docs/eval-report.md`](docs/eval-report.md), from runs on 23 Oct 2026 with the model, the gateway and Zetaris on one machine. The replay, the scenarios and the evidence-quality scoring were run again on 25 Oct 2026 on the clean commit `aeb5b92`, with the same decisions, rules and evidence counts; a score-only summary is in [`docs/eval/`](docs/eval/).
 
-**Scenarios: 10 of 10 pass** (`npm run eval`, 408 s):
+**Scenarios: 10 of 10 pass** (`npm run eval`: 408 s on 23 Oct, 467 s in the 25 Oct re-run):
 
 | ID | Case | Result |
 |---|---|---|
@@ -275,12 +280,15 @@ All numbers are measured unless labelled otherwise. The full report is [`docs/ev
 | Keyword baseline | 0.71 | 0.99 | 5/15 | 0/27 |
 | Nemotron | **1.00** | 0.78 | 0/15 | 18/27 |
 | Nemotron + verifier | **1.00** | 0.78 | 0/15 | 18/27 |
+| Nemotron Q8_0 (25 Oct) | **1.00** | 0.84 | 0/15 | 16/27 |
+| Lexicon verifier alone, no model (25 Oct) | 0.97 | 0.97 | 1/15 | 26/27 |
 
 **What did not go well:**
 
 - **The model misses allergens.** Recall is 0.78 overall and 0.58 on the six German, French and Italian labels. ClearShelf does not clear on a miss: when the verifier finds a word the model missed, the SKU is held under R4 for the officer. All 18 missed `contains` pairs fall in 11 SKUs, each of which had a model/verifier disagreement, so none of those SKUs could be proposed for clearance. That count is per SKU, and it is partly circular: the reference labels use the same lexicon as the verifier, so it does not show that misses outside the lexicon are caught. 21 of the 27 SKUs (78%) had at least one model/verifier disagreement, so the officer sees many holds.
+- **The lexicon alone outscored the model.** Without any model, the deterministic verifier scores 0.97 / 0.97 and reads "may contain" exactly right 26 of 27 times. Part of that is circular (the reference labels use its lexicon), but the model's extraction recall is plainly the weaker side; it earns its place as a second reader whose disagreements are held, and in the jobs the lexicon cannot do.
 - **Precautionary wording** was read exactly right in 18 of 27 cases.
-- **The planner** returned valid JSON on the first try 88% of the time. One repair fixed the rest.
+- **The planner** returned valid JSON on the first try 88% of the time on 23 Oct, and one repair fixed the rest. In the 25 Oct re-run it was 91%, but one reply stayed invalid after the repair, so E3 took one deterministic fallback step.
 - **The verifier can be wrong too.** In E3, the French word for coconut is split by an address pasted into the Open Food Facts text, so the draft lists "Nuts (walnut) (to confirm)". A statement that still says "(to confirm)" cannot be signed.
 - **E4 is only partly met.** It cites the DQ `market_code` rule (2 invalid records) but does not name the orphan key.
 - **E2's expectation changed before the run.** It was BLOCK in the build plan and became HOLD by a recorded decision: a US-only recall does not cover UK units. The reason is in the report.

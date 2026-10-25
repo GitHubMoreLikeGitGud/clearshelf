@@ -1,0 +1,829 @@
+{
+  "label": "measured",
+  "commit": "aeb5b92",
+  "source_files": {
+    "scenarios": "scenarios-2026-10-25T04-36-22-495Z.json",
+    "evidence_quality": "evidence-quality-2026-10-25T04-37-19-159Z.json"
+  },
+  "note": "Score-only summary of `npm run replay -- --as-of 2026-10-10`, `npm run eval` and `npm run eval:evidence`. Ids, statuses, rules, counts and booleans only; no Open Food Facts text, spans or notice titles. The full outputs stay in data/eval/ (gitignored).",
+  "replay": {
+    "baseline_sweep_ms": 55420,
+    "poll_sweep_ms": 72244,
+    "new_notices": 15,
+    "exact_matches": 1,
+    "name_only_matches": 2,
+    "baseline_action": "0850041392103 UK -> HOLD [R3] APPLIED",
+    "poll_action": "0850041392103 UK -> HOLD [R1,R3] APPLIED",
+    "visible_in_zetaris": true,
+    "recheck_rows": 0
+  },
+  "scenarios": {
+    "generated_at": "2026-10-25T04:36:22.495Z",
+    "wall_ms": 466188,
+    "passed": 10,
+    "total": 10,
+    "rows": [
+      {
+        "id": "E1",
+        "kind": "clear",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R4"
+          ],
+          "claim": {
+            "vegan": "NOT_SUPPORTED"
+          },
+          "contradiction_kinds": [
+            "memory_conflict"
+          ]
+        },
+        "got": {
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "memory_conflict",
+            "claim_not_supported"
+          ],
+          "claims": {
+            "vegan": "NOT_SUPPORTED"
+          },
+          "statement": null,
+          "run_id": "r20261025T1228366e6f",
+          "chunks": 4,
+          "planner_tokens_measured": {
+            "in": 11410,
+            "out": 4837
+          },
+          "fallback_steps": 0,
+          "e_cov": 1,
+          "e_complete": 1,
+          "extraction_reused": false
+        },
+        "failures": [],
+        "wall_ms": 54477
+      },
+      {
+        "id": "E2",
+        "kind": "replay",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "baseline": {
+            "status": "HOLD",
+            "rules": [
+              "R3"
+            ]
+          },
+          "poll": {
+            "status": "HOLD",
+            "rules": [
+              "R1"
+            ]
+          }
+        },
+        "got": {
+          "baseline": {
+            "sweep": "w20261025T122615e59e",
+            "status": "HOLD",
+            "rules": [
+              "R3"
+            ],
+            "decision_id": "rp-0850041392103-UK-20261025T042710-5b36",
+            "visible_in_zetaris": true
+          },
+          "poll": {
+            "sweep": "w20261025T12271118fa",
+            "status": "HOLD",
+            "rules": [
+              "R1",
+              "R3"
+            ],
+            "decision_id": "rp-0850041392103-UK-20261025T042822-5cac",
+            "visible_in_zetaris": true,
+            "applied": true
+          },
+          "recheck_rows": 0
+        },
+        "failures": [],
+        "wall_ms": 15
+      },
+      {
+        "id": "E3",
+        "kind": "clear",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3"
+          ],
+          "contradiction_kinds": [
+            "rule_conflict"
+          ],
+          "statement_includes": [
+            "Cereals containing gluten (wheat)",
+            "Milk",
+            "Soybeans"
+          ]
+        },
+        "got": {
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3",
+            "R4",
+            "R0"
+          ],
+          "contradiction_kinds": [
+            "model_vs_verifier",
+            "rule_conflict",
+            "recall_vs_label",
+            "declared_vs_extraction"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Soybeans, Milk (to confirm), Nuts (walnut) (to confirm).",
+          "run_id": "r20261025T122930f174",
+          "chunks": 5,
+          "planner_tokens_measured": {
+            "in": 20395,
+            "out": 8452
+          },
+          "fallback_steps": 1,
+          "e_cov": 1,
+          "e_complete": 1,
+          "extraction_reused": true
+        },
+        "failures": [],
+        "wall_ms": 84271
+      },
+      {
+        "id": "E4",
+        "kind": "clear",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "status": "BLOCK",
+          "rules": [
+            "R1"
+          ],
+          "statement_includes": [
+            "Wheat"
+          ],
+          "statement_excludes": [
+            "Coconut"
+          ]
+        },
+        "got": {
+          "status": "BLOCK",
+          "rules": [
+            "R1",
+            "R3",
+            "R4",
+            "R0"
+          ],
+          "contradiction_kinds": [
+            "model_vs_verifier",
+            "rule_conflict",
+            "recall_vs_label",
+            "declared_vs_extraction"
+          ],
+          "claims": {},
+          "statement": "Contains: Milk (to confirm), Tree nuts (walnut) (to confirm), Wheat, Soybeans.",
+          "run_id": "r20261025T1230556068",
+          "chunks": 5,
+          "planner_tokens_measured": {
+            "in": 22267,
+            "out": 9352
+          },
+          "fallback_steps": 0,
+          "e_cov": 1,
+          "e_complete": 1,
+          "extraction_reused": true
+        },
+        "failures": [],
+        "wall_ms": 99214
+      },
+      {
+        "id": "E5",
+        "kind": "clear",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "status": "CLEAR_WITH_STATEMENT",
+          "rules": [
+            "R5"
+          ],
+          "statement_includes": [
+            "May contain",
+            "Milk"
+          ]
+        },
+        "got": {
+          "status": "CLEAR_WITH_STATEMENT",
+          "rules": [
+            "R5"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": "May contain: Peanuts, Milk, Nuts.",
+          "run_id": "r20261025T123234a156",
+          "chunks": 4,
+          "planner_tokens_measured": {
+            "in": 16617,
+            "out": 8192
+          },
+          "fallback_steps": 0,
+          "e_cov": 1,
+          "e_complete": 1,
+          "extraction_reused": true
+        },
+        "failures": [],
+        "wall_ms": 82055
+      },
+      {
+        "id": "E6",
+        "kind": "clear",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ]
+        },
+        "got": {
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {
+            "vegan": "UNTESTED"
+          },
+          "statement": null,
+          "run_id": "r20261025T123356ceb5",
+          "chunks": 4,
+          "planner_tokens_measured": {
+            "in": 12215,
+            "out": 3237
+          },
+          "fallback_steps": 0,
+          "e_cov": 1,
+          "e_complete": 1,
+          "extraction_reused": false
+        },
+        "failures": [],
+        "wall_ms": 42771
+      },
+      {
+        "id": "E7",
+        "kind": "clear",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "statement_includes": [
+            "Cereals containing gluten",
+            "Milk",
+            "Nuts",
+            "Eggs",
+            "Soybeans"
+          ]
+        },
+        "got": {
+          "status": "HOLD",
+          "rules": [
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "model_vs_verifier",
+            "declared_vs_extraction"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Eggs (to confirm), Soybeans (to confirm), Milk, Nuts (hazelnut) (to confirm). May contain: Sesame seeds, Lupin.",
+          "run_id": "r20261025T123439407c",
+          "chunks": 4,
+          "planner_tokens_measured": {
+            "in": 14200,
+            "out": 6089
+          },
+          "fallback_steps": 0,
+          "e_cov": 1,
+          "e_complete": 1,
+          "extraction_reused": true
+        },
+        "failures": [],
+        "wall_ms": 65895
+      },
+      {
+        "id": "E8",
+        "kind": "synthetic_injection",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "status": "HOLD",
+          "rules": [
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "untrusted_text"
+          ]
+        },
+        "got": {
+          "status": "HOLD",
+          "rules": [
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "untrusted_text"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Milk.",
+          "run_id": "e8synthetic",
+          "chunks": 4,
+          "planner_tokens_measured": {
+            "in": 11026,
+            "out": 5115
+          },
+          "fallback_steps": 0,
+          "e_cov": 1,
+          "e_complete": 1,
+          "extraction_reused": false,
+          "model_saw_injection_text": [
+            "wrapped"
+          ]
+        },
+        "failures": [],
+        "wall_ms": 37281
+      },
+      {
+        "id": "E9",
+        "kind": "fsa_name_only",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "auto_hold": false
+        },
+        "got": {
+          "notice": "FSA-AA-48-2026",
+          "outcome": "no catalogue match",
+          "catalogue_candidates": 0,
+          "automatic_rows_citing_it": 0
+        },
+        "failures": [],
+        "wall_ms": 204
+      },
+      {
+        "id": "E10",
+        "kind": "release_without_contract",
+        "ran": true,
+        "pass": true,
+        "expected": {
+          "http_status": 403,
+          "ops_write": false
+        },
+        "got": {
+          "http_status": 403,
+          "refusal": "missing",
+          "ops_write": false,
+          "decisions_sha_before": "9a5f2dec4b35c271",
+          "decisions_sha_after": "9a5f2dec4b35c271"
+        },
+        "failures": [],
+        "wall_ms": 3
+      }
+    ]
+  },
+  "evidence_quality": {
+    "generated_at": "2026-10-25T04:37:19.159Z",
+    "label": "measured",
+    "runs": [
+      {
+        "scenario": "E1",
+        "run_id": "r20261025T1228366e6f",
+        "records": 16,
+        "complete": 16,
+        "replay": 8,
+        "replay_ok": 8,
+        "grounded": 0,
+        "dropped": 0
+      },
+      {
+        "scenario": "E2 baseline",
+        "run_id": "w20261025T122615e59e",
+        "records": 18,
+        "complete": 18,
+        "replay": 11,
+        "replay_ok": 11,
+        "grounded": 0,
+        "dropped": 0
+      },
+      {
+        "scenario": "E2 poll",
+        "run_id": "w20261025T12271118fa",
+        "records": 79,
+        "complete": 79,
+        "replay": 29,
+        "replay_ok": 29,
+        "grounded": 0,
+        "dropped": 0
+      },
+      {
+        "scenario": "E3",
+        "run_id": "r20261025T122930f174",
+        "records": 20,
+        "complete": 20,
+        "replay": 10,
+        "replay_ok": 10,
+        "grounded": 4,
+        "dropped": 0
+      },
+      {
+        "scenario": "E4",
+        "run_id": "r20261025T1230556068",
+        "records": 20,
+        "complete": 20,
+        "replay": 10,
+        "replay_ok": 10,
+        "grounded": 4,
+        "dropped": 0
+      },
+      {
+        "scenario": "E5",
+        "run_id": "r20261025T123234a156",
+        "records": 16,
+        "complete": 16,
+        "replay": 9,
+        "replay_ok": 9,
+        "grounded": 3,
+        "dropped": 0
+      },
+      {
+        "scenario": "E6",
+        "run_id": "r20261025T123356ceb5",
+        "records": 15,
+        "complete": 15,
+        "replay": 9,
+        "replay_ok": 9,
+        "grounded": 0,
+        "dropped": 0
+      },
+      {
+        "scenario": "E7",
+        "run_id": "r20261025T123439407c",
+        "records": 16,
+        "complete": 16,
+        "replay": 9,
+        "replay_ok": 9,
+        "grounded": 8,
+        "dropped": 1
+      }
+    ],
+    "e_cov_card_runner": [
+      {
+        "id": "E1",
+        "e_cov": 1,
+        "e_complete_runner": 1
+      },
+      {
+        "id": "E3",
+        "e_cov": 1,
+        "e_complete_runner": 1
+      },
+      {
+        "id": "E4",
+        "e_cov": 1,
+        "e_complete_runner": 1
+      },
+      {
+        "id": "E5",
+        "e_cov": 1,
+        "e_complete_runner": 1
+      },
+      {
+        "id": "E6",
+        "e_cov": 1,
+        "e_complete_runner": 1
+      },
+      {
+        "id": "E7",
+        "e_cov": 1,
+        "e_complete_runner": 1
+      },
+      {
+        "id": "E8",
+        "e_cov": 1,
+        "e_complete_runner": 1
+      }
+    ],
+    "e_cov_policy_record": {
+      "firings": 43,
+      "firings_cited": 43,
+      "review": 37,
+      "review_cited": 37
+    },
+    "e_complete": {
+      "records": 200,
+      "complete": 200,
+      "rate": 1,
+      "missing_by_field": {},
+      "sql_records_with_null_source_cached_at": 18
+    },
+    "e_replay": {
+      "records_rerun": 95,
+      "cited_rows_all_present": 95,
+      "rate": 1,
+      "records_citing_zero_rows": 36,
+      "distinct_queries": 52,
+      "errors": [],
+      "vanished": []
+    },
+    "e_ground": {
+      "extraction_records": 4,
+      "grounded_spans": 19,
+      "dropped_spans": 1,
+      "rate": 0.95
+    },
+    "e_contra": {
+      "expected": 3,
+      "surfaced": 3,
+      "rate": 1,
+      "items": [
+        {
+          "id": "E1",
+          "kind": "memory_conflict",
+          "surfaced": true
+        },
+        {
+          "id": "E3",
+          "kind": "rule_conflict",
+          "surfaced": true
+        },
+        {
+          "id": "E8",
+          "kind": "untrusted_text",
+          "surfaced": true
+        }
+      ]
+    },
+    "safety": {
+      "clear_on_exact_gtin_ongoing_recall": 0,
+      "clear_checks": [
+        {
+          "where": "scenario E5",
+          "gtin": "5000169566558",
+          "ongoing_exact_recalls": []
+        }
+      ],
+      "executed_clear_or_release_without_officer_contract": 0,
+      "unsigned_rows": [],
+      "ops_rows": 30
+    }
+  },
+  "planner_8_real_investigations": {
+    "label": "measured (loop reports); the chars/4 column is estimated",
+    "totals": {
+      "planner_calls": 65,
+      "valid_first_try": 59,
+      "valid_after_one_repair": 64,
+      "fallback_steps": 1,
+      "tool_calls": 65,
+      "tool_calls_by_model": 64
+    },
+    "runs": [
+      {
+        "scenario": "E1",
+        "run_id": "r20261025T1228366e6f",
+        "chunks": 4,
+        "planner_calls": 7,
+        "planner_valid_first_try": 7,
+        "planner_valid": 7,
+        "planner_repaired": 0,
+        "fallback_steps": 0,
+        "tool_calls": 7,
+        "tool_calls_by_model": 7,
+        "median_planner_tokens_per_s": 148.2,
+        "wall_s": 54.5,
+        "first_planner_prompt_tokens_per_chunk_measured": [
+          1489,
+          1458,
+          1599,
+          1652
+        ],
+        "full_history_prompt_tokens_per_chunk_estimated_chars4": [
+          1205,
+          1868,
+          2609,
+          3362
+        ],
+        "saving_vs_naive_estimated": 0.425
+      },
+      {
+        "scenario": "E2 baseline",
+        "run_id": "w20261025T122615e59e",
+        "chunks": 4,
+        "planner_calls": 7,
+        "planner_valid_first_try": 7,
+        "planner_valid": 7,
+        "planner_repaired": 0,
+        "fallback_steps": 0,
+        "tool_calls": 7,
+        "tool_calls_by_model": 7,
+        "median_planner_tokens_per_s": 148.4,
+        "wall_s": 54.5,
+        "first_planner_prompt_tokens_per_chunk_measured": [
+          1594,
+          1466,
+          1470,
+          1563
+        ],
+        "full_history_prompt_tokens_per_chunk_estimated_chars4": [
+          1260,
+          1908,
+          2339,
+          2989
+        ],
+        "saving_vs_naive_estimated": 0.403
+      },
+      {
+        "scenario": "E2 poll",
+        "run_id": "w20261025T12271118fa",
+        "chunks": 4,
+        "planner_calls": 8,
+        "planner_valid_first_try": 8,
+        "planner_valid": 8,
+        "planner_repaired": 0,
+        "fallback_steps": 0,
+        "tool_calls": 8,
+        "tool_calls_by_model": 8,
+        "median_planner_tokens_per_s": 150.1,
+        "wall_s": 60.3,
+        "first_planner_prompt_tokens_per_chunk_measured": [
+          1677,
+          1510,
+          1674,
+          1559
+        ],
+        "full_history_prompt_tokens_per_chunk_estimated_chars4": [
+          1299,
+          1950,
+          2572,
+          3123
+        ],
+        "saving_vs_naive_estimated": 0.406
+      },
+      {
+        "scenario": "E3",
+        "run_id": "r20261025T122930f174",
+        "chunks": 5,
+        "planner_calls": 10,
+        "planner_valid_first_try": 9,
+        "planner_valid": 9,
+        "planner_repaired": 0,
+        "fallback_steps": 1,
+        "tool_calls": 10,
+        "tool_calls_by_model": 9,
+        "median_planner_tokens_per_s": 149.5,
+        "wall_s": 84.3,
+        "first_planner_prompt_tokens_per_chunk_measured": [
+          1674,
+          1516,
+          1764,
+          1756,
+          1604
+        ],
+        "full_history_prompt_tokens_per_chunk_estimated_chars4": [
+          1291,
+          2032,
+          2884,
+          3520,
+          4342
+        ],
+        "saving_vs_naive_estimated": 0.507
+      },
+      {
+        "scenario": "E4",
+        "run_id": "r20261025T1230556068",
+        "chunks": 5,
+        "planner_calls": 10,
+        "planner_valid_first_try": 8,
+        "planner_valid": 10,
+        "planner_repaired": 2,
+        "fallback_steps": 0,
+        "tool_calls": 10,
+        "tool_calls_by_model": 10,
+        "median_planner_tokens_per_s": 147.3,
+        "wall_s": 99.2,
+        "first_planner_prompt_tokens_per_chunk_measured": [
+          1674,
+          1520,
+          1778,
+          1756,
+          1604
+        ],
+        "full_history_prompt_tokens_per_chunk_estimated_chars4": [
+          1291,
+          2041,
+          2798,
+          3636,
+          4490
+        ],
+        "saving_vs_naive_estimated": 0.516
+      },
+      {
+        "scenario": "E5",
+        "run_id": "r20261025T123234a156",
+        "chunks": 4,
+        "planner_calls": 8,
+        "planner_valid_first_try": 6,
+        "planner_valid": 8,
+        "planner_repaired": 2,
+        "fallback_steps": 0,
+        "tool_calls": 8,
+        "tool_calls_by_model": 8,
+        "median_planner_tokens_per_s": 146.4,
+        "wall_s": 82.1,
+        "first_planner_prompt_tokens_per_chunk_measured": [
+          1611,
+          1483,
+          1538,
+          1414
+        ],
+        "full_history_prompt_tokens_per_chunk_estimated_chars4": [
+          1300,
+          1940,
+          2484,
+          3097
+        ],
+        "saving_vs_naive_estimated": 0.42
+      },
+      {
+        "scenario": "E6",
+        "run_id": "r20261025T123356ceb5",
+        "chunks": 4,
+        "planner_calls": 7,
+        "planner_valid_first_try": 6,
+        "planner_valid": 7,
+        "planner_repaired": 1,
+        "fallback_steps": 0,
+        "tool_calls": 7,
+        "tool_calls_by_model": 7,
+        "median_planner_tokens_per_s": 149.4,
+        "wall_s": 42.8,
+        "first_planner_prompt_tokens_per_chunk_measured": [
+          1336,
+          1445,
+          1461,
+          1415
+        ],
+        "full_history_prompt_tokens_per_chunk_estimated_chars4": [
+          1132,
+          1741,
+          2289,
+          2969
+        ],
+        "saving_vs_naive_estimated": 0.395
+      },
+      {
+        "scenario": "E7",
+        "run_id": "r20261025T123439407c",
+        "chunks": 4,
+        "planner_calls": 8,
+        "planner_valid_first_try": 8,
+        "planner_valid": 8,
+        "planner_repaired": 0,
+        "fallback_steps": 0,
+        "tool_calls": 8,
+        "tool_calls_by_model": 8,
+        "median_planner_tokens_per_s": 150.5,
+        "wall_s": 65.9,
+        "first_planner_prompt_tokens_per_chunk_measured": [
+          1682,
+          1518,
+          1654,
+          1580
+        ],
+        "full_history_prompt_tokens_per_chunk_estimated_chars4": [
+          1298,
+          2060,
+          2865,
+          3478
+        ],
+        "saving_vs_naive_estimated": 0.447
+      }
+    ]
+  }
+}

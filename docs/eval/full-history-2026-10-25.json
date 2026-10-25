@@ -1,0 +1,195 @@
+{
+  "generated_at": "2026-10-25T04:49:20.513Z",
+  "model": "nemotron-3-nano:4b",
+  "label": "measured (Ollama prompt_eval_count, prompt_eval_duration, wall time); the chars/4 column is the estimate it replaces",
+  "note": "Markovian = each chunk's first planner request, re-sent unchanged after the run; full history = the same request with the full-history prompt. One call at a time on local Ollama.",
+  "runs": [
+    {
+      "gtin": "0816929000119",
+      "market": "UK",
+      "run_id": "r20261025T1245468287",
+      "decision": "HOLD",
+      "chunks_count": 4,
+      "chunks": [
+        {
+          "chunk": 1,
+          "markovian_prompt_tokens_in_run": 1489,
+          "markovian_prompt_tokens_resent": 1489,
+          "full_history_prompt_tokens": 1455,
+          "full_history_prompt_tokens_estimated_chars4": 1205,
+          "full_history_chars": 4817,
+          "full_history_reaches_num_ctx": false,
+          "markovian_prompt_eval_ms": 358,
+          "full_history_prompt_eval_ms": 187,
+          "markovian_wall_ms": 8107,
+          "full_history_wall_ms": 2500,
+          "markovian_eval_tokens": 453,
+          "full_history_eval_tokens": 295
+        },
+        {
+          "chunk": 2,
+          "markovian_prompt_tokens_in_run": 1458,
+          "markovian_prompt_tokens_resent": 1458,
+          "full_history_prompt_tokens": 2401,
+          "full_history_prompt_tokens_estimated_chars4": 1868,
+          "full_history_chars": 7471,
+          "full_history_reaches_num_ctx": false,
+          "markovian_prompt_eval_ms": 212,
+          "full_history_prompt_eval_ms": 287,
+          "markovian_wall_ms": 7572,
+          "full_history_wall_ms": 6187,
+          "markovian_eval_tokens": 1026,
+          "full_history_eval_tokens": 873
+        },
+        {
+          "chunk": 3,
+          "markovian_prompt_tokens_in_run": 1602,
+          "markovian_prompt_tokens_resent": 1602,
+          "full_history_prompt_tokens": 3428,
+          "full_history_prompt_tokens_estimated_chars4": 2545,
+          "full_history_chars": 10179,
+          "full_history_reaches_num_ctx": false,
+          "markovian_prompt_eval_ms": 218,
+          "full_history_prompt_eval_ms": 379,
+          "markovian_wall_ms": 3193,
+          "full_history_wall_ms": 2432,
+          "markovian_eval_tokens": 407,
+          "full_history_eval_tokens": 289
+        },
+        {
+          "chunk": 4,
+          "markovian_prompt_tokens_in_run": 1627,
+          "markovian_prompt_tokens_resent": 1627,
+          "full_history_prompt_tokens": 4641,
+          "full_history_prompt_tokens_estimated_chars4": 3301,
+          "full_history_chars": 13202,
+          "full_history_reaches_num_ctx": false,
+          "markovian_prompt_eval_ms": 238,
+          "full_history_prompt_eval_ms": 521,
+          "markovian_wall_ms": 5118,
+          "full_history_wall_ms": 4117,
+          "markovian_eval_tokens": 727,
+          "full_history_eval_tokens": 517
+        }
+      ],
+      "totals": {
+        "markovian_prompt_tokens": 6176,
+        "full_history_prompt_tokens": 11925,
+        "full_history_prompt_tokens_estimated_chars4": 8919,
+        "saving_measured": 0.482,
+        "estimate_over_measured": 0.748,
+        "markovian_prompt_eval_ms": 1026,
+        "full_history_prompt_eval_ms": 1374,
+        "markovian_wall_ms": 23990,
+        "full_history_wall_ms": 15236
+      },
+      "prompt_count_check": {
+        "last_full_history_sent_again_tokens": 4641,
+        "first_send_tokens": 4641,
+        "prompt_eval_ms_again": 34
+      }
+    },
+    {
+      "gtin": "4056489125846",
+      "market": "US",
+      "run_id": "r20261025T1247248689",
+      "decision": "BLOCK",
+      "chunks_count": 5,
+      "chunks": [
+        {
+          "chunk": 1,
+          "markovian_prompt_tokens_in_run": 1674,
+          "markovian_prompt_tokens_resent": 1674,
+          "full_history_prompt_tokens": 1640,
+          "full_history_prompt_tokens_estimated_chars4": 1291,
+          "full_history_chars": 5161,
+          "full_history_reaches_num_ctx": false,
+          "markovian_prompt_eval_ms": 234,
+          "full_history_prompt_eval_ms": 148,
+          "markovian_wall_ms": 2843,
+          "full_history_wall_ms": 2121,
+          "markovian_eval_tokens": 385,
+          "full_history_eval_tokens": 272
+        },
+        {
+          "chunk": 2,
+          "markovian_prompt_tokens_in_run": 1520,
+          "markovian_prompt_tokens_resent": 1520,
+          "full_history_prompt_tokens": 2676,
+          "full_history_prompt_tokens_estimated_chars4": 2040,
+          "full_history_chars": 8157,
+          "full_history_reaches_num_ctx": false,
+          "markovian_prompt_eval_ms": 195,
+          "full_history_prompt_eval_ms": 448,
+          "markovian_wall_ms": 6633,
+          "full_history_wall_ms": 7245,
+          "markovian_eval_tokens": 975,
+          "full_history_eval_tokens": 466
+        },
+        {
+          "chunk": 3,
+          "markovian_prompt_tokens_in_run": 1770,
+          "markovian_prompt_tokens_resent": 1770,
+          "full_history_prompt_tokens": 3923,
+          "full_history_prompt_tokens_estimated_chars4": 2840,
+          "full_history_chars": 11356,
+          "full_history_reaches_num_ctx": false,
+          "markovian_prompt_eval_ms": 245,
+          "full_history_prompt_eval_ms": 411,
+          "markovian_wall_ms": 3411,
+          "full_history_wall_ms": 4011,
+          "markovian_eval_tokens": 470,
+          "full_history_eval_tokens": 531
+        },
+        {
+          "chunk": 4,
+          "markovian_prompt_tokens_in_run": 1755,
+          "markovian_prompt_tokens_resent": 1755,
+          "full_history_prompt_tokens": 4948,
+          "full_history_prompt_tokens_estimated_chars4": 3498,
+          "full_history_chars": 13988,
+          "full_history_reaches_num_ctx": false,
+          "markovian_prompt_eval_ms": 226,
+          "full_history_prompt_eval_ms": 527,
+          "markovian_wall_ms": 3823,
+          "full_history_wall_ms": 5257,
+          "markovian_eval_tokens": 530,
+          "full_history_eval_tokens": 711
+        },
+        {
+          "chunk": 5,
+          "markovian_prompt_tokens_in_run": 1601,
+          "markovian_prompt_tokens_resent": 1601,
+          "full_history_prompt_tokens": 6829,
+          "full_history_prompt_tokens_estimated_chars4": 4581,
+          "full_history_chars": 18321,
+          "full_history_reaches_num_ctx": false,
+          "markovian_prompt_eval_ms": 211,
+          "full_history_prompt_eval_ms": 778,
+          "markovian_wall_ms": 3993,
+          "full_history_wall_ms": 3364,
+          "markovian_eval_tokens": 553,
+          "full_history_eval_tokens": 371
+        }
+      ],
+      "totals": {
+        "markovian_prompt_tokens": 8320,
+        "full_history_prompt_tokens": 20016,
+        "full_history_prompt_tokens_estimated_chars4": 14250,
+        "saving_measured": 0.584,
+        "estimate_over_measured": 0.712,
+        "markovian_prompt_eval_ms": 1111,
+        "full_history_prompt_eval_ms": 2312,
+        "markovian_wall_ms": 20703,
+        "full_history_wall_ms": 21998
+      },
+      "prompt_count_check": {
+        "last_full_history_sent_again_tokens": 6829,
+        "first_send_tokens": 6829,
+        "prompt_eval_ms_again": 30
+      }
+    }
+  ],
+  "commit": "8182e9d (agent code identical to aeb5b92; adds this measurement script)",
+  "source_file": "full-history-2026-10-25T04-49-20-513Z.json"
+}

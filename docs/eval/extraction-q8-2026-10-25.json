@@ -1,0 +1,536 @@
+{
+  "commit": "8182e9d (agent code identical to aeb5b92; adds system L and the per-language split to the harness)",
+  "source_file": "extraction-2026-10-25T04-45-22-830Z.json",
+  "generated_at": "2026-10-25T04:45:22.830Z",
+  "model": "nemotron-3-nano:4b-q8_0",
+  "label": "measured",
+  "note": "reference labels = manifest label_text; R-WHEAT-IS-GLUTEN applied to every system. Aggregate scores only: per-SKU records, label text and spans are left out.",
+  "systems_key": {
+    "K": "naive keyword baseline, every hit is contains",
+    "L": "the deterministic lexicon verifier alone, no model",
+    "N": "Nemotron grounded spans",
+    "N+V": "spans the model and the verifier agree on"
+  },
+  "skus_in_eval": 37,
+  "measured": 27,
+  "not_measured": [
+    {
+      "gtin": "4088600132327",
+      "reason": "no product row in Zetaris"
+    },
+    {
+      "gtin": "5019503023022",
+      "reason": "no product row in Zetaris"
+    },
+    {
+      "gtin": "5013803001070",
+      "reason": "no product row in Zetaris"
+    },
+    {
+      "gtin": "5052675030009",
+      "reason": "no product row in Zetaris"
+    },
+    {
+      "gtin": "4008400551920",
+      "reason": "no product row in Zetaris"
+    },
+    {
+      "gtin": "3251491787810",
+      "reason": "no product row in Zetaris"
+    },
+    {
+      "gtin": "0041383090738",
+      "reason": "no product row in Zetaris"
+    },
+    {
+      "gtin": "0036800469648",
+      "reason": "no product row in Zetaris"
+    },
+    {
+      "gtin": "0072700200387",
+      "reason": "no product row in Zetaris"
+    },
+    {
+      "gtin": "0099482518707",
+      "reason": "no product row in Zetaris"
+    }
+  ],
+  "systems": {
+    "K": {
+      "scored_pairs": 402,
+      "per_group_contains_support_ge3": {
+        "milk": {
+          "support": 15,
+          "precision": 0.6818181818181818,
+          "recall": 1,
+          "tp": 15,
+          "fp": 7,
+          "fn": 0
+        },
+        "egg": {
+          "support": 9,
+          "precision": 0.8888888888888888,
+          "recall": 0.8888888888888888,
+          "tp": 8,
+          "fp": 1,
+          "fn": 1
+        },
+        "tree_nut": {
+          "support": 8,
+          "precision": 0.5714285714285714,
+          "recall": 1,
+          "tp": 8,
+          "fp": 6,
+          "fn": 0
+        },
+        "gluten_cereal": {
+          "support": 15,
+          "precision": 0.9375,
+          "recall": 1,
+          "tp": 15,
+          "fp": 1,
+          "fn": 0
+        },
+        "wheat": {
+          "support": 14,
+          "precision": 1,
+          "recall": 1,
+          "tp": 14,
+          "fp": 0,
+          "fn": 0
+        },
+        "soy": {
+          "support": 14,
+          "precision": 1,
+          "recall": 1,
+          "tp": 14,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "micro": {
+        "precision": 0.7117117117117117,
+        "recall": 0.9875,
+        "tp": 79,
+        "fp": 32,
+        "fn": 1
+      },
+      "trap_false_alarm": {
+        "rate": 0.3333333333333333,
+        "alarms": 5,
+        "pairs": 15
+      },
+      "precautionary_accuracy": {
+        "rate": 0,
+        "exact": 0,
+        "pairs": 27
+      }
+    },
+    "L": {
+      "scored_pairs": 402,
+      "per_group_contains_support_ge3": {
+        "milk": {
+          "support": 15,
+          "precision": 1,
+          "recall": 0.9333333333333333,
+          "tp": 14,
+          "fp": 0,
+          "fn": 1
+        },
+        "egg": {
+          "support": 9,
+          "precision": 1,
+          "recall": 0.8888888888888888,
+          "tp": 8,
+          "fp": 0,
+          "fn": 1
+        },
+        "tree_nut": {
+          "support": 8,
+          "precision": 0.8888888888888888,
+          "recall": 1,
+          "tp": 8,
+          "fp": 1,
+          "fn": 0
+        },
+        "gluten_cereal": {
+          "support": 15,
+          "precision": 1,
+          "recall": 1,
+          "tp": 15,
+          "fp": 0,
+          "fn": 0
+        },
+        "wheat": {
+          "support": 14,
+          "precision": 1,
+          "recall": 1,
+          "tp": 14,
+          "fp": 0,
+          "fn": 0
+        },
+        "soy": {
+          "support": 14,
+          "precision": 1,
+          "recall": 1,
+          "tp": 14,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "micro": {
+        "precision": 0.975,
+        "recall": 0.975,
+        "tp": 78,
+        "fp": 2,
+        "fn": 2
+      },
+      "trap_false_alarm": {
+        "rate": 0.06666666666666667,
+        "alarms": 1,
+        "pairs": 15
+      },
+      "precautionary_accuracy": {
+        "rate": 0.9629629629629629,
+        "exact": 26,
+        "pairs": 27
+      }
+    },
+    "N": {
+      "scored_pairs": 402,
+      "per_group_contains_support_ge3": {
+        "milk": {
+          "support": 15,
+          "precision": 1,
+          "recall": 0.6666666666666666,
+          "tp": 10,
+          "fp": 0,
+          "fn": 5
+        },
+        "egg": {
+          "support": 9,
+          "precision": 1,
+          "recall": 0.7777777777777778,
+          "tp": 7,
+          "fp": 0,
+          "fn": 2
+        },
+        "tree_nut": {
+          "support": 8,
+          "precision": 1,
+          "recall": 0.875,
+          "tp": 7,
+          "fp": 0,
+          "fn": 1
+        },
+        "gluten_cereal": {
+          "support": 15,
+          "precision": 1,
+          "recall": 0.9333333333333333,
+          "tp": 14,
+          "fp": 0,
+          "fn": 1
+        },
+        "wheat": {
+          "support": 14,
+          "precision": 1,
+          "recall": 0.8571428571428571,
+          "tp": 12,
+          "fp": 0,
+          "fn": 2
+        },
+        "soy": {
+          "support": 14,
+          "precision": 1,
+          "recall": 0.8571428571428571,
+          "tp": 12,
+          "fp": 0,
+          "fn": 2
+        }
+      },
+      "micro": {
+        "precision": 1,
+        "recall": 0.8375,
+        "tp": 67,
+        "fp": 0,
+        "fn": 13
+      },
+      "trap_false_alarm": {
+        "rate": 0,
+        "alarms": 0,
+        "pairs": 15
+      },
+      "precautionary_accuracy": {
+        "rate": 0.5925925925925926,
+        "exact": 16,
+        "pairs": 27
+      }
+    },
+    "N+V": {
+      "scored_pairs": 402,
+      "per_group_contains_support_ge3": {
+        "milk": {
+          "support": 15,
+          "precision": 1,
+          "recall": 0.6666666666666666,
+          "tp": 10,
+          "fp": 0,
+          "fn": 5
+        },
+        "egg": {
+          "support": 9,
+          "precision": 1,
+          "recall": 0.7777777777777778,
+          "tp": 7,
+          "fp": 0,
+          "fn": 2
+        },
+        "tree_nut": {
+          "support": 8,
+          "precision": 1,
+          "recall": 0.875,
+          "tp": 7,
+          "fp": 0,
+          "fn": 1
+        },
+        "gluten_cereal": {
+          "support": 15,
+          "precision": 1,
+          "recall": 0.9333333333333333,
+          "tp": 14,
+          "fp": 0,
+          "fn": 1
+        },
+        "wheat": {
+          "support": 14,
+          "precision": 1,
+          "recall": 0.9285714285714286,
+          "tp": 13,
+          "fp": 0,
+          "fn": 1
+        },
+        "soy": {
+          "support": 14,
+          "precision": 1,
+          "recall": 0.8571428571428571,
+          "tp": 12,
+          "fp": 0,
+          "fn": 2
+        }
+      },
+      "micro": {
+        "precision": 1,
+        "recall": 0.85,
+        "tp": 68,
+        "fp": 0,
+        "fn": 12
+      },
+      "trap_false_alarm": {
+        "rate": 0,
+        "alarms": 0,
+        "pairs": 15
+      },
+      "precautionary_accuracy": {
+        "rate": 0.5925925925925926,
+        "exact": 16,
+        "pairs": 27
+      }
+    }
+  },
+  "multilingual": {
+    "skus": 6,
+    "langs": [
+      "de",
+      "it",
+      "fr"
+    ],
+    "K": {
+      "precision": 0.6521739130434783,
+      "recall": 0.967741935483871,
+      "tp": 30,
+      "fp": 16,
+      "fn": 1
+    },
+    "L": {
+      "precision": 0.9375,
+      "recall": 0.967741935483871,
+      "tp": 30,
+      "fp": 2,
+      "fn": 1
+    },
+    "N": {
+      "precision": 1,
+      "recall": 0.7419354838709677,
+      "tp": 23,
+      "fp": 0,
+      "fn": 8
+    },
+    "N+V": {
+      "precision": 1,
+      "recall": 0.7741935483870968,
+      "tp": 24,
+      "fp": 0,
+      "fn": 7
+    }
+  },
+  "by_language": {
+    "de": {
+      "skus": 4,
+      "K": {
+        "precision": 0.5757575757575758,
+        "recall": 0.95,
+        "tp": 19,
+        "fp": 14,
+        "fn": 1
+      },
+      "L": {
+        "precision": 0.9047619047619048,
+        "recall": 0.95,
+        "tp": 19,
+        "fp": 2,
+        "fn": 1
+      },
+      "N": {
+        "precision": 1,
+        "recall": 0.7,
+        "tp": 14,
+        "fp": 0,
+        "fn": 6
+      },
+      "N+V": {
+        "precision": 1,
+        "recall": 0.7,
+        "tp": 14,
+        "fp": 0,
+        "fn": 6
+      }
+    },
+    "en": {
+      "skus": 21,
+      "K": {
+        "precision": 0.7538461538461538,
+        "recall": 1,
+        "tp": 49,
+        "fp": 16,
+        "fn": 0
+      },
+      "L": {
+        "precision": 1,
+        "recall": 0.9795918367346939,
+        "tp": 48,
+        "fp": 0,
+        "fn": 1
+      },
+      "N": {
+        "precision": 1,
+        "recall": 0.8979591836734694,
+        "tp": 44,
+        "fp": 0,
+        "fn": 5
+      },
+      "N+V": {
+        "precision": 1,
+        "recall": 0.8979591836734694,
+        "tp": 44,
+        "fp": 0,
+        "fn": 5
+      }
+    },
+    "fr": {
+      "skus": 1,
+      "K": {
+        "precision": 1,
+        "recall": 1,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "L": {
+        "precision": 1,
+        "recall": 1,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "N": {
+        "precision": 1,
+        "recall": 0.8,
+        "tp": 4,
+        "fp": 0,
+        "fn": 1
+      },
+      "N+V": {
+        "precision": 1,
+        "recall": 1,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "it": {
+      "skus": 1,
+      "K": {
+        "precision": 0.75,
+        "recall": 1,
+        "tp": 6,
+        "fp": 2,
+        "fn": 0
+      },
+      "L": {
+        "precision": 1,
+        "recall": 1,
+        "tp": 6,
+        "fp": 0,
+        "fn": 0
+      },
+      "N": {
+        "precision": 1,
+        "recall": 0.8333333333333334,
+        "tp": 5,
+        "fp": 0,
+        "fn": 1
+      },
+      "N+V": {
+        "precision": 1,
+        "recall": 0.8333333333333334,
+        "tp": 5,
+        "fp": 0,
+        "fn": 1
+      }
+    }
+  },
+  "json_validity": {
+    "calls": 27,
+    "valid_first_attempt": 27,
+    "valid_at_all": 27
+  },
+  "nv_flag_rate": {
+    "skus_flagged": 19,
+    "skus": 27,
+    "rate": 0.7037037037037037
+  },
+  "grounding": {
+    "grounded": 169,
+    "dropped": 1
+  },
+  "performance": {
+    "median_tokens_per_s": 113.0719319658749,
+    "median_extraction_s": 2.552,
+    "median_sku_s": 4.522,
+    "median_lexicon_ms": 2.1,
+    "total_s": 219.87
+  },
+  "vram": {
+    "whole_gpu_mib_before": 8258,
+    "whole_gpu_mib_peak": 8335,
+    "total_mib": 16376,
+    "ollama_ps": [
+      {
+        "name": "nemotron-3-nano:4b-q8_0",
+        "size_mib": 4066,
+        "size_vram_mib": 4066
+      }
+    ],
+    "label": "measured (nvidia-smi whole GPU incl. other processes; Ollama /api/ps for the model)"
+  }
+}
