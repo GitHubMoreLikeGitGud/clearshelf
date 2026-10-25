@@ -1,0 +1,548 @@
+{
+ "label": "measured",
+ "what": "The decision of every catalogue listing at intake on 23 Oct 2026 (33 listings: 30 products, UK and US), with the rules that held or blocked it. Score-only: ids, statuses, rule ids, Zetaris DQ rule names and contradiction-kind counts; no Open Food Facts text and no reason strings.",
+ "source": "The intake runs of 23 Oct 2026, 16:28 to 17:05 SGT (data/runs/r20261023T16*.json and r20261023T170*.json) and the decision rows they wrote (data/ops/decisions.json), read from the demo state saved after the video recording (npm run demo:snapshot -- --name post-video-20261023). These are the investigations behind the catalogue shown at 0:28 in the demo video (24 HOLD, 3 BLOCK, 6 waiting for a signature).",
+ "how": "hold_block_rules = the distinct rules among the policy firings with effect HOLD or BLOCK (decision.firings); r3_dq_rules = the Zetaris DQ rule and table each R3 firing names; r4_contradiction_kinds = the contradiction kind each R4 firing names, counted. decision_row_status = the status of the automatic intake row in the ops store (null for a listing proposed for clearance, which writes no row until an officer signs). Rules: R0 investigation incomplete, R1 recall of this barcode, R3 Zetaris data-quality rule failed, R4 unresolved contradiction.",
+ "extracted": "26 Oct 2026, read-only, no model, gateway or Zetaris call",
+ "n": 33,
+ "listings": [
+  {
+   "gtin": "0816929000119",
+   "market": "UK",
+   "run_id": "r20261023T162844ad59",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1",
+    "R3",
+    "R4"
+   ],
+   "r3_dq_rules": [
+    "english_label@product",
+    "has_ingredients@product"
+   ],
+   "r4_contradiction_kinds": {
+    "memory_conflict": 1,
+    "claim_not_supported": 1
+   }
+  },
+  {
+   "gtin": "0850041392103",
+   "market": "UK",
+   "run_id": "r20261023T16293678c5",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1",
+    "R3"
+   ],
+   "r3_dq_rules": [
+    "has_ingredients@product"
+   ],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "4056489125846",
+   "market": "UK",
+   "run_id": "r20261023T1632187279",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R0",
+    "R1",
+    "R3",
+    "R4"
+   ],
+   "r3_dq_rules": [
+    "english_label@product",
+    "market_code@declared_allergen"
+   ],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 2,
+    "rule_conflict": 1,
+    "recall_vs_label": 2,
+    "declared_vs_extraction": 1
+   }
+  },
+  {
+   "gtin": "4056489125846",
+   "market": "US",
+   "run_id": "r20261023T163357b516",
+   "status": "BLOCK",
+   "pending_signature": false,
+   "decision_row_status": "BLOCK",
+   "hold_block_rules": [
+    "R0",
+    "R1",
+    "R3",
+    "R4"
+   ],
+   "r3_dq_rules": [
+    "english_label@product",
+    "market_code@declared_allergen"
+   ],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 2,
+    "rule_conflict": 1,
+    "recall_vs_label": 2,
+    "declared_vs_extraction": 1
+   }
+  },
+  {
+   "gtin": "4056489125839",
+   "market": "UK",
+   "run_id": "r20261023T163527fc16",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R0",
+    "R1",
+    "R3",
+    "R4"
+   ],
+   "r3_dq_rules": [
+    "english_label@product"
+   ],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 9,
+    "rule_conflict": 1,
+    "declared_vs_extraction": 6
+   }
+  },
+  {
+   "gtin": "5000169566558",
+   "market": "UK",
+   "run_id": "r20261023T163652626b",
+   "status": "CLEAR_WITH_STATEMENT",
+   "pending_signature": true,
+   "decision_row_status": null,
+   "hold_block_rules": [],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "5059319005492",
+   "market": "UK",
+   "run_id": "r20261023T163748b962",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R3"
+   ],
+   "r3_dq_rules": [
+    "has_ingredients@product"
+   ],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "4006894512205",
+   "market": "UK",
+   "run_id": "r20261023T16384294ac",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R3",
+    "R4"
+   ],
+   "r3_dq_rules": [
+    "english_label@product"
+   ],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 8,
+    "declared_vs_extraction": 4
+   }
+  },
+  {
+   "gtin": "5056315500204",
+   "market": "UK",
+   "run_id": "r20261023T163943c483",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 2
+   }
+  },
+  {
+   "gtin": "5000128691369",
+   "market": "UK",
+   "run_id": "r20261023T164047fafb",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R0",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 1
+   }
+  },
+  {
+   "gtin": "8717677339990",
+   "market": "UK",
+   "run_id": "r20261023T1641412eab",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 1,
+    "memory_conflict": 4,
+    "declared_vs_extraction": 1
+   }
+  },
+  {
+   "gtin": "4006894554106",
+   "market": "UK",
+   "run_id": "r20261023T164237b286",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R3",
+    "R4"
+   ],
+   "r3_dq_rules": [
+    "english_label@product"
+   ],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 6,
+    "declared_vs_extraction": 5
+   }
+  },
+  {
+   "gtin": "5060100601861",
+   "market": "UK",
+   "run_id": "r20261023T164334a837",
+   "status": "CLEAR",
+   "pending_signature": true,
+   "decision_row_status": null,
+   "hold_block_rules": [],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "4088600526065",
+   "market": "UK",
+   "run_id": "r20261023T1644427995",
+   "status": "CLEAR",
+   "pending_signature": true,
+   "decision_row_status": null,
+   "hold_block_rules": [],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "5029396003346",
+   "market": "UK",
+   "run_id": "r20261023T16453451cc",
+   "status": "CLEAR",
+   "pending_signature": true,
+   "decision_row_status": null,
+   "hold_block_rules": [],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "5015285811734",
+   "market": "UK",
+   "run_id": "r20261023T164632a820",
+   "status": "CLEAR",
+   "pending_signature": true,
+   "decision_row_status": null,
+   "hold_block_rules": [],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "5060132285190",
+   "market": "UK",
+   "run_id": "r20261023T164731ca9a",
+   "status": "CLEAR_WITH_STATEMENT",
+   "pending_signature": true,
+   "decision_row_status": null,
+   "hold_block_rules": [],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "5050974505259",
+   "market": "UK",
+   "run_id": "r20261023T1648194e3f",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "declared_vs_extraction": 1
+   }
+  },
+  {
+   "gtin": "8076809580748",
+   "market": "UK",
+   "run_id": "r20261023T1649137ede",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 8,
+    "declared_vs_extraction": 7
+   }
+  },
+  {
+   "gtin": "8000500310427",
+   "market": "UK",
+   "run_id": "r20261023T165011f29b",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R0",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 4,
+    "memory_conflict": 1,
+    "declared_vs_extraction": 2
+   }
+  },
+  {
+   "gtin": "7622210445346",
+   "market": "UK",
+   "run_id": "r20261023T16512689d6",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R0",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 4,
+    "declared_vs_extraction": 1
+   }
+  },
+  {
+   "gtin": "0099482502065",
+   "market": "UK",
+   "run_id": "r20261023T16522857e4",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "recall_vs_label": 1
+   }
+  },
+  {
+   "gtin": "0099482502065",
+   "market": "US",
+   "run_id": "r20261023T165336f28e",
+   "status": "BLOCK",
+   "pending_signature": false,
+   "decision_row_status": "BLOCK",
+   "hold_block_rules": [
+    "R1",
+    "R3",
+    "R4"
+   ],
+   "r3_dq_rules": [
+    "market_code@declared_allergen"
+   ],
+   "r4_contradiction_kinds": {
+    "recall_vs_label": 1
+   }
+  },
+  {
+   "gtin": "0810001560768",
+   "market": "UK",
+   "run_id": "r20261023T16543768f8",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R0",
+    "R1",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "memory_conflict": 1,
+    "claim_not_supported": 1,
+    "recall_vs_label": 1
+   }
+  },
+  {
+   "gtin": "0850031990074",
+   "market": "UK",
+   "run_id": "r20261023T165541f216",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 1,
+    "memory_conflict": 4,
+    "claim_not_supported": 1,
+    "recall_vs_label": 1,
+    "declared_vs_extraction": 1
+   }
+  },
+  {
+   "gtin": "0044000882105",
+   "market": "UK",
+   "run_id": "r20261023T165709f8de",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "0044000882105",
+   "market": "US",
+   "run_id": "r20261023T165805e36b",
+   "status": "BLOCK",
+   "pending_signature": false,
+   "decision_row_status": "BLOCK",
+   "hold_block_rules": [
+    "R1",
+    "R3"
+   ],
+   "r3_dq_rules": [
+    "market_code@declared_allergen"
+   ],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "0024739120006",
+   "market": "UK",
+   "run_id": "r20261023T165906d1ba",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 2,
+    "recall_vs_label": 1,
+    "declared_vs_extraction": 1
+   }
+  },
+  {
+   "gtin": "0850073087008",
+   "market": "UK",
+   "run_id": "r20261023T1700182636",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 1,
+    "recall_vs_label": 1
+   }
+  },
+  {
+   "gtin": "0074570306053",
+   "market": "UK",
+   "run_id": "r20261023T1701148d0a",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "recall_vs_label": 1
+   }
+  },
+  {
+   "gtin": "0072992042603",
+   "market": "UK",
+   "run_id": "r20261023T170225f6c6",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {}
+  },
+  {
+   "gtin": "0857394006220",
+   "market": "UK",
+   "run_id": "r20261023T170319a05a",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1",
+    "R4"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {
+    "model_vs_verifier": 3,
+    "recall_vs_label": 2,
+    "declared_vs_extraction": 2
+   }
+  },
+  {
+   "gtin": "8690766086473",
+   "market": "UK",
+   "run_id": "r20261023T1704278ada",
+   "status": "HOLD",
+   "pending_signature": false,
+   "decision_row_status": "HOLD",
+   "hold_block_rules": [
+    "R1"
+   ],
+   "r3_dq_rules": [],
+   "r4_contradiction_kinds": {}
+  }
+ ]
+}

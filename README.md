@@ -12,21 +12,43 @@ Open Agent Hackathon 2026, Track 3: Reasoning Architecture. Team: Umar Mohktar, 
 
 ![The ClearShelf card for Plant-Based Puffs (UK): HOLD, applied automatically, on an FDA milk recall (R1), a missing ingredient list and a non-English label (R3) and two contradictions (R4). Every line carries a chip that opens its evidence.](docs/deck/img/hero-puffs-top.png)
 
+**Reading the card.** R1: a recall names this exact barcode. R3: a Zetaris data-quality rule failed for this product (here: no ingredient list, label not in English). R4: an unresolved contradiction, source against source or model against verifier. Each chip opens one evidence record: **SQL** the Lightning SQL and the rows it returned, **CHECK** a deterministic verifier result, **MODEL** a Nemotron output, **MEMORY** an H-MEM record, **WORLD** a World Model lookup, **POLICY** the policy's firing. All rules (R0 to R6) are listed under [Architecture](#architecture). Times on screen are in the viewing browser's time zone, which the UI names: GMT+8 (Singapore, where it was built) in these screenshots and the deck, BST (UK time, the officer's) in the demo video.
+
+**Sponsor technology at a glance.** One row per sponsor: what it does in ClearShelf, one measured result, and one way to check it without the stack.
+
+| Sponsor | What it does here | Measured | Check it |
+|---|---|---|---|
+| **Zetaris** | The only data path. Open Food Facts, openFDA and the UK FSA are Lightning REST tables in the 9-table `clearance_usl` semantic layer, whose 22 data-quality rules can hold a listing (R3). ClearShelf's own decisions are federated back and DQ-checked. | Every claim cites the Lightning SQL that produced it: 95 of 95 cited records re-ran with their rows. `signed_clear` passed a signed row and flagged an unsigned one. | `python -m gateway.onboard --dry-run --offline` prints the 125 statements onboarding sends |
+| **Meterless** | Every investigation is a Markovian chain on the vendored engine. H-MEM keeps officer rulings and source facts with provenance; the World Model answers "what did we know when?". | 59 vendored files blob-identical to upstream; conformance 13/13, 8/8, 8/8, and 13/13 with ClearShelf's H-MEM subclass. Planner prompts 48% and 58% smaller than full history on two measured runs. | `bash scripts/check-engines-upstream.sh` and the conformance runners (CI runs both) |
+| **NVIDIA** | Nemotron 3 Nano 4B, local: the second reader of labels and recall notices, the planner's notes and the memory miner. It never decides. | Together with the deterministic readers: 705 of 705 pooled recall barcodes and 79 of 80 "contains" pairs (next table). 2,881 MiB of VRAM, 0 cloud model calls. | `cd agent && npm run check:readme` recomputes the model scores below from `docs/eval/*.json` |
+| **Cursor** | Developed in a Cursor workspace with `.cursor/rules` and `AGENTS.md`. Cursor Agent ran six tasks (G9, C1 to C3, C9, C10). | 5 Cursor Agent commits, among them C10: the CI check that fails the build when a README number drifts from its committed measurement. | `git log --oneline --grep "(Cursor Agent)"` |
+
+**What the model adds over rules alone.** The deterministic readers decide. Nemotron reads the same text as a second reader, and a barcode or allergen that either reader finds holds the listing for the officer. All values measured, from committed JSON:
+
+| Job | Deterministic reader alone | Nemotron alone | Both, holding on either | Cost of the model |
+|---|---|---|---|---|
+| Barcodes in 505 FDA recall notices (26 Oct, [`notices-2026-10-26.json`](docs/eval/notices-2026-10-26.json)) | GS1 scan: 701 of 705 | 620 of 705 | **705 of 705**; 15 wrong codes, none a catalogue barcode | 0.78 s per notice, median |
+| "Contains" allergen pairs on 27 product labels (25 Oct, [`extraction-q4-2026-10-25.json`](docs/eval/extraction-q4-2026-10-25.json)) | lexicon: 78 of 80 | 62 of 80 | **79 of 80** | 2.09 s per label, median (the lexicon takes about 2 ms) |
+| Trap words read as an allergen (such as cocoa butter as milk), same labels | lexicon: 1 of 15; keyword rule: 5 of 15 | 0 of 15 | 1 of 15 | |
+| Undeclared allergens in the 505 notices | lexicon: 499 exactly right | 412 | not combined: the lexicon's reading decides | |
+
+How to read it: on notices the truth set is pooled (a code counts as true when both readers return it or a hand check confirms it), so a code both readers missed is not among the 705; in 20 notices read in full, all 17 valid barcodes were found by at least one reader. On labels, the reference labels' text rule (R-NAME) is the lexicon's own word list, so the lexicon's 78 and the combined 79 are partly the lexicon graded against itself ([eval report, section 3](docs/eval-report.md#3-extraction-spec-92)). The model's misses cost the officer time, not safety: they hold listings, and the hold breakdown is under "What the demo shows".
+
 ![From the demo video, 0:56 to 1:12: the evidence drawer behind the recall line (the Lightning SQL that produced it, its sha256, the Zetaris objects, source URL, licence and cache time), then "Why was this held?" in five plain lines, each with its evidence chips.](docs/deck/img/why-held.gif)
 
 *Cut from the demo video, 0:56 to 1:12, with no other edit; the drawer part plays at 2x, as labelled on screen.*
 
-**Reading the card.** R1: a recall names this exact barcode. R3: a Zetaris data-quality rule failed for this product (here: no ingredient list, label not in English). R4: an unresolved contradiction, source against source or model against verifier. Each chip opens one evidence record: **SQL** the Lightning SQL and the rows it returned, **CHECK** a deterministic verifier result, **MODEL** a Nemotron output, **MEMORY** an H-MEM record, **WORLD** a World Model lookup, **POLICY** the policy's firing. All rules (R0 to R6) are listed under [Architecture](#architecture).
-
 **The problem.** The user is the product-compliance officer at a UK online grocer that also sells US- and EU-made packaged foods. They sign off the allergen information shown before purchase, which FIC Art. 14 requires for distance selling, and pull or relabel listings when the FSA or FDA publishes an allergy alert. The sources disagree, and the officer reconciles them by hand: Open Food Facts lists Frankie's Plant-Based Puffs (UPC 816929000119) as vegan with no allergens, while Class I FDA recall H-1328-2026 says the product tested positive for undeclared milk. openFDA holds 6,325 food enforcement reports whose recall reason says "undeclared", and 842 of the newest 1,000 concern an allergen.
 
-**What the demo shows** (measured on 23 Oct 2026 on a demo catalogue of 30 products and 33 listings that deliberately includes 14 barcodes taken from FDA recalls; [eval report, section 7](docs/eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)). In a replayed recall poll, ClearShelf read 15 new notices, held the one exact-barcode match automatically and visibly in Zetaris in a median 68.4 s over 10 runs (57.5 to 93.5 s; each run in [`docs/eval/watch-polls-2026-10-23.json`](docs/eval/watch-polls-2026-10-23.json)), and queued 2 name-only matches for the officer. At intake, all 17 listings whose barcode a recall names were held or blocked, 10 more were held or blocked for other reasons with the rule cited, and 6 were proposed for clearance and are waiting for the officer's signature, because nothing clears without one.
+**What the demo shows** (measured on 23 Oct 2026 on a demo catalogue of 30 products and 33 listings that deliberately includes 14 barcodes taken from FDA recalls; [eval report, section 7](docs/eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)). In a replayed recall poll, ClearShelf read 15 new notices, held the one exact-barcode match automatically and visibly in Zetaris in a median 68.4 s over 10 runs (57.5 to 93.5 s; each run in [`docs/eval/watch-polls-2026-10-23.json`](docs/eval/watch-polls-2026-10-23.json)), and queued 2 name-only matches for the officer. At intake, all 17 listings whose barcode a recall names were held or blocked, 10 more were held or blocked for other reasons with the rule cited, and 6 were proposed for clearance and are waiting for the officer's signature, because nothing clears without one. The catalogue was built to contain those recall barcodes, so the 17 checks the barcode join on a planted set; it is not a rate measured on a real catalogue.
+
+**What lands in the officer's queue** (the 27 holds and blocks at intake, counted from the decision rows in [`docs/eval/intake-holds-2026-10-23.json`](docs/eval/intake-holds-2026-10-23.json)): 17 cite a recall of the listing's barcode (R1), 3 more a failed Zetaris data-quality rule (R3: no ingredient list, or a label not in English), and 7 hold only on unresolved contradictions (R4; 3 of them also R0, unparsed ingredient text). 6 of those 7 include a model/verifier disagreement, and in 2 it is the only contradiction. So 20 of the 27 rest on a recall or a failed data-quality rule rather than on a disagreement between readers, and the model's misses add holds; they never clear anything.
 
 **HOLD or BLOCK?** Both are applied automatically. BLOCK means an active recall of this barcode covers this market. HOLD means the listing waits for the officer: a US-only or past recall, a failed data-quality rule, an unresolved contradiction or an incomplete investigation. CLEAR and CLEAR_WITH_STATEMENT run only under an officer-signed, single-use contract.
 
 - **Zetaris** is the only data path. Open Food Facts, openFDA and the UK FSA are Lightning REST tables, joined in the 9-table `clearance_usl` semantic layer with 22 data-quality rules; an invalid record for a product holds it (R3). Every claim cites the Lightning SQL that produced it (95 of 95 cited records re-ran with their rows), and the agent's own decisions are federated back and checked by the `signed_clear` DQ rule.
 - **Meterless:** every clearance is a Markovian chain on the vendored engine (unchanged, and CI compares every vendored file's blob id with upstream; planner prompts stay at 1,322 to 1,788 tokens per chunk, while a measured full-history prompt reached 4,641 and 6,829 tokens on two investigations: 48% and 58% fewer prompt tokens). H-MEM keeps officer rulings and source facts with provenance, and the World Model answers "what did we know when?". Conformance: 13/13, 8/8, 8/8.
-- **NVIDIA Nemotron 3 Nano 4B** runs locally in 2,881 MiB of VRAM with 0 cloud model calls, as the second of two independent readers. On 27 real labels, the model and the deterministic lexicon verifier together missed 1 of the 80 "contains" pairs: the lexicon found 17 of the model's 18 misses, the model found 1 of the lexicon's 2, and every disagreement holds the listing. Alone, the model reads "contains" at precision 1.00 and recall 0.78 with 0 of 15 trap false alarms (keyword rule 0.71 / 0.99, 5 of 15); the lexicon alone scores 0.97 / 0.97, partly because it shares its rules with the reference labels. The model also reads recall notices, plans each investigation and mines memory; it never decides. Measured on 26 Oct and published as it came out: on 505 recall notices the deterministic GS1 scan read UPCs better than the model (recall 0.994 against 0.879), and with the planner switched off the 8 test investigations reached the same decisions.
+- **NVIDIA Nemotron 3 Nano 4B** runs locally in 2,881 MiB of VRAM with 0 cloud model calls, as the second of two independent readers. On 27 real labels, the model and the deterministic lexicon verifier together missed 1 of the 80 "contains" pairs (scored against reference labels whose text rule is the lexicon's own word list): the lexicon found 17 of the model's 18 misses, the model found 1 of the lexicon's 2, and every disagreement holds the listing. Alone, the model reads "contains" at precision 1.00 and recall 0.78 with 0 of 15 trap false alarms (keyword rule 0.71 / 0.99, 5 of 15); the lexicon alone scores 0.97 / 0.97, partly because it shares its rules with the reference labels. The model also reads recall notices, plans each investigation and mines memory; it never decides. Measured on 26 Oct and published as it came out: on 505 recall notices the deterministic GS1 scan read UPCs better than the model (recall 0.994 against 0.879), and with the planner switched off the 8 test investigations reached the same decisions.
 - **Cursor:** developed in a Cursor workspace with project rules in `.cursor/rules` and `AGENTS.md`. Every Cursor Agent task (G9, C1 to C3, and C9 and C10 after the plan upgrade; C10 is the CI check that README headline numbers match `docs/eval/*.json`) and its commit is listed in [`docs/how-cursor-was-used.md`](docs/how-cursor-was-used.md).
 
 **What you can check without the stack** (no Zetaris, no GPU; Node 22.12+, Python 3.12; full steps in [Quickstart A](#a-three-minute-check-no-zetaris-no-gpu)). CI runs every check in this table on `windows-latest` and `ubuntu-latest` on each push.
@@ -215,7 +237,7 @@ The diagram above is drawn by [`docs/architecture.py`](docs/architecture.py) ([S
 
 | Path | What it holds |
 |---|---|
-| `agent/` | Node 22 + TypeScript (tsx, no runtime dependencies): loop, verifiers, policy, memory, World Model, contracts, server, CLI; tests in `agent/test/` |
+| `agent/` | Node 22 + TypeScript, run with tsx (`npm run dev` is `tsx src/server.ts`); the code imports only Node built-ins: loop, verifiers, policy, memory, World Model, contracts, server, CLI; tests in `agent/test/` |
 | `gateway/` | Python 3.12 Zetaris gateway: templates, allowlist, registrar, contract check, onboarding; tests in `gateway/tests/` |
 | `zetaris/` | Lightning SQL `NN_*_create.sql` / `_select.sql` pairs, the OFF template, DQ rule docs, verified counts |
 | `ui/` | officer UI, no build step |
@@ -271,6 +293,8 @@ The engines come from [Meterless/Meterless](https://github.com/Meterless/Meterle
 
 `nemotron-3-nano:4b` (Q4_K_M) runs in local Ollama 0.40.7 on an RTX 4070 Ti SUPER 16 GB. Settings: temperature 0, seed 7, `num_ctx` 8192, one call at a time. Output follows a JSON schema (Ollama `format`) and is validated on the host. An invalid reply is retried once; after that, a deterministic fallback step is taken and labelled as one.
 
+**Its measured contribution first.** As a second reader beside the deterministic ones, Nemotron found the 4 recall-notice barcodes the GS1 scan missed (705 of 705 pooled barcodes together) and 1 of the lexicon's 2 missed "contains" pairs on 27 labels (79 of 80 together, on reference labels that share the lexicon's word list), with 0 of 15 trap false alarms of its own. Alone it is the weaker reader on both jobs, as the rest of this section shows. The table is near the top of this README and in [`docs/nemotron-bench.md`](docs/nemotron-bench.md#what-the-model-adds-over-rules-alone).
+
 Nemotron does four jobs and decides nothing:
 
 1. **Multilingual ingredient extraction** into grounded spans (think off).
@@ -287,7 +311,7 @@ Nemotron does four jobs and decides nothing:
 | VRAM | 2,881 MiB, all of the model in VRAM |
 | Cloud model calls | 0. The model client accepts loopback URLs only. |
 | Cold vs warm (same SKU) | reusing H-MEM's verified extraction cut tool-model tokens by 67% in and 94% out; 61.1 s vs 48.1 s |
-| Extraction on 27 labels, `contains` precision / recall | Nemotron Q4_K_M 1.00 / 0.78; Q8_0 1.00 / 0.84; **the lexicon verifier alone, no model, 0.97 / 0.97**; keyword rule 0.71 / 0.99 |
+| Extraction on 27 labels, `contains` precision / recall | Nemotron Q4_K_M 1.00 / 0.78; Q8_0 1.00 / 0.84; **the lexicon verifier alone, no model, 0.97 / 0.97** (the reference labels use its word list); keyword rule 0.71 / 0.99 |
 | Recall by label language (Q4 / Q8 / lexicon alone) | English, 21 labels: 0.90 / 0.90 / 0.98; German, 4: 0.50 / 0.70 / 0.95; French, 1: 0.60 / 0.80 / 1.00; Italian, 1: 0.83 / 0.83 / 1.00 |
 | Q8_0 against Q4_K_M | 113.1 against 154.1 tokens/s (27% slower), 2.55 against 2.09 s per extraction call, 4,066 against 2,881 MiB of VRAM; Q4 stays the default |
 | Recall notices: every cached openFDA notice that prints a barcode, 505 (26 Oct) | UPC precision / recall: **the deterministic GS1 scan 0.996 / 0.994**, Nemotron 0.981 / 0.879 after the host check (0.757 precision on its raw output; 21 codes not in the text). Allergen groups exactly right: lexicon 499 of 505, Nemotron 412. Nemotron found 4 true codes the scan missed. Gold: agreement plus 104 codes and 98 allergen disagreements checked by hand, listed by notice id |
@@ -307,7 +331,7 @@ ClearShelf was developed in a Cursor workspace with project rules in `.cursor/ru
 
 All numbers are measured unless labelled otherwise. The full report is [`docs/eval-report.md`](docs/eval-report.md), from runs on 23 Oct 2026 with the model, the gateway and Zetaris on one machine. The replay, the scenarios and the evidence-quality scoring were run again on 25 Oct 2026 on the clean commit `aeb5b92`, with the same decisions, rules and evidence counts; a score-only summary is in [`docs/eval/`](docs/eval/). On 26 Oct 2026 two more measurements were added: the planner switched off (eval report, section 4) and recall-notice extraction on every cached openFDA notice that prints a barcode ([`docs/nemotron-bench.md`](docs/nemotron-bench.md)).
 
-**Scenarios: 10 of 10 pass** (`npm run eval`: 408 s on 23 Oct, 467 s in the 25 Oct re-run):
+**Scenarios: 10 of 10 pass** (`npm run eval`: 408 s on 23 Oct, 467 s in the 25 Oct re-run). A scenario passes when its decision matches exactly and every rule it expects fired (`agent/src/eval/run.ts`). The expectations were written by the author, so this is a regression check, not an accuracy score. Five fired more rules than they list, as the committed run shows: E1 and E2's poll R3; E3 R0 and R4; E4 R0, R3 and R4; E7 R4.
 
 | ID | Case | Result |
 |---|---|---|
@@ -326,7 +350,7 @@ All numbers are measured unless labelled otherwise. The full report is [`docs/ev
 
 - Every card claim, policy firing and review item cites evidence (7/7 cards, 43/43 firings, 37/37 review items).
 - 200/200 evidence records are complete.
-- Re-running the cited SQL returns every cited row (95/95).
+- Re-running the cited SQL returns every cited row (95/95). 36 of the 95 cite 0 rows, where the absence is the evidence (for example, no recall for this barcode).
 - Every span shown is an exact substring of its source (19 kept, 1 dropped and counted).
 - 3/3 expected contradictions were found.
 - 0 CLEAR proposals on a GTIN with an ongoing recall; 0 CLEAR, CLEAR_WITH_STATEMENT or RELEASE executed without a signed contract.
@@ -340,7 +364,7 @@ All numbers are measured unless labelled otherwise. The full report is [`docs/ev
 | Nemotron | **1.00** | 0.78 | 0/15 | 18/27 |
 | Nemotron + verifier | **1.00** | 0.78 | 0/15 | 18/27 |
 | Nemotron Q8_0 (25 Oct) | **1.00** | 0.84 | 0/15 | 16/27 |
-| Lexicon verifier alone, no model (25 Oct) | 0.97 | 0.97 | 1/15 | 26/27 |
+| Lexicon verifier alone, no model (25 Oct; the reference labels use its word list, so it is partly graded against itself) | 0.97 | 0.97 | 1/15 | 26/27 |
 
 **What did not go well:**
 
@@ -382,7 +406,7 @@ All numbers are measured unless labelled otherwise. The full report is [`docs/ev
 | Component | Version | Licence |
 |---|---|---|
 | Node.js | 22.12 or newer | MIT |
-| tsx, vitest, vite, @types/node (dev only; the agent has no runtime dependencies) | 4.23.15, 5.0.3, 7.3.7, 22.20.5 | MIT |
+| tsx, vitest, vite, @types/node (`devDependencies`, installed by `npm ci`; tsx also runs the server and CLI, and the agent code imports no npm package) | 4.23.15, 5.0.3, 7.3.7, 22.20.5 | MIT |
 | TypeScript (dev only) | 7.0.2 | Apache-2.0 |
 | FastAPI, pytest (dev) | 0.161.1, 9.1.1 | MIT |
 | uvicorn, httpx (dev) | 0.54.0, 0.28.1 | BSD-3-Clause |

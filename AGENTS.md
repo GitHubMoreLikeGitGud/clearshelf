@@ -10,7 +10,7 @@ ClearShelf is an allergen clearance and recall watch agent for online grocers (O
 | `gateway/` | Python 3.12 Zetaris gateway (FastAPI + JayDeBeApi) on 127.0.0.1:8791: named SQL templates, allowlist, registrar, contract checks, onboarding. |
 | `zetaris/` | `manifest.json`, `sql/NN_*_create.sql` / `_select.sql` pairs, `README.md` with verified row counts. |
 | `ops/` | nginx config and compose file that serve `data/ops/` to Zetaris as `http://clearshelf-ops` on the `zetaris_default` network. |
-| `agent/` | Node 22 + TypeScript (run with tsx, no runtime dependencies): agent loop, verifiers, policy, memory, world model, server and CLI. Tests in `agent/test/`. |
+| `agent/` | Node 22 + TypeScript (run with tsx, a dev dependency; the code imports only Node built-ins): agent loop, verifiers, policy, memory, world model, server and CLI. Tests in `agent/test/`. |
 | `ui/` | Plain HTML, CSS and ES modules, no build step, served by the agent server on 127.0.0.1:8790. |
 | `data/reference/`, `data/manifest/` | Committed: the cited market allergen table and the intake manifest (GTIN, market, reference labels; no Open Food Facts text). |
 | `data/*` (everything else) | Runtime state, gitignored. |

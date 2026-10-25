@@ -2,6 +2,21 @@
 
 The main run was on Fri 23 Oct 2026, 07:50–08:09 SGT. The follow-up runs (Q8 A/B, host-RAM soak) were at 08:26–08:42 SGT. All runs used the development PC with the four Zetaris containers (`ui`, `api`, `driver`, `postgres`) up and healthy. Every number below is measured unless it is labelled `estimated`: Ollama's own token counts and durations, `nvidia-smi` at 1 s, OS CPU and available-RAM counters at 1 s, and, in the soak runs, the private memory of the Ollama processes at 1 s. The raw results are in `data/bench/` (local, gitignored): `g8-*.json`, `g8b-*.json` and `soak-*.json`. The follow-up files include every 1 s sample; the main-run files hold per-phase statistics only. (In the two Q8 A/B files the process-memory fields read 0, because the sampler did not yet find the runner process; it was fixed before the soak, and nothing below uses those fields.)
 
+## What the model adds over rules alone
+
+ClearShelf decides from deterministic readers (the GS1 scan for barcodes, the lexicon verifier for allergens), and Nemotron reads the same text as a second reader; a barcode or allergen that either reader finds holds the listing for the officer. Measured, from the committed summaries:
+
+| Job | Deterministic reader alone | Nemotron alone | Both, holding on either | Cost of the model |
+|---|---|---|---|---|
+| Barcodes in 505 FDA recall notices (26 Oct, [`notices-2026-10-26.json`](eval/notices-2026-10-26.json)) | GS1 scan: 701 of 705 | 620 of 705 | **705 of 705**; 15 wrong codes (3 scan, 12 model), none a catalogue barcode | 0.78 s per notice, median; 2,881 MiB of VRAM |
+| "Contains" allergen pairs on 27 product labels (25 Oct, [`extraction-q4-2026-10-25.json`](eval/extraction-q4-2026-10-25.json)) | lexicon: 78 of 80 | 62 of 80 | **79 of 80** | 2.09 s per label, median (the lexicon takes about 2 ms, no GPU) |
+| Trap words read as an allergen, same labels | lexicon: 1 of 15; keyword rule: 5 of 15 | 0 of 15 | 1 of 15 | |
+| Undeclared allergens in the 505 notices | lexicon: 499 exactly right | 412 | not combined: the lexicon's reading decides | |
+
+- **Pooled gold.** On notices, a code counts as true when both readers return it or a hand check confirms it (every single-reader code is listed by notice id in [`notices-adjudication-2026-10-26.json`](eval/notices-adjudication-2026-10-26.json)), so a code both readers missed is not among the 705. In the 20 notices drawn at random and read in full, all 17 valid barcodes were found by at least one reader.
+- **The labels favour the lexicon.** The reference labels' text rule R-NAME is the lexicon's own word list ([eval report, section 8](eval-report.md#8-reference-label-rules-from-datamanifestskusjson-version-2026-10231)), so the lexicon's 78 and the combined 79 are partly the lexicon graded against itself. The overlap (1 pair missed by both) is from the 25 Oct run, [eval report, section 3](eval-report.md#re-run-on-25-oct-2026-lexicon-alone-q8_0-and-recall-per-language).
+- **Alone, the model is the weaker reader on both jobs** (sections below). Its measured contribution is the codes and words the deterministic reader missed, at the cost of more holds: at intake, 6 of the 7 listings held only on contradictions included a model/verifier disagreement ([eval report, section 7](eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)).
+
 ## Verdict
 
 | Gate | Criterion | Result | Decision |
