@@ -1,9 +1,13 @@
 // Recall-notice extraction at scale: Nemotron (extractNotice, the agent's notice job) against
 // the deterministic GS1 scan (extractUpcs) on every cached openFDA notice that prints a UPC.
-// Notices are read through the gateway (fda_recent lists the cached table, fda_notice reads one
-// record), exactly as the agent reads them. One model call per notice, one at a time.
+// Each notice is read through the gateway (fda_notice, one record), exactly as the agent reads
+// it. One model call per notice, one at a time. The gateway returns at most 200 rows per
+// template (gateway/app.py MAX_ROWS), so fda_recent lists only the newest 200 cached notices;
+// --ids <file> gives the full list of recall numbers instead (an openFDA page JSON, such as the
+// dev-time page in data/curation/raw/, or a JSON array), and the run records how many the gateway
+// found.
 //
-//   cd agent && npx tsx src/eval/measure/notices.ts run            -> data/eval/notices-<time>.json
+//   cd agent && npx tsx src/eval/measure/notices.ts run [--ids <file>] [--limit n]  -> data/eval/notices-<time>.json
 //   cd agent && npx tsx src/eval/measure/notices.ts score <run.json> [<adjudication.json>]
 //
 // Gold UPCs (score): a GTIN is TRUE when both readers return it (each passes the GS1 check
@@ -59,24 +63,39 @@ const pct = (xs: number[], p: number): number | null => {
 };
 const round = (x: number | null, d = 3): number | null => (x === null ? null : Number(x.toFixed(d)));
 
+function flag(name: string): string | undefined {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+}
+
 async function run(): Promise<void> {
   const cfg = loadConfig();
   const gw = new GatewayClient({ baseUrl: cfg.gatewayUrl });
   const ollama = new OllamaClient({ baseUrl: cfg.ollamaUrl, model: cfg.model });
   const t0 = performance.now();
   const started = new Date().toISOString();
-  const list = rowsAsObjects(await gw.template("fda_recent", { since: "2000-01-01" }));
-  process.stderr.write(`cached openFDA notices: ${list.length}\n`);
+  const recent = await gw.template("fda_recent", { since: "2000-01-01" });
+  const listed = rowsAsObjects(recent).map((r) => String(r.recall_number));
+  const idsFile = flag("ids");
+  let ids = listed;
+  if (idsFile) {
+    const doc = JSON.parse(readFileSync(idsFile, "utf8")) as unknown;
+    ids = Array.isArray(doc) ? doc.map(String) : (doc as { results: { recall_number: string }[] }).results.map((r) => String(r.recall_number));
+  }
+  ids = [...new Set(ids)];
+  process.stderr.write(`gateway: ${recent.row_count} cached notices, ${listed.length} listed${recent.truncated ? " (truncated)" : ""}; ids to read: ${ids.length}\n`);
   const rows: NoticeRow[] = [];
+  const missing: string[] = [];
   const tRead = performance.now();
-  for (const r of list) {
-    const res = rowsAsObjects(await gw.template("fda_notice", { recall_number: String(r.recall_number) }));
+  for (const id of ids) {
+    const res = rowsAsObjects(await gw.template("fda_notice", { recall_number: id }));
     if (res[0]) rows.push(res[0] as unknown as NoticeRow);
+    else missing.push(id);
   }
   const readMs = Math.round(performance.now() - tRead);
   const subset = rows.filter((r) => printsUpc(noticeText(r)));
-  process.stderr.write(`read ${rows.length} notices in ${(readMs / 1000).toFixed(1)} s; ${subset.length} print a UPC\n`);
-  const limit = Number(process.argv[3] ?? subset.length);
+  process.stderr.write(`read ${rows.length} notices in ${(readMs / 1000).toFixed(1)} s (${missing.length} not in Zetaris); ${subset.length} print a UPC\n`);
+  const limit = Number(flag("limit") ?? subset.length);
   const records: NoticeRecord[] = [];
   for (const [i, row] of subset.slice(0, limit).entries()) {
     const text = noticeText(row);
@@ -106,7 +125,26 @@ async function run(): Promise<void> {
   const file = fileURLToPath(new URL(`data/eval/notices-${started.replace(/[:.]/gu, "-")}.json`, REPO_ROOT_URL));
   writeFileSync(
     file,
-    `${JSON.stringify({ label: "measured", model: cfg.model, started_at: started, wall_ms: Math.round(performance.now() - t0), gateway_read_ms: readMs, cached_notices: rows.length, printing_upc: subset.length, records }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        label: "measured",
+        model: cfg.model,
+        started_at: started,
+        wall_ms: Math.round(performance.now() - t0),
+        gateway_read_ms: readMs,
+        gateway_row_count: recent.row_count,
+        gateway_listed: listed.length,
+        ids_source: idsFile ? "file" : "fda_recent",
+        ids_requested: ids.length,
+        newest_listed_in_ids: listed.filter((x) => ids.includes(x)).length,
+        not_in_zetaris: missing,
+        cached_notices: rows.length,
+        printing_upc: subset.length,
+        records,
+      },
+      null,
+      2,
+    )}\n`,
     "utf8",
   );
   console.log(`wrote ${file}`);
@@ -251,7 +289,7 @@ function score(runFile: string, adjFile?: string): void {
 
 if (process.argv[1] && /measure[\\/]notices\.ts$/u.test(process.argv[1])) {
   const cmd = process.argv[2];
-  const p = cmd === "run" ? run() : cmd === "score" ? Promise.resolve(score(process.argv[3]!, process.argv[4])) : Promise.reject(new Error("usage: notices.ts run [limit] | score <run.json> [<adjudication.json>]"));
+  const p = cmd === "run" ? run() : cmd === "score" ? Promise.resolve(score(process.argv[3]!, process.argv[4])) : Promise.reject(new Error("usage: notices.ts run [--ids <file>] [--limit n] | score <run.json> [<adjudication.json>]"));
   p.catch((e) => {
     console.error(`error: ${(e as Error).message}`);
     process.exit(1);
