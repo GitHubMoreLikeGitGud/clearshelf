@@ -7,7 +7,7 @@ import { OllamaClient } from "../src/llm/ollama.ts";
 import type { ExtractionSpan } from "../src/llm/schemas.ts";
 import type { Market, PolicyResult } from "../src/policy/decide.ts";
 import { Checklist, NOTICES_PARSED } from "../src/loop/checklist.ts";
-import { chunkText, fitState, loopPlannerSchema, neutralize, type LoopState } from "../src/loop/generator.ts";
+import { chunkText, fitState, loopPlannerSchema, neutralize, PLANNER_OFF_REASON, plannerMode, type LoopState } from "../src/loop/generator.ts";
 import { investigateSku, SKU_CHUNK_CONFIG, type InvestigationResult } from "../src/loop/investigate.ts";
 import { digest, DIGEST_TOKENS } from "../src/loop/tools.ts";
 import { estimateTokens } from "../../engines/markovian/reference/src/index.ts";
@@ -262,6 +262,29 @@ describe("loop: the policy decides, the loop only orders the checks", () => {
     // Two tool calls per chunk: nine calls take five chunks.
     expect(r.loop.chunks).toBe(5);
     expect(r.loop.chunk_telemetry.every((c) => c.tool_calls <= 2)).toBe(true);
+  });
+
+  it("planner off (ablation): no planner call, every step is the fallback step, same tools and decision as a planner that follows the enum", async () => {
+    const seen = { tools: [] as string[][], plannerCalls: 0 };
+    const gateway = fakeGateway(BASE, []);
+    const r = await investigateSku(
+      { gtin: GTIN, market: "UK", asOf: "2026-10-23", historyDir: null, telemetryDir: null, think: false, planner: "off" },
+      { gateway, dq: new DqGate(gateway), ollama: stubModel(followEnum, seen), evidence: new EvidenceStore("roff", null) },
+    );
+    const { r: withModel } = await runLoop(followEnum);
+    expect(seen.plannerCalls).toBe(0);
+    expect(r.loop.summary.planner_calls).toBe(0);
+    expect(r.loop.summary.fallback_steps).toBe(r.loop.summary.tool_calls);
+    expect(r.loop.timeline.every((t) => t.fallback_reason === PLANNER_OFF_REASON)).toBe(true);
+    expect(r.loop.timeline.map((t) => t.tool)).toEqual(withModel.loop.timeline.map((t) => t.tool));
+    expect(firingKeys(r.decision)).toEqual(firingKeys(withModel.decision));
+    expect(r.loop.checklist_complete).toBe(true);
+  });
+
+  it("CLEARSHELF_PLANNER=off selects the ablation mode; anything else keeps the model planner", () => {
+    expect(plannerMode({ CLEARSHELF_PLANNER: "off" })).toBe("off");
+    expect(plannerMode({ CLEARSHELF_PLANNER: "on" })).toBe("model");
+    expect(plannerMode({})).toBe("model");
   });
 
   it("the dynamic enum offers policy.propose only once every other item is resolved, and never offers a done item again", async () => {

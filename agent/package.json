@@ -20,6 +20,8 @@
     "eval:evidence": "tsx src/eval/measure/evidence-quality.ts",
     "eval:cold-warm": "tsx src/eval/measure/cold-warm.ts",
     "eval:full-history": "tsx src/eval/measure/full-history.ts",
+    "eval:planner-ablation": "tsx src/eval/measure/planner-ablation.ts",
+    "eval:notices": "tsx src/eval/measure/notices.ts",
     "warmup": "tsx src/cli.ts warmup",
     "demo:snapshot": "tsx src/cli.ts demo-snapshot",
     "demo:reset": "tsx src/cli.ts demo-reset",

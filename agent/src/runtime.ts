@@ -25,6 +25,7 @@ import { textSha12, type IngredientExtractionResult } from "./extract/ingredient
 import type { NoticeExtractionResult } from "./extract/notice.ts";
 import type { ExtractionSpan } from "./llm/schemas.ts";
 import { OllamaClient } from "./llm/ollama.ts";
+import type { PlannerMode } from "./loop/generator.ts";
 import { investigateSku, type InvestigationResult } from "./loop/investigate.ts";
 import type { GuardPort, MemoryPort, RegistrarPort, ToolDeps, WarmPort } from "./loop/tools.ts";
 import { knownAsOf, makeWordingFn, memoryPort, openMemory, readEvidenceRecord, type DecisionState, type HMEM, type WhyTrace } from "./memory/hmemFacade.ts";
@@ -324,6 +325,8 @@ export interface InvestigateRequest {
   log?: (line: string) => void;
   maxChunks?: number;
   think?: boolean;
+  /** "off": the investigation runs without the model planner (ablation). Default from CLEARSHELF_PLANNER. */
+  planner?: PlannerMode;
   /**
    * Intake (a new GTIN from the officer or the command line): a missing product row may be
    * registered through the registrar first. Never in a sweep or a replay.
@@ -364,6 +367,7 @@ export async function investigate(rt: Runtime, req: InvestigateRequest): Promise
       asOf: req.asOf,
       maxChunks: req.maxChunks,
       think: req.think,
+      planner: req.planner,
       onEvent: (e) => req.onEvent?.(`loop.${e.type}`, { ...base, ...e }),
       ...(rt.loopDir !== undefined ? { historyDir: rt.loopDir, telemetryDir: rt.loopDir } : {}),
     },

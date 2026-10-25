@@ -13,6 +13,9 @@
 //      call (for the record), [TASK_COMPLETE] once the checklist is complete, and
 //      [STATE_CHECKPOINT] with the typed state JSON that becomes the next carryover.
 //
+// Planner ablation: with CLEARSHELF_PLANNER=off (or `planner: "off"`) the model is never
+// asked for a plan and every step is the fallback step. Extraction still uses the model.
+//
 // The model never decides: policy.propose runs the deterministic policy, and the host
 // owns the checklist (the model's echo of it is ignored and counted).
 
@@ -195,10 +198,21 @@ export type LoopEvent =
   | { type: "tool"; chunk: number; seq: number; tool: string; source: "model" | "fallback"; fallback_reason: string | null; ok: boolean; fact: string; evidence_ids: string[]; latency_ms: number }
   | { type: "chunk_end"; chunk: number; state_tokens: number; complete: boolean };
 
+export type PlannerMode = "model" | "off";
+
+/** CLEARSHELF_PLANNER=off turns the model planner off (ablation runs); anything else keeps it. */
+export function plannerMode(env: Record<string, string | undefined> = process.env): PlannerMode {
+  return env.CLEARSHELF_PLANNER === "off" ? "off" : "model";
+}
+
+export const PLANNER_OFF_REASON = "planner off (ablation run): the deterministic next step";
+
 export interface GeneratorOptions {
   goal: string;
   carryoverTokens: number;
   maxToolCallsPerChunk?: number;
+  /** "off": no planner call, every step is fallbackStep(). Default from CLEARSHELF_PLANNER. */
+  planner?: PlannerMode;
   think?: boolean;
   numPredict?: number;
   onEvent?: (e: LoopEvent) => void;
@@ -236,6 +250,7 @@ export class PlannerSession {
   private readonly think: boolean;
   private readonly numPredict: number;
   private readonly maxCalls: number;
+  readonly planner: PlannerMode;
   lastState = "";
 
   constructor(
@@ -247,6 +262,7 @@ export class PlannerSession {
     this.think = opts.think ?? s.think;
     this.numPredict = opts.numPredict ?? s.num_predict;
     this.maxCalls = opts.maxToolCallsPerChunk ?? 2;
+    this.planner = opts.planner ?? plannerMode();
   }
 
   get chunks(): number {
@@ -376,44 +392,49 @@ export class PlannerSession {
       if (ctx.checklist.complete() || abortSignal?.aborted) break;
       const tools = allowedTools(ctx, this.deps);
       if (tools.length === 0) break;
-      const system = plannerSystemPrompt(tools);
-      const host = hostBlock(ctx, inChunk);
-      const user = `${base}\n\n${host}`;
-      const messages: ChatMessage[] = [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ];
-      const naiveEstimate = call === 1 ? this.naive.estimate(system, this.opts.goal, host) : 0;
-      const plan = await this.plan(messages, tools, abortSignal);
-      const m = sumMetrics(plan.results);
-      const out = plan.output;
-      const echo = out ? JSON.stringify(out.state.checklist) !== JSON.stringify(ctx.checklist.booleans()) : false;
-      this.telemetry.planner(
-        rec,
-        {
-          chunk: this.chunk,
-          call,
-          attempts: plan.results.length,
-          valid: out !== null,
-          valid_first_try: plan.validFirstTry,
-          errors: plan.errors,
-          first_errors: plan.firstErrors,
-          think: this.think,
-          chosen: out?.action ? { tool: out.action.tool, input: { ...out.action.input } } : null,
-          checklist_echo_altered: echo,
-          thought: out?.thought ?? null,
-          prompt_tokens: m.prompt,
-          first_attempt_prompt_tokens: plan.firstPromptTokens,
-          eval_tokens: m.eval,
-          wall_ms: m.wall,
-          tokens_per_s: m.tps,
-          prompt_chars: plan.promptChars,
-        },
-        estimateTokens(`${system}\n${user}`),
-        naiveEstimate,
-      );
-      this.emit({ type: "planner", chunk: this.chunk, call, valid: out !== null, attempts: plan.results.length, tool: out?.action?.tool ?? null, thought: out?.thought ?? null, prompt_tokens: m.prompt, eval_tokens: m.eval });
-      for (const r of plan.results) this.naive.add(r.content);
+      let out: PlannerOutput | null = null;
+      let planErrors: string[] = [];
+      if (this.planner === "model") {
+        const system = plannerSystemPrompt(tools);
+        const host = hostBlock(ctx, inChunk);
+        const user = `${base}\n\n${host}`;
+        const messages: ChatMessage[] = [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ];
+        const naiveEstimate = call === 1 ? this.naive.estimate(system, this.opts.goal, host) : 0;
+        const plan = await this.plan(messages, tools, abortSignal);
+        const m = sumMetrics(plan.results);
+        out = plan.output;
+        planErrors = plan.errors;
+        const echo = out ? JSON.stringify(out.state.checklist) !== JSON.stringify(ctx.checklist.booleans()) : false;
+        this.telemetry.planner(
+          rec,
+          {
+            chunk: this.chunk,
+            call,
+            attempts: plan.results.length,
+            valid: out !== null,
+            valid_first_try: plan.validFirstTry,
+            errors: plan.errors,
+            first_errors: plan.firstErrors,
+            think: this.think,
+            chosen: out?.action ? { tool: out.action.tool, input: { ...out.action.input } } : null,
+            checklist_echo_altered: echo,
+            thought: out?.thought ?? null,
+            prompt_tokens: m.prompt,
+            first_attempt_prompt_tokens: plan.firstPromptTokens,
+            eval_tokens: m.eval,
+            wall_ms: m.wall,
+            tokens_per_s: m.tps,
+            prompt_chars: plan.promptChars,
+          },
+          estimateTokens(`${system}\n${user}`),
+          naiveEstimate,
+        );
+        this.emit({ type: "planner", chunk: this.chunk, call, valid: out !== null, attempts: plan.results.length, tool: out?.action?.tool ?? null, thought: out?.thought ?? null, prompt_tokens: m.prompt, eval_tokens: m.eval });
+        for (const r of plan.results) this.naive.add(r.content);
+      }
 
       if (out) {
         this.hypotheses = [...this.hypotheses, ...out.state.hypotheses].slice(-3);
@@ -435,9 +456,12 @@ export class PlannerSession {
         def = fb.tool;
         input = fb.input;
         source = "fallback";
-        reason = out
-          ? `the model chose no action while ${ctx.checklist.pending().length} checklist item(s) are open`
-          : `planner reply invalid after a repair round (${plan.errors.slice(0, 2).join("; ")})`;
+        reason =
+          this.planner === "off"
+            ? PLANNER_OFF_REASON
+            : out
+              ? `the model chose no action while ${ctx.checklist.pending().length} checklist item(s) are open`
+              : `planner reply invalid after a repair round (${planErrors.slice(0, 2).join("; ")})`;
       }
       if (!def) break;
 

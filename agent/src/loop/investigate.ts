@@ -11,7 +11,7 @@ import { Markovian, type ChunkConfig, type MarkovianRun } from "../../../engines
 import { REPO_ROOT_URL } from "../config.ts";
 import type { ClearResult } from "../pipeline.ts";
 import type { Market } from "../policy/decide.ts";
-import { PlannerSession, type LoopEvent, type TimelineEntry } from "./generator.ts";
+import { PlannerSession, type LoopEvent, type PlannerMode, type TimelineEntry } from "./generator.ts";
 import type { ChartPoint, ChunkRecord, PlannerCallRecord, TelemetrySummary, ToolCallRecord } from "./telemetry.ts";
 import { newSkuContext, proposePolicy, toClearResult, type ToolDeps } from "./tools.ts";
 
@@ -35,6 +35,8 @@ export interface InvestigateOptions {
   abortSignal?: AbortSignal;
   /** Planner think mode; defaults to the adopted planner setting (CLEARSHELF_THINK=off forces off). */
   think?: boolean;
+  /** "off": every step is fallbackStep(), no planner call (ablation). Default from CLEARSHELF_PLANNER. */
+  planner?: PlannerMode;
   /** Where the engine persists its run history (history.json); null keeps it in memory. Default data/markovian. */
   historyDir?: string | null;
   /** Where the loop report is written as <runId>-<gtin>-<market>.loop.json (a sweep shares one run id across SKUs); null skips it. Default data/markovian. */
@@ -91,6 +93,7 @@ export async function investigateSku(opts: InvestigateOptions, deps: ToolDeps): 
     onEvent: opts.onEvent,
     abortSignal: opts.abortSignal,
     think: opts.think,
+    planner: opts.planner,
   });
 
   let memoryContext = opts.memoryContext;
