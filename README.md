@@ -8,33 +8,54 @@ Open Agent Hackathon 2026, Track 3: Reasoning Architecture. Team: Umar Mohktar, 
 
 **[Demo video (3:27)](https://youtu.be/p9bATVx6YsA)** · **[Deck (PDF, 12 slides)](docs/deck/ClearShelf.pdf)** · **[Evaluation report](docs/eval-report.md)** · **[How Cursor was used](docs/how-cursor-was-used.md)**
 
+> **In 30 seconds.** A shopper with a milk allergy sees Frankie's Plant-Based Puffs listed as vegan with no allergens (Open Food Facts), while Class I FDA recall H-1328-2026 says the product tested positive for undeclared milk. **Who has to catch it:** the product-compliance officer at a UK online grocer, who signs off the allergen information shown before purchase and today reconciles the sources by hand. **What ClearShelf does:** it reads Open Food Facts, openFDA and the UK FSA only through Zetaris, holds the listing automatically with one cited line per reason, and clears nothing without the officer's signature. "Signed" means an officer-approved, single-use HMAC contract that the agent server issues and checks on this machine; there is no login yet ([Limitations](#limitations)).
+
 ![The ClearShelf card for Plant-Based Puffs (UK): HOLD, applied automatically, on an FDA milk recall (R1), a missing ingredient list and a non-English label (R3) and two contradictions (R4). Every line carries a chip that opens its evidence.](docs/deck/img/hero-puffs-top.png)
+
+![From the demo video, 1:12 to 1:28: the evidence drawer behind the recall line (the Lightning SQL that produced it, its sha256, the Zetaris objects, source URL, licence and cache time), then "Why was this held?" in five plain lines, each with its evidence chips.](docs/deck/img/why-held.gif)
+
+*Cut from the demo video, 1:12 to 1:28, with no other edit; the drawer part plays at 2x, as labelled on screen.*
+
+**Reading the card.** R1: a recall names this exact barcode. R3: a Zetaris data-quality rule failed for this product (here: no ingredient list, label not in English). R4: an unresolved contradiction, source against source or model against verifier. Each chip opens one evidence record: **SQL** the Lightning SQL and the rows it returned, **CHECK** a deterministic verifier result, **MODEL** a Nemotron output, **MEMORY** an H-MEM record, **POLICY** the policy's firing. All rules (R0 to R6) are listed under [Architecture](#architecture).
 
 **The problem.** The user is the product-compliance officer at a UK online grocer that also sells US- and EU-made packaged foods. They sign off the allergen information shown before purchase, which FIC Art. 14 requires for distance selling, and pull or relabel listings when the FSA or FDA publishes an allergy alert. The sources disagree, and the officer reconciles them by hand: Open Food Facts lists Frankie's Plant-Based Puffs (UPC 816929000119) as vegan with no allergens, while Class I FDA recall H-1328-2026 says the product tested positive for undeclared milk. openFDA holds 6,325 food enforcement reports whose recall reason says "undeclared", and 842 of the newest 1,000 concern an allergen.
 
-**What the demo shows** (measured on 23 Oct 2026 on a demo catalogue of 30 products and 33 listings that deliberately includes 14 barcodes taken from FDA recalls; [eval report, section 7](docs/eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)). In a replayed recall poll, ClearShelf read 15 new notices, held the one exact-barcode match automatically and visibly in Zetaris in a median 68.5 s over 10 runs (57.5 to 93.5 s), and queued 2 name-only matches for the officer. At intake, all 17 listings whose barcode a recall names were held or blocked, 10 more were held or blocked for other reasons with the rule cited, and 6 were proposed for clearance and are waiting for the officer's signature, because nothing clears without one.
+**What the demo shows** (measured on 23 Oct 2026 on a demo catalogue of 30 products and 33 listings that deliberately includes 14 barcodes taken from FDA recalls; [eval report, section 7](docs/eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)). In a replayed recall poll, ClearShelf read 15 new notices, held the one exact-barcode match automatically and visibly in Zetaris in a median 68.4 s over 10 runs (57.5 to 93.5 s; each run in [`docs/eval/watch-polls-2026-10-23.json`](docs/eval/watch-polls-2026-10-23.json)), and queued 2 name-only matches for the officer. At intake, all 17 listings whose barcode a recall names were held or blocked, 10 more were held or blocked for other reasons with the rule cited, and 6 were proposed for clearance and are waiting for the officer's signature, because nothing clears without one.
 
 **HOLD or BLOCK?** Both are applied automatically. BLOCK means an active recall of this barcode covers this market. HOLD means the listing waits for the officer: a US-only or past recall, a failed data-quality rule, an unresolved contradiction or an incomplete investigation. CLEAR and CLEAR_WITH_STATEMENT run only under an officer-signed, single-use contract.
 
 - **Zetaris** is the only data path. Open Food Facts, openFDA and the UK FSA are Lightning REST tables, joined in the 9-table `clearance_usl` semantic layer with 22 data-quality rules; an invalid record for a product holds it (R3). Every claim cites the Lightning SQL that produced it (95 of 95 cited records re-ran with their rows), and the agent's own decisions are federated back and checked by the `signed_clear` DQ rule.
-- **Meterless:** every clearance is a Markovian chain on the vendored engine (unchanged; planner prompts stay at 1,322 to 1,788 tokens per chunk, while a measured full-history prompt reached 4,641 and 6,829 tokens on two investigations: 48% and 58% fewer prompt tokens). H-MEM keeps officer rulings and source facts with provenance, and the World Model answers "what did we know when?". Conformance: 13/13, 8/8, 8/8.
-- **NVIDIA Nemotron 3 Nano 4B** runs locally in 2,881 MiB of VRAM with 0 cloud model calls. On 27 real labels it reads "contains" at precision 1.00 against 0.71 for a keyword rule (recall 0.78 against 0.99), with 0 of 15 trap false alarms against 5. The deterministic lexicon verifier alone scores 0.97 / 0.97 on the same labels (it shares its rules with the reference labels), so the model runs as a second reader beside it: any disagreement holds the listing. It reads and plans; it never decides.
+- **Meterless:** every clearance is a Markovian chain on the vendored engine (unchanged, and CI compares every vendored file's blob id with upstream; planner prompts stay at 1,322 to 1,788 tokens per chunk, while a measured full-history prompt reached 4,641 and 6,829 tokens on two investigations: 48% and 58% fewer prompt tokens). H-MEM keeps officer rulings and source facts with provenance, and the World Model answers "what did we know when?". Conformance: 13/13, 8/8, 8/8.
+- **NVIDIA Nemotron 3 Nano 4B** runs locally in 2,881 MiB of VRAM with 0 cloud model calls, as the second of two independent readers. On 27 real labels, the model and the deterministic lexicon verifier together missed 1 of the 80 "contains" pairs: the lexicon found 17 of the model's 18 misses, the model found 1 of the lexicon's 2, and every disagreement holds the listing. Alone, the model reads "contains" at precision 1.00 and recall 0.78 with 0 of 15 trap false alarms (keyword rule 0.71 / 0.99, 5 of 15); the lexicon alone scores 0.97 / 0.97, partly because it shares its rules with the reference labels. The model also reads recall notices, plans each investigation and mines memory; it never decides.
 - **Cursor:** developed in a Cursor workspace with project rules in `.cursor/rules` and `AGENTS.md`. Every Cursor Agent task (G9, C1 to C3, and C9 after the plan upgrade) and its commit is listed in [`docs/how-cursor-was-used.md`](docs/how-cursor-was-used.md).
 
-**Verify in three minutes, with no Zetaris and no GPU** (Node 22.12+, Python 3.12; all steps in [Quickstart](#quickstart)). Expected output, measured on a fresh clone on 25 Oct 2026:
+**What you can check without the stack** (no Zetaris, no GPU; Node 22.12+, Python 3.12; full steps in [Quickstart A](#a-three-minute-check-no-zetaris-no-gpu)). CI runs every check in this table on `windows-latest` and `ubuntu-latest` on each push.
 
-```bash
-cd agent && npm ci && npm test && npm run typecheck && cd ..   # Tests 419 passed (419); tsc exits 0
-python -m venv .venv && .venv/Scripts/pip install -r gateway/requirements-dev.txt
-.venv/Scripts/python -m pytest gateway/tests -q                # 199 passed, 4 skipped
-.venv/Scripts/python -m gateway.onboard --dry-run --offline    # "statements": 125
-```
+| Check | Command, from the repository root | Expected |
+|---|---|---|
+| Agent unit tests and type check | `cd agent && npm ci && npm test && npm run typecheck` | `Tests 419 passed (419)`; `tsc` exits 0 |
+| Gateway tests (in a venv with `gateway/requirements-dev.txt`) | `python -m pytest gateway/tests -q` | `199 passed, 4 skipped` |
+| Every Zetaris statement onboarding would send, without connecting | `python -m gateway.onboard --dry-run --offline` | `"statements": 125` |
+| Meterless conformance on the vendored engines | the `engines/*/conformance` runners ([Quickstart A](#a-three-minute-check-no-zetaris-no-gpu)) | 13/13, 8/8, 8/8, then `diff: empty` |
+| ClearShelf's H-MEM subclass through the engine's own runner | `cd engines/hmem/reference && npm install && HMEM_IMPL=../../../agent/src/memory/hmemFacade.ts npx tsx ../conformance/runner.ts` | `13/13 checks passed` |
+| The vendored engines are unchanged | `bash scripts/check-engines-upstream.sh` | `59 files ... blob ids identical: yes` against Meterless/Meterless@1742dec |
+
+The measured runs behind the numbers are committed as score-only JSON (counts, ids and timings; no source text) in [`docs/eval/`](docs/eval/):
+
+| File | Backs |
+|---|---|
+| `eval-2026-10-25-aeb5b92.json` | the 10 scenarios, evidence quality (200/200 complete, 95/95 re-run), planner validity (59/65) and per-chunk prompt sizes, re-run on the clean commit `aeb5b92` |
+| `extraction-q4-2026-10-25.json`, `extraction-q8-2026-10-25.json` | extraction precision and recall per system and per language, Q4_K_M and Q8_0 |
+| `full-history-2026-10-25.json` | the measured full-history prompts (4,641 and 6,829 tokens) and the 48% and 58% savings |
+| `watch-polls-2026-10-23.json` | the 10 replayed recall-watch polls behind the median notice-to-hold time (68.4 s) |
+
+Re-running them needs Zetaris, Ollama and a GPU ([Quickstart B](#b-full-stack-zetaris-gateway-agent-and-ui)).
 
 ![ClearShelf architecture: public sources are read only through Zetaris; a Markovian loop planned by local Nemotron gathers evidence through a gateway; deterministic policy decides; actions are signed; decisions are written back and read again through Zetaris.](docs/architecture.png)
 
 ## Contents
 
-[What it does](#what-it-does) · [What is new](#what-is-new) · [Quickstart](#quickstart) · [Architecture](#architecture) · [Zetaris](#zetaris-the-data-layer) · [Meterless](#meterless-reasoning-memory-and-contracts) · [NVIDIA](#nvidia-nemotron-3-nano-4b-locally) · [Cursor](#how-cursor-was-used) · [Evaluation](#evaluation) · [Limitations](#limitations) · [Responsible use](#responsible-use) · [Dependencies](#dependencies-and-licences) · [Data and licences](#data-and-licences)
+[What it does](#what-it-does) · [What is new](#what-is-new) · [One listing](#one-listing-as-the-officer-gets-it) · [Quickstart](#quickstart) · [Architecture](#architecture) · [Zetaris](#zetaris-the-data-layer) · [Meterless](#meterless-reasoning-memory-and-contracts) · [NVIDIA](#nvidia-nemotron-3-nano-4b-locally) · [Cursor](#how-cursor-was-used) · [Evaluation](#evaluation) · [Limitations](#limitations) · [Responsible use](#responsible-use) · [Dependencies](#dependencies-and-licences) · [Data and licences](#data-and-licences)
 
 ## What it does
 
@@ -57,6 +78,34 @@ For each product (GTIN) and market (UK or US), ClearShelf runs an investigation 
 - **Autonomy only in the safe direction.** Holds and blocks happen on their own. Clearing needs a signed, single-use contract, which the agent server checks before the write. Zetaris checks again afterwards: the `signed_clear` DQ rule runs after the write and flags any clearance row without a contract. In a test, a signed clearance passed, and an unsigned row written into the ops file directly was flagged ([eval report, section 7](docs/eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)).
 - **A 4B model on a bounded context.** Markovian chunks keep each planner prompt flat, between 1,322 and 1,788 tokens, on a model that runs in 2,881 MiB of VRAM. Measured against the same investigation re-sent with its full history, that is 48% (E1) and 58% (E4) fewer prompt tokens ([eval report, section 6](docs/eval-report.md#6-tokens-per-chunk-chart-data)).
 
+## One listing, as the officer gets it
+
+All counts measured ([eval report, sections 4 and 7](docs/eval-report.md#7-write-back-dq-at-runtime-recall-coverage-and-watch-timing)); no officer time saved is claimed, because the manual check was not timed.
+
+- **Per listing,** the latest investigation assembled 17 to 23 evidence records (median 21), 9 to 11 of them Zetaris SQL reads (median 10), across Open Food Facts, openFDA and the UK FSA. A full investigation of one SKU took 48 to 94 s (42.8 to 99.2 s in the 25 Oct re-run). By hand, the officer opens the same three sources and compares them.
+- **Per new notice,** a replayed poll read 15 new notices, held the one exact-barcode match automatically and queued 2 name-only matches; FSA alerts carry no barcode, so an FSA match is by name and always waits for the officer.
+
+One investigation as the loop logged it: E1, Plant-Based Puffs UK, run `r20261025T1228366e6f` on `aeb5b92` (54.5 s, 4 chunks). Each line is the tool Nemotron chose, its note as written, and the result the host recorded (evidence ids left out):
+
+```text
+chunk 1  zetaris.product        "Fetch product row to verify existence and label."
+         -> product: row read (name 17 chars) brand none, lang fr, no ingredient text, 7 label tag(s)
+chunk 1  zetaris.declared       "Check declared allergens for GTIN 0816929000119."
+         -> declared UK: contains none; may none
+chunk 2  zetaris.recalls_by_gtin "Check GTIN recall via tool."
+         -> recalls by GTIN: H-1328-2026 Terminated 2026-09-09; H-1328-2026: undeclared milk
+chunk 2  extract.notice         "Parse FDA notice H-1328-2026 to confirm GTIN 0816929000119 is linked to milk recall; next check data quality."
+         -> notice H-1328-2026: GTIN named in the notice; allergens agreed milk
+chunk 3  zetaris.dq_gate        "Run dq_checked for GTIN 0816929000119 to verify data quality; no ingredient text to verify, but check for any issues."
+         -> DQ gate: invalid has_ingredients@product, english_label@product
+chunk 3  memory.recall          "Check memory for any clearance or recall info on GTIN 0816929000119 in UK market."
+         -> memory: 1 prior decision(s), 5 memory hit(s)
+chunk 4  policy.propose         "Policy HOLD due to conflict between free‑from and milk recall; need to propose policy."
+         -> policy: HOLD (R1,R3,R4)
+```
+
+What depended on what was found: the product row had no ingredient text and no brand, so the host marked label extraction and the brand-name recall check as not applicable and those tools never reached the planner's menu (the Lidl biscuits in E3 and E4, with text and two brands, get `extract.ingredients` and two `recalls_by_name` calls); the notice id passed to `extract.notice` came from the `recalls_by_gtin` row. The host owns the checklist and the menu, and the planner works through it in checklist order, the same rule the deterministic fallback step uses (`fallbackStep()` in `agent/src/loop/tools.ts`). A run with the planner switched off has not been measured.
+
 ## Quickstart
 
 ### A. Three-minute check: no Zetaris, no GPU
@@ -75,6 +124,9 @@ git checkout -- engines   # npm install rewrites the licence field in the vendor
 
 # ClearShelf's H-MEM extension, run through the engine's own conformance runner: 13/13
 cd agent && HMEM_IMPL="$PWD/src/memory/hmemFacade.ts" npx tsx ../engines/hmem/conformance/runner.ts && cd ..
+
+# engines/ against Meterless/Meterless@1742dec, blob id by blob id: "59 files ... blob ids identical: yes"
+bash scripts/check-engines-upstream.sh
 
 # Gateway: 199 passed, 4 skipped on a fresh clone (the skipped ones need live Zetaris or local data)
 python -m venv .venv
@@ -203,12 +255,12 @@ Zetaris is ClearShelf's only runtime path to data. It federates the sources, cac
 
 ## Meterless: reasoning, memory and contracts
 
-The engines come from [Meterless/Meterless](https://github.com/Meterless/Meterless) at commit `1742dec56a66e58eef9dda2d2b865823758ca8cd`. They are vendored unchanged (see [`engines/UPSTREAM.md`](engines/UPSTREAM.md)), and ClearShelf extends them only from `agent/src/` by subclassing, wrapping or composing. `git diff -- engines/` is empty. Full results are in [`docs/conformance.md`](docs/conformance.md). The suites were run again on 23 Oct 2026 on this commit.
+The engines come from [Meterless/Meterless](https://github.com/Meterless/Meterless) at commit `1742dec56a66e58eef9dda2d2b865823758ca8cd`. They are vendored unchanged (see [`engines/UPSTREAM.md`](engines/UPSTREAM.md)), and ClearShelf extends them only from `agent/src/` by subclassing, wrapping or composing. `git diff -- engines/` is empty, and `scripts/check-engines-upstream.sh`, which CI runs on every push, finds all 59 vendored files blob-identical to upstream. Full results are in [`docs/conformance.md`](docs/conformance.md). The suites were run again on 23 Oct 2026 on this commit.
 
 | Engine | How ClearShelf uses it | Where | Conformance |
 |---|---|---|---|
 | **Markovian**, vendored | Every SKU clearance and recall sweep is a Markovian chain. Nemotron plans each chunk, a NEEDS_TOOL executor runs the tool, and the carried state is capped at 768 tokens. Measured: the planner prompt stays between 1,322 and 1,788 tokens per chunk. The same investigations re-sent with their full history measured 4,641 tokens at chunk 4 (E1) and 6,829 at chunk 5 (E4); summed over the chunks, the Markovian prompts were 48% and 58% smaller. The chars/4 estimate had said 3,301 and 4,581. | `agent/src/loop/` | 8/8 |
-| **H-MEM**, vendored and extended by subclass | Facts with Zetaris provenance (`source: zetaris:<object>`, SQL hash), officer rulings, the trust ledger and "why" traces. Allergen conflicts are always queued, never auto-resolved. Dreaming is human-approved, and an approved invariant can only make a decision stricter. | `agent/src/memory/` | 13/13 vendored; 13/13 with ClearShelf's subclass loaded through the engine's own runner |
+| **H-MEM**, vendored and extended by subclass | Facts with Zetaris provenance (`source: zetaris:<object>`, SQL hash), officer rulings, the trust ledger and "why" traces. Allergen conflicts are always queued, never auto-resolved. Dreaming is human-approved, and an approved invariant can only make a decision stricter. | `agent/src/memory/` | 13/13 vendored; 13/13 with ClearShelf's subclass loaded through the engine's own runner (both in CI) |
 | **World Model**, vendored and wrapped | A graph of products, brands, firms, notices and allergens, with edges dated by source time. Each decision gets a snapshot, so the timeline shows what was known when. A name match of 0.85 or more becomes a review link that never changes a listing; one between 0.82 and 0.85 goes to a merge queue for approval. | `agent/src/world/` | 8/8; idempotency check `diff: empty`; re-ingesting live Zetaris rows (30 products, 9 FSA alerts) appended 0 events after 378 the first time |
 | **Scout Intent**, partial reimplementation (no reference engine is vendored) | An injection guard on every untrusted text before the model sees it, and risk classes. Signed single-use execution contracts (HMAC) are high-risk for CLEAR, CLEAR_WITH_STATEMENT and RELEASE, which the agent server verifies, and medium-risk for Zetaris registrar calls, which the Python gateway verifies (`gateway/contracts.py`). This is an integrity check, as in Scout's own documentation, not cryptographic-grade security. | `agent/src/contract/` | The guard passes the 10 Scout injection regression cases (7 injections, 3 clean) vendored from the Meterless repository, plus synthetic food-domain cases |
 
@@ -292,18 +344,19 @@ All numbers are measured unless labelled otherwise. The full report is [`docs/ev
 - **The verifier can be wrong too.** In E3, the French word for coconut is split by an address pasted into the Open Food Facts text, so the draft lists "Nuts (walnut) (to confirm)". A statement that still says "(to confirm)" cannot be signed.
 - **E4 is only partly met.** It cites the DQ `market_code` rule (2 invalid records) but does not name the orphan key.
 - **E2's expectation changed before the run.** It was BLOCK in the build plan and became HOLD by a recorded decision: a US-only recall does not cover UK units. The reason is in the report.
-- **Not measured:** the 10 eval-only SKUs (no row in the USL `product` table), a think on/off ablation of the planner, the model's own peak VRAM apart from the whole GPU, cold vs warm on an empty memory store, and officer time saved (there is no baseline of the manual check). The report generator task (C6) was not built; the report is written from the measurement output.
+- **Not measured:** the 10 eval-only SKUs (no row in the USL `product` table), a think on/off ablation of the planner, a run with the planner off (the deterministic fallback step only) against the model-planned runs, the model's own peak VRAM apart from the whole GPU, cold vs warm on an empty memory store, and officer time saved (there is no baseline of the manual check). The report generator task (C6) was not built; the report is written from the measurement output.
 
 ## Limitations
 
 - **Decision support, not legal advice.** The reference table cites UK/EU and US law and guidance, but the officer is responsible for every published statement.
 - **No least-privilege reader yet.** The non-admin Zetaris role was not set up, so the gateway runs read templates on the admin login. A reader allowlist restricts them to read statements, and `/health` reports `admin_fallback`.
-- **A local demo identity.** `POST /api/approvals/sign` issues an officer-approved contract to any request on this machine that names the server as its Host and carries no foreign `Origin` (the DNS-rebinding and cross-site checks). There is no login, so a local process without an `Origin` header can sign. A real deployment needs single sign-on in front of the officer endpoints.
+- **A local demo identity.** `POST /api/approvals/sign` issues an officer-approved contract to any request on this machine that names the server as its Host and carries no foreign `Origin` (the DNS-rebinding and cross-site checks). There is no login, so a local process without an `Origin` header can sign, and the same agent server process issues and verifies contracts with one secret. "Signed" therefore means an officer-approved request with a reason, recorded under a single-use contract, not a proven identity. A real deployment needs single sign-on in front of the officer endpoints.
 - **Execution contracts are an integrity check.** They are HMAC-signed and single-use, as in Scout's own documentation, not cryptographic-grade security.
 - **No push notifications.** The recall watch polls on request, or on a timer when `CLEARSHELF_WATCH_EVERY_MIN` is set and the watch is live. Its holds appear in the UI; nothing is sent to the officer.
 - **Exact GTIN matching only.** Lot codes are not matched, so a terminated recall within 24 months holds a SKU ("lot codes not matched"). FSA alerts carry no GTIN, so an FSA match is by name only: the recall watch queues it for the officer and changes no listing.
 - **Open Food Facts stands in for the grocer's supplier feed.** It is crowd-sourced and can lag the printed label. Recall positives describe the product, not its label.
-- **Scope:** UK and US markets, 30 catalogue SKUs (33 SKU-markets) plus 10 evaluation-only SKUs. There is one officer and no concurrency beyond one model job at a time. Tested on Windows 11 only.
+- **One Zetaris REST table per SKU.** Each catalogue product is its own Open Food Facts REST table, unioned into the USL `product` table. A one-GTIN read of `product` already takes about 2.3 s with 40 SKUs in the union (`zetaris/README.md`), so a real catalogue needs the grocer's own product feed registered as one source instead.
+- **Scope:** UK and US markets, 30 catalogue SKUs (33 SKU-markets) plus 10 evaluation-only SKUs. There is one officer and no concurrency beyond one model job at a time. The full stack was run on Windows 11 only; CI runs the stack-free checks (tests, type check, onboarding dry run, conformance, upstream check) on `windows-latest` and `ubuntu-latest`.
 - **Zetaris instance state:** the instance keeps the first `signed_clear` expression, which also lists RELEASE, because the onboarding allowlist does not admit `UPDATE DQ`. The two expressions differ only on a RELEASE row, which `known_status` rejects either way.
 
 ## Responsible use

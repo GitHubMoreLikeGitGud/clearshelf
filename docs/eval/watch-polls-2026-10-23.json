@@ -1,0 +1,282 @@
+{
+  "what": "Recall-watch poll in replay (as of 10 Oct 2026, polled to 23 Oct 2026): the 10 replayed polls on 23 Oct 2026 that read the same 15 new notices. Time is the whole poll sweep (wall_ms): reading the notices, matching, the Markovian investigation of the matched SKU, the HOLD write, the read-back from Zetaris and the closed-loop recheck. Replays of past notices, not live alerts. Score-only: counts, ids and timings, no notice text.",
+  "label": "measured",
+  "source": "the sweep records the agent server saves under data/watch/sweeps/ (runtime state, gitignored); fields copied as they are",
+  "build_note": "These polls ran from the working tree during the build on 23 Oct. last_public_commit_before_run is the last public commit dated before the poll started; the working tree held changes that were committed later that day, so a run is not an exact build of that commit.",
+  "summary": {
+    "runs": 10,
+    "wall_ms_min": 57512,
+    "wall_ms_max": 93530,
+    "wall_ms_median": 68433.5,
+    "wall_s_median": 68.43,
+    "every_run": "15 new notices, 1 exact barcode match held automatically (0850041392103 UK, HOLD on R1 and R3, visible in Zetaris), 2 name-only matches queued, 0 closed-loop recheck rows"
+  },
+  "rerun_2026_10_25": {
+    "sweep_id": "w20261025T12271118fa",
+    "commit": "aeb5b92",
+    "wall_ms": 72244,
+    "note": "one replay on the clean commit (docs/eval/eval-2026-10-25-aeb5b92.json); not part of the 10-run median"
+  },
+  "runs": [
+    {
+      "sweep_id": "w20261023T13142386c3",
+      "started_at": "2026-10-23T05:14:23.785Z",
+      "wall_ms": 71889,
+      "last_public_commit_before_run": "6ae15a3",
+      "banner": "Replay as of 10 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 10,
+      "model_tokens_in": 7386,
+      "model_tokens_out": 972,
+      "evidence_records": 56
+    },
+    {
+      "sweep_id": "w20261023T134713200e",
+      "started_at": "2026-10-23T05:47:13.901Z",
+      "wall_ms": 68106,
+      "last_public_commit_before_run": "6ae15a3",
+      "banner": "Replay as of 10 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 18,
+      "model_tokens_in": 20974,
+      "model_tokens_out": 5850,
+      "evidence_records": 78
+    },
+    {
+      "sweep_id": "w20261023T141517146e",
+      "started_at": "2026-10-23T06:15:17.145Z",
+      "wall_ms": 69634,
+      "last_public_commit_before_run": "6ae15a3",
+      "banner": "Replay as of 10 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 18,
+      "model_tokens_in": 23061,
+      "model_tokens_out": 6896,
+      "evidence_records": 78
+    },
+    {
+      "sweep_id": "w20261023T144947df33",
+      "started_at": "2026-10-23T06:49:47.348Z",
+      "wall_ms": 93530,
+      "last_public_commit_before_run": "6ae15a3",
+      "banner": "Replay as of 10 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 18,
+      "model_tokens_in": 22623,
+      "model_tokens_out": 7899,
+      "evidence_records": 79
+    },
+    {
+      "sweep_id": "w20261023T151416e024",
+      "started_at": "2026-10-23T07:14:16.184Z",
+      "wall_ms": 77882,
+      "last_public_commit_before_run": "b07f72a",
+      "banner": "Replay as of 10 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 18,
+      "model_tokens_in": 22830,
+      "model_tokens_out": 8203,
+      "evidence_records": 79
+    },
+    {
+      "sweep_id": "w20261023T154555aaf2",
+      "started_at": "2026-10-23T07:45:55.750Z",
+      "wall_ms": 57512,
+      "last_public_commit_before_run": "b07f72a",
+      "banner": "Replay as of 10 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 18,
+      "model_tokens_in": 20737,
+      "model_tokens_out": 4949,
+      "evidence_records": 79
+    },
+    {
+      "sweep_id": "w20261023T170714bbbd",
+      "started_at": "2026-10-23T09:07:14.313Z",
+      "wall_ms": 68761,
+      "last_public_commit_before_run": "b07f72a",
+      "banner": "Replay from 10 Oct 2026, polled to 23 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 18,
+      "model_tokens_in": 20705,
+      "model_tokens_out": 6752,
+      "evidence_records": 79
+    },
+    {
+      "sweep_id": "w20261023T17554973f7",
+      "started_at": "2026-10-23T09:55:49.759Z",
+      "wall_ms": 61435,
+      "last_public_commit_before_run": "7951d0c",
+      "banner": "Replay from 10 Oct 2026, polled to 23 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 18,
+      "model_tokens_in": 20967,
+      "model_tokens_out": 5557,
+      "evidence_records": 79
+    },
+    {
+      "sweep_id": "w20261023T1813585cd6",
+      "started_at": "2026-10-23T10:13:58.432Z",
+      "wall_ms": 66036,
+      "last_public_commit_before_run": "7951d0c",
+      "banner": "Replay from 10 Oct 2026, polled to 23 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 18,
+      "model_tokens_in": 20949,
+      "model_tokens_out": 6307,
+      "evidence_records": 79
+    },
+    {
+      "sweep_id": "w20261023T19453456b6",
+      "started_at": "2026-10-23T11:45:34.547Z",
+      "wall_ms": 62889,
+      "last_public_commit_before_run": "7033a11",
+      "banner": "Replay from 10 Oct 2026, polled to 23 Oct 2026",
+      "new_notices": 15,
+      "exact_barcode_matches": 1,
+      "name_only_matches": 2,
+      "action": {
+        "gtin": "0850041392103",
+        "market": "UK",
+        "status": "HOLD",
+        "rules": [
+          "R1",
+          "R3"
+        ],
+        "applied": true,
+        "visible_in_zetaris": true
+      },
+      "closed_loop_recheck_rows": 0,
+      "model_calls": 18,
+      "model_tokens_in": 20977,
+      "model_tokens_out": 4714,
+      "evidence_records": 79
+    }
+  ]
+}
