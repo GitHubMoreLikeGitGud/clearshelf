@@ -230,6 +230,8 @@ Measured on 23 Oct 2026, 20:38–20:40 SGT, on `7033a11` with the judge fixes th
 
 - The 10 eval-only SKUs (no row in `clearance_usl.product`, see section 3).
 - The think on/off ablation on the planner and brief.
+- A planner-off run: the 8 investigations with the deterministic fallback step only (`fallbackStep()`, which applies the same first-open-checklist-item rule the planner prompt states), against the model-planned runs.
+- Recall-notice extraction beyond the 10 notices of the Day-0 bench (`docs/nemotron-bench.md`), and against the GS1 barcode scan (`extractUpcs`).
 - E-cov over claim tests and contradictions for the scenario cards themselves: the scenario output does not keep the full card. They were measured on the earlier intake run and the cold/warm pair instead. The scenario runs are now saved in `data/runs/`, so the report generator (C6) can score them.
 - The model's own peak VRAM: only whole-GPU use, which includes the other workload, and Ollama's resident size.
 - Cold versus warm on a fresh memory store: the warm run reused an extraction stored by an earlier run of the same label.
