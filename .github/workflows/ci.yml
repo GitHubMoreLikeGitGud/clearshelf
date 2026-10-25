@@ -9,8 +9,12 @@ permissions:
 
 jobs:
   agent:
-    name: agent tests and type check
-    runs-on: windows-latest
+    name: agent tests and type check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: agent
@@ -24,8 +28,12 @@ jobs:
       - run: npm run typecheck
 
   gateway:
-    name: gateway tests and onboarding dry run
-    runs-on: windows-latest
+    name: gateway tests and onboarding dry run (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,8 +44,12 @@ jobs:
       - run: python -m gateway.onboard --dry-run --offline
 
   meterless-conformance:
-    name: Meterless conformance (vendored engines)
-    runs-on: windows-latest
+    name: Meterless conformance and upstream check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
@@ -46,11 +58,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Vendored engines are blob-identical to Meterless/Meterless@1742dec
+        run: bash scripts/check-engines-upstream.sh
       - name: H-MEM
         working-directory: engines/hmem/reference
         run: |
           npm install
           npx tsx ../conformance/runner.ts
+      - name: H-MEM conformance on ClearShelf's subclass (agent/src/memory/hmemFacade.ts)
+        working-directory: engines/hmem/reference
+        run: HMEM_IMPL=../../../agent/src/memory/hmemFacade.ts npx tsx ../conformance/runner.ts
       - name: Markovian
         working-directory: engines/markovian/reference
         run: |
