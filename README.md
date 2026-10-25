@@ -6,15 +6,15 @@
 
 Open Agent Hackathon 2026, Track 3: Reasoning Architecture. Team: Umar Mohktar, Singapore - solo.
 
-**[Demo video (3:27)](https://youtu.be/p9bATVx6YsA)** · **[Deck (PDF, 12 slides)](docs/deck/ClearShelf.pdf)** · **[Evaluation report](docs/eval-report.md)** · **[How Cursor was used](docs/how-cursor-was-used.md)**
+**[Demo video (3:14)](https://youtu.be/9ggEvsDBWl4)** · **[Deck (PDF, 12 slides)](docs/deck/ClearShelf.pdf)** · **[Evaluation report](docs/eval-report.md)** · **[How Cursor was used](docs/how-cursor-was-used.md)**
 
 > **In 30 seconds.** A shopper with a milk allergy sees Frankie's Plant-Based Puffs listed as vegan with no allergens (Open Food Facts), while Class I FDA recall H-1328-2026 says the product tested positive for undeclared milk. **Who has to catch it:** the product-compliance officer at a UK online grocer, who signs off the allergen information shown before purchase and today reconciles the sources by hand. **What ClearShelf does:** it reads Open Food Facts, openFDA and the UK FSA only through Zetaris, holds the listing automatically with one cited line per reason, and clears nothing without the officer's signature. "Signed" means an officer-approved, single-use HMAC contract that the agent server issues and checks on this machine; there is no login yet ([Limitations](#limitations)).
 
 ![The ClearShelf card for Plant-Based Puffs (UK): HOLD, applied automatically, on an FDA milk recall (R1), a missing ingredient list and a non-English label (R3) and two contradictions (R4). Every line carries a chip that opens its evidence.](docs/deck/img/hero-puffs-top.png)
 
-![From the demo video, 1:12 to 1:28: the evidence drawer behind the recall line (the Lightning SQL that produced it, its sha256, the Zetaris objects, source URL, licence and cache time), then "Why was this held?" in five plain lines, each with its evidence chips.](docs/deck/img/why-held.gif)
+![From the demo video, 0:56 to 1:12: the evidence drawer behind the recall line (the Lightning SQL that produced it, its sha256, the Zetaris objects, source URL, licence and cache time), then "Why was this held?" in five plain lines, each with its evidence chips.](docs/deck/img/why-held.gif)
 
-*Cut from the demo video, 1:12 to 1:28, with no other edit; the drawer part plays at 2x, as labelled on screen.*
+*Cut from the demo video, 0:56 to 1:12, with no other edit; the drawer part plays at 2x, as labelled on screen.*
 
 **Reading the card.** R1: a recall names this exact barcode. R3: a Zetaris data-quality rule failed for this product (here: no ingredient list, label not in English). R4: an unresolved contradiction, source against source or model against verifier. Each chip opens one evidence record: **SQL** the Lightning SQL and the rows it returned, **CHECK** a deterministic verifier result, **MODEL** a Nemotron output, **MEMORY** an H-MEM record, **WORLD** a World Model lookup, **POLICY** the policy's firing. All rules (R0 to R6) are listed under [Architecture](#architecture).
 

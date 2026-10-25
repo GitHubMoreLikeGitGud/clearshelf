@@ -4,7 +4,7 @@
   "track": "Track 3: Reasoning Architecture",
   "team": "Umar Mohktar, Singapore - solo",
   "repository": "https://github.com/GitHubMoreLikeGitGud/clearshelf",
-  "demo_video": "https://youtu.be/p9bATVx6YsA",
+  "demo_video": "https://youtu.be/9ggEvsDBWl4",
   "licence": "Apache-2.0",
   "meterless": {
     "engines": ["hmem", "world-model", "markovian", "scout-intent"],

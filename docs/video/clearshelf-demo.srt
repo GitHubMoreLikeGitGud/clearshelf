@@ -1,231 +1,239 @@
 1
-00:00:00,600 --> 00:00:02,660
-ClearShelf: allergen clearance and
-
-2
-00:00:02,680 --> 00:00:04,770
-recall watch for online grocers.
-
-3
-00:00:05,717 --> 00:00:07,427
-A solo entry from Singapore.
-
-4
-00:00:08,567 --> 00:00:11,747
+00:00:00,400 --> 00:00:03,580
 Open Food Facts tags these Plant-Based Puffs as vegan.
 
-5
-00:00:12,347 --> 00:00:16,067
+2
+00:00:04,140 --> 00:00:08,210
 The FDA says they tested positive for milk.
 
+3
+00:00:08,328 --> 00:00:10,928
+A shopper with a milk allergy could trust that tag.
+
+4
+00:00:11,668 --> 00:00:15,108
+ClearShelf holds the listing automatically, cites every reason,
+
+5
+00:00:15,428 --> 00:00:18,398
+and clears nothing without the compliance officer's signature.
+
 6
-00:00:16,567 --> 00:00:18,767
-An online grocer's compliance officer must
-
-7
-00:00:18,787 --> 00:00:21,137
-catch that before the listing goes live.
-
-8
-00:00:24,662 --> 00:00:27,692
+00:00:22,129 --> 00:00:25,159
 The officer pastes a barcode and picks the UK.
 
-9
-00:00:30,450 --> 00:00:33,470
+7
+00:00:27,917 --> 00:00:30,937
 Each step streams as the local Nemotron model plans it:
 
-10
-00:00:33,750 --> 00:00:35,590
+8
+00:00:31,217 --> 00:00:33,057
 the product row, the recall notice,
 
-11
-00:00:35,950 --> 00:00:37,350
+9
+00:00:33,417 --> 00:00:34,817
 the data-quality gate, memory.
 
-12
-00:00:37,950 --> 00:00:40,040
+10
+00:00:35,417 --> 00:00:37,507
 Every read goes through Zetaris.
 
+11
+00:00:40,200 --> 00:00:42,500
+Zetaris joins the three sources in one
+
+12
+00:00:42,520 --> 00:00:45,280
+semantic layer with 22 data-quality rules;
+
 13
-00:00:42,833 --> 00:00:45,073
-In Zetaris, each product is a live REST
+00:00:45,820 --> 00:00:47,750
+a failed rule holds the listing.
 
 14
-00:00:45,093 --> 00:00:49,593
-table beside the openFDA and FSA feeds,
-
-15
-00:00:49,973 --> 00:00:52,733
-and the clearance_usl semantic layer joins
-
-16
-00:00:52,753 --> 00:00:55,043
-them with keys and data-quality rules.
-
-17
-00:01:04,533 --> 00:01:06,593
+00:00:48,567 --> 00:00:50,627
 The result: HOLD, applied automatically,
 
-18
-00:01:06,613 --> 00:01:08,373
+15
+00:00:50,647 --> 00:00:52,407
 since holding needs no signature.
 
-19
-00:01:08,953 --> 00:01:12,753
+16
+00:00:52,987 --> 00:00:57,450
 Each chip opens its evidence: the exact Lightning SQL,
 
-20
-00:01:12,953 --> 00:01:15,943
+17
+00:00:57,470 --> 00:00:59,977
 the source, the licence and the cache time.
 
-21
-00:01:19,267 --> 00:01:20,047
+18
+00:01:03,300 --> 00:01:04,080
 Why was this held?
 
-22
-00:01:20,387 --> 00:01:23,707
+19
+00:01:04,420 --> 00:01:07,740
 Five plain lines: the recall, the missing ingredient list,
 
-23
-00:01:23,887 --> 00:01:25,767
+20
+00:01:07,920 --> 00:01:09,800
 and the vegan claim that milk contradicts,
 
-24
-00:01:26,087 --> 00:01:27,357
+21
+00:01:10,120 --> 00:01:11,390
 each with its evidence.
 
-25
-00:01:28,000 --> 00:01:30,900
+22
+00:01:12,033 --> 00:01:14,913
 On this dark chocolate, a keyword rule reads milk in
 
-26
-00:01:30,920 --> 00:01:33,800
+23
+00:01:14,933 --> 00:01:17,653
 cocoa butter and treats "may contain" as "contains".
 
-27
-00:01:34,600 --> 00:01:38,330
-Nemotron names no allergen there, and a verifier must agree.
+24
+00:01:18,433 --> 00:01:20,573
+Both readers, Nemotron and the verifier,
 
-28
-00:01:39,367 --> 00:01:41,067
+25
+00:01:20,593 --> 00:01:22,443
+call these "may contain".
+
+26
+00:01:23,400 --> 00:01:25,100
 Clearing always needs the officer:
 
-29
-00:01:41,647 --> 00:01:43,187
+27
+00:01:25,680 --> 00:01:27,220
 the form shows what will be signed,
 
-30
-00:01:43,547 --> 00:01:45,667
+28
+00:01:27,580 --> 00:01:29,700
 the server issues a single-use contract,
 
-31
-00:01:45,907 --> 00:01:48,117
+29
+00:01:29,940 --> 00:01:32,150
 and only then is the decision written.
 
-32
-00:01:53,533 --> 00:01:56,083
+30
+00:01:37,567 --> 00:01:40,117
 Zetaris reads the signed row straight back.
 
-33
-00:01:57,033 --> 00:01:59,853
+31
+00:01:41,067 --> 00:01:43,887
 The recall watch can replay a known past:
 
-34
-00:01:59,873 --> 00:02:03,393
+32
+00:01:43,907 --> 00:01:47,427
 as of 10 October it sees only notices reported by then,
 
-35
-00:02:03,573 --> 00:02:05,017
+33
+00:01:47,607 --> 00:01:49,050
 and a banner says so.
 
-36
-00:02:05,067 --> 00:02:07,547
+34
+00:01:49,100 --> 00:01:51,580
 Polling to today, new notices arrive and
 
-37
-00:02:07,567 --> 00:02:09,187
+35
+00:01:51,600 --> 00:01:53,220
 a bounded investigation runs:
 
-38
-00:02:09,707 --> 00:02:12,347
+36
+00:01:53,740 --> 00:01:56,380
 each Markovian step carries a small state forward,
 
-39
-00:02:12,547 --> 00:02:14,217
+37
+00:01:56,580 --> 00:01:58,250
 so the prompt stays flat.
 
+38
+00:01:58,433 --> 00:02:00,173
+Paused on two of Nemotron's notes.
+
+39
+00:02:00,693 --> 00:02:02,653
+It picks each step from the host's checklist:
+
 40
-00:02:15,933 --> 00:02:19,113
-An FDA notice names this cake's barcode exactly.
+00:02:03,113 --> 00:02:06,293
+check the FDA recall for this barcode,
 
 41
-00:02:19,773 --> 00:02:21,233
-It's a US-only recall,
+00:02:06,453 --> 00:02:07,633
+then parse the notice found,
 
 42
-00:02:21,493 --> 00:02:24,913
-so the UK listing is held automatically, with the reason.
+00:02:07,653 --> 00:02:10,303
+to confirm the barcode and the allergen.
 
 43
-00:02:25,533 --> 00:02:27,663
-Name-only matches wait for a person.
+00:02:11,133 --> 00:02:14,313
+An FDA notice names this cake's barcode exactly.
 
 44
-00:02:28,233 --> 00:02:31,533
-Contradictions are queued, never settled by the last write.
+00:02:14,973 --> 00:02:16,433
+It's a US-only recall,
 
 45
-00:02:32,033 --> 00:02:34,553
-The officer resolves the milk conflict with a reason,
+00:02:16,693 --> 00:02:20,113
+so the UK listing is held automatically, with the reason.
 
 46
-00:02:34,573 --> 00:02:36,883
-and the ledger records who decided.
+00:02:20,733 --> 00:02:22,863
+Name-only matches wait for a person.
 
 47
-00:02:41,400 --> 00:02:43,680
-The footer shows a Ritz cracker re-check
+00:02:23,433 --> 00:02:26,733
+Contradictions are queued, never settled by the last write.
 
 48
-00:02:43,720 --> 00:02:45,680
-reusing its verified extraction:
+00:02:27,233 --> 00:02:29,753
+The officer resolves the milk conflict with a reason,
 
 49
-00:02:46,440 --> 00:02:53,110
-tool tokens fall from 3,658 to 804, and 61 seconds to 48.
+00:02:29,773 --> 00:02:32,083
+and the ledger records who decided.
 
 50
-00:02:54,400 --> 00:02:58,840
+00:02:37,600 --> 00:02:42,040
 Zetaris is the only data path, and its SQL is the citation.
 
 51
-00:02:59,580 --> 00:03:02,620
+00:02:42,780 --> 00:02:45,820
 Meterless engines run the loop, the memory and the world model;
 
 52
-00:03:03,020 --> 00:03:05,440
+00:02:46,220 --> 00:02:48,640
 the signed contracts follow Meterless Scout's spec.
 
 53
-00:03:06,120 --> 00:03:08,470
+00:02:49,320 --> 00:02:51,670
 Nemotron runs on one local GPU.
 
 54
-00:03:10,433 --> 00:03:12,573
-Measured: ten of ten scenarios pass,
+00:02:53,333 --> 00:02:55,473
+Measured: ten of ten scenarios pass;
 
 55
-00:03:13,233 --> 00:03:18,053
-label precision is 1.00 against 0.71 for keywords,
+00:02:55,993 --> 00:02:57,593
+in ten replayed recall polls,
 
 56
-00:03:18,453 --> 00:03:20,123
-and nothing clears unsigned.
+00:02:57,853 --> 00:03:01,553
+the matched listing was held in a median of 68.4 seconds;
 
 57
-00:03:21,600 --> 00:03:22,240
-ClearShelf.
+00:03:01,813 --> 00:03:03,523
+and nothing clears unsigned.
 
 58
-00:03:22,600 --> 00:03:25,610
+00:03:06,300 --> 00:03:06,940
+ClearShelf.
+
+59
+00:03:07,300 --> 00:03:10,310
 Every decision is cited, and every release is signed.
+
+60
+00:03:10,415 --> 00:03:12,125
+A solo entry from Singapore.
