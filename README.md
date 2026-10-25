@@ -33,7 +33,7 @@ Open Agent Hackathon 2026, Track 3: Reasoning Architecture. Team: Umar Mohktar, 
 
 | Check | Command, from the repository root | Expected |
 |---|---|---|
-| Agent unit tests and type check | `cd agent && npm ci && npm test && npm run typecheck` | `Tests 419 passed (419)`; `tsc` exits 0 |
+| Agent unit tests and type check | `cd agent && npm ci && npm test && npm run typecheck` | `Tests 421 passed (421)`; `tsc` exits 0 |
 | Gateway tests (in a venv with `gateway/requirements-dev.txt`) | `python -m pytest gateway/tests -q` | `199 passed, 4 skipped` |
 | Every Zetaris statement onboarding would send, without connecting | `python -m gateway.onboard --dry-run --offline` | `"statements": 125` |
 | Meterless conformance on the vendored engines | the `engines/*/conformance` runners ([Quickstart A](#a-three-minute-check-no-zetaris-no-gpu)) | 13/13, 8/8, 8/8, then `diff: empty` |
@@ -113,7 +113,7 @@ What depended on what was found: the product row had no ingredient text and no b
 Needs Node 22.12 or newer, Python 3.12 and git. On a fresh clone of this repository these steps took about 70 seconds on the development PC (Windows 11), plus download time.
 
 ```bash
-# Agent: 419 unit tests on synthetic fixtures (no network) and the type check
+# Agent: 421 unit tests on synthetic fixtures (no network) and the type check
 cd agent && npm ci && npm test && npm run typecheck && cd ..
 
 # Meterless conformance on the vendored engines: 13/13, 8/8, 8/8, then "diff: empty"
