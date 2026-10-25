@@ -257,6 +257,8 @@ export interface Runtime {
   loopDir: string | null | undefined;
   log: (line: string) => void;
   lock: AgentLock | null;
+  /** Local calendar day `YYYY-MM-DD`; tests pin this so replay checks stay day-independent. */
+  today?: () => string;
   close(): void;
 }
 
@@ -274,6 +276,8 @@ export interface RuntimeOptions {
   /** Take data/agent.lock (default true; tests pass their own stores and false). */
   lock?: boolean;
   command?: string;
+  /** Local calendar day `YYYY-MM-DD`; defaults to the wall clock when omitted. */
+  today?: () => string;
 }
 
 export function openRuntime(o: RuntimeOptions = {}): Runtime {
@@ -295,6 +299,7 @@ export function openRuntime(o: RuntimeOptions = {}): Runtime {
       loopDir: o.loopDir,
       log: o.log ?? ((l) => process.stderr.write(`${l}\n`)),
       lock,
+      ...(o.today ? { today: o.today } : {}),
       close: () => lock?.release(),
     };
   } catch (e) {
@@ -333,6 +338,7 @@ export async function investigate(rt: Runtime, req: InvestigateRequest): Promise
   const evidence = req.evidence ?? new EvidenceStore(undefined, rt.evidenceDir === undefined ? undefined : rt.evidenceDir);
   const gateway = req.gateway ?? rt.gateway;
   const log = req.log ?? rt.log;
+  const today = rt.today?.() ?? localIso().slice(0, 10);
   const deps: ToolDeps = {
     gateway,
     dq: req.dq ?? new DqGate(gateway),
@@ -343,11 +349,11 @@ export async function investigate(rt: Runtime, req: InvestigateRequest): Promise
     extractionMemo: req.extractionMemo,
     guard: guardPort,
     // A replay (as-of before today) hides memories about notices reported after the as-of date.
-    memory: agentMemoryPort(rt.hmem, evidence, req.asOf && req.asOf < localIso().slice(0, 10) ? req.asOf : null),
+    memory: agentMemoryPort(rt.hmem, evidence, req.asOf && req.asOf < today ? req.asOf : null),
     world: worldPort(rt.world),
     warm: warmPort(rt.hmem),
     // Registration is a live act: intake only, never for an as-of replay.
-    ...(req.intake && !(req.asOf && req.asOf < localIso().slice(0, 10)) ? { registrar: req.registrar ?? registrarPort(rt) } : {}),
+    ...(req.intake && !(req.asOf && req.asOf < today) ? { registrar: req.registrar ?? registrarPort(rt) } : {}),
   };
   const base = { gtin: req.gtin, market: req.market, run_id: evidence.runId };
   req.onEvent?.("clear.started", { ...base, as_of: req.asOf ?? null, engine: "markovian" });
@@ -569,7 +575,8 @@ export function worldStatus(status: string, state: DecisionState, replayAsOf: st
  * already set `replay` (the server, the CLI) are left as they are.
  */
 export function asReplay(rt: Runtime, req: ClearRequest): ClearRequest {
-  if (!req.asOf || req.replay || req.asOf >= localIso().slice(0, 10)) return req;
+  const today = rt.today?.() ?? localIso().slice(0, 10);
+  if (!req.asOf || req.replay || req.asOf >= today) return req;
   const banner = replayBanner(req.asOf);
   return {
     ...req,

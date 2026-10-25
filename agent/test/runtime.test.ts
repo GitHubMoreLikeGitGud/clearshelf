@@ -123,6 +123,7 @@ async function env(text: string = TEXT, labels: string | null = "en:vegan"): Pro
         evidenceDir: join(root, "evidence"),
         loopDir: null,
         log: () => {},
+        today: () => "2026-10-23",
       }),
   };
 }
