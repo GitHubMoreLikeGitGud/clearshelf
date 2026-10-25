@@ -407,16 +407,16 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
       </div>
     </div>
     <div class="row" style="margin-top:12px; gap:20px">
-      <div class="panel" style="flex:1; padding:14px 18px"><h4>Day-0 gate</h4><p class="small">29/30 replies valid JSON (96.7%) with the adopted settings, Zetaris running on the same PC. The 30B tier was cut: the gate projected too little host RAM.</p></div>
+      <div class="panel" style="flex:1; padding:14px 18px"><h4>Recall notices, all that print a barcode</h4><p class="small">505 FDA notices: UPC precision / recall 0.996 / 0.994 for the GS1 scan, 0.981 / 0.879 for Nemotron. The scan and the lexicon decide; the model found 4 codes the scan missed.</p></div>
       <div class="panel" style="flex:1; padding:14px 18px"><h4>Thinking, measured per job</h4><p class="small">Thinking on: 10/10 planner replies valid, but only 2/10 extractions (the reasoning hit the 4,096-token cap). So the planner thinks; extraction does not.</p></div>
-      <div class="panel" style="flex:1; padding:14px 18px"><h4>Shared-PC guard</h4><p class="small">The runner's prompt cache grew host memory by 5,507 MiB over 30 calls. Below 2,048 MiB free, the client unloads the model before the next call.</p></div>
+      <div class="panel" style="flex:1; padding:14px 18px"><h4>Planner switched off</h4><p class="small">Same decision, rules and statement in all 8 investigations, two runs each, 3.3 to 3.5 times faster: the decision does not depend on the model's plan. The planner adds a note per step.</p></div>
     </div>
     <figure style="margin-top:10px">
       <img class="shot" src="../img/telemetry-footer.png" style="width:1728px" alt="ClearShelf telemetry footer: nemotron-3-nano:4b, planner 154 tok/s measured, peak VRAM, 0 cloud model calls, cold to warm tokens">
       <figcaption>The UI's telemetry footer. Peak VRAM is whole-GPU use, including another workload on the shared PC; the model itself holds 2,881 MiB. A full investigation takes 48 to 94 s.</figcaption>
     </figure>
   </div>
-  <div class="foot"><span class="src">Measured on 23 Oct 2026 (L and Q8_0 columns, language rows and the planner re-run on 25 Oct 2026) with Ollama's token counters and nvidia-smi; reference labels come from recall texts and documented label rules, never typed by hand (docs/eval-report.md, docs/nemotron-bench.md).</span><span class="pg">8 / 12</span></div>
+  <div class="foot"><span class="src">Measured on 23 Oct 2026 (L and Q8_0 columns, language rows and the planner re-run on 25 Oct 2026; recall notices and planner off on 26 Oct 2026) with Ollama's token counters and nvidia-smi; reference labels come from recall texts and documented label rules, never typed by hand (docs/eval-report.md, docs/nemotron-bench.md).</span><span class="pg">8 / 12</span></div>
 </section>
 
 <!-- 9. Findings -->
@@ -471,7 +471,7 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
           <tr class="hi"><td>CLEAR on a product with an ongoing exact recall</td><td class="n"><b>0</b></td></tr>
           <tr class="hi"><td>CLEAR or RELEASE executed without a signed contract</td><td class="n"><b>0</b></td></tr>
           <tr><td>Zetaris <code>signed_clear</code>: signed row / synthetic unsigned row</td><td class="n">passed / flagged</td></tr>
-          <tr><td>Agent tests / gateway tests</td><td class="n">419 / 199 pass (4 skipped)</td></tr>
+          <tr><td>Agent tests / gateway tests</td><td class="n">421 / 199 pass (4 skipped)</td></tr>
         </tbody>
       </table>
       <p class="small muted" style="margin-top:12px">E8 is a synthetic injection fixture, labelled and eval-only. E2 is a replay and is labelled as one on every row it writes.</p>
