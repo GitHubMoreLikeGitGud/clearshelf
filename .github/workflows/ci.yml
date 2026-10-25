@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run typecheck
+      - name: README headline numbers match docs/eval/*.json
+        run: npm run check:readme
 
   gateway:
     name: gateway tests and onboarding dry run (${{ matrix.os }})
