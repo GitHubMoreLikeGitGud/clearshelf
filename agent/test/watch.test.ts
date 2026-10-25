@@ -244,16 +244,17 @@ describe("RecallWatch replay", () => {
     w.fsa = [];
     const seen: Parameters<typeof fakeClear>[0] = [];
     const { watch, ops } = makeWatch(w, root, fakeClear(seen, "CLEAR"));
-    // A CLEAR row from 1 Oct exists for A; its link to H-0002-2027 (14 Oct) makes recheck_cleared return it.
+    await linkA(ops);
+    w.fda = w.fda.filter((f) => f.recall_number === "H-0002-2027");
+    w.fda[0]!.product_description = "Vanilla cake"; // no UPC in the text: only the link names A
+    const base = await watch.startReplay("2026-10-20", { scope: "none" }); // H-0002 (14 Oct) is already known at 20 Oct
+    expect(base.recheck.rows).toHaveLength(0);
+    // A CLEAR row from 1 Oct, written after the baseline: the poll's recheck is the first sweep that can see it.
     const { decisionContractParams } = await import("../src/ops/store.ts");
     const { officerApproval } = await import("../src/contract/scout.ts");
     const { action, params } = decisionContractParams({ gtin: A, market: "UK", status: "CLEAR" });
     const c = ops.verifier.issue({ action, parameters: params, user: "officer", surface: "clearshelf-ui", approvals: [officerApproval("synthetic test")] });
     await ops.writeDecision({ gtin: A, market: "UK", status: "CLEAR", reason: "synthetic", actor: "officer", contract: c, replay: { asOf: "2026-10-01", banner: "Replay as of 1 Oct 2026" } });
-    await linkA(ops);
-    w.fda = w.fda.filter((f) => f.recall_number === "H-0002-2027");
-    w.fda[0]!.product_description = "Vanilla cake"; // no UPC in the text: only the link names A
-    await watch.startReplay("2026-10-20", { scope: "none" }); // H-0002 (14 Oct) is already known at 20 Oct
     const poll = await watch.poll();
     expect(poll.notices).toHaveLength(0);
     expect(poll.recheck.rows).toHaveLength(1);
