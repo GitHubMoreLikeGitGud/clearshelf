@@ -141,8 +141,8 @@
     <div><b>NVIDIA</b><span>Nemotron 3 Nano 4B on a local GPU reads labels and notices and plans each investigation. 0 cloud model calls.</span></div>
   </div>
   <div class="team">Umar Mohktar, Singapore - solo</div>
-  <figure class="hero">
-    <img class="shot" src="../img/hero-puffs.png" style="width:904px" alt="ClearShelf SKU card for Plant-Based Puffs, UK, held automatically on rules R1, R3 and R4, with source cards and evidence chips">
+  <figure class="hero" style="top:410px">
+    <img class="shot" src="../img/hero-puffs-top.png" style="width:904px" alt="ClearShelf SKU card for Plant-Based Puffs, UK, held automatically on rules R1, R3 and R4, with evidence chips">
     <figcaption>The SKU card for Plant-Based Puffs (UK): held automatically on an FDA milk recall, a missing ingredient list and a vegan claim the recall contradicts. Local ClearShelf UI, 23 Oct 2026.</figcaption>
   </figure>
   <div class="foot"><span class="src">Data: Open Food Facts (ODbL 1.0), openFDA (public domain / CC0, not endorsed by the FDA), UK FSA (Open Government Licence v3.0).</span><span class="pg">1 / 12</span></div>
@@ -163,9 +163,9 @@
         <p>Open Food Facts lists <b>Plant-Based Puffs</b> (UPC 816929000119) as vegan, with no allergen tags and no ingredient list. FDA recall <b>H-1328-2026</b> (Class I, reported 2026-09-09) says the product <b>"tested positive for undeclared milk"</b>. Reconciled by hand, a wrong "free-from" listing can stay live.</p>
       </div>
       <div class="row" style="gap:20px">
-        <div class="stat" style="flex:1"><div class="v">6,325</div><div class="k">openFDA food enforcement reports whose recall reason matches "undeclared"</div><div class="m">counted 23 Oct 2026</div></div>
+        <div class="stat" style="flex:1"><div class="v">6,325</div><div class="k">openFDA food enforcement reports whose recall reason matches "undeclared"</div><div class="m">842 of the newest 1,000 concern an allergen; counted 23 Oct 2026</div></div>
         <div class="stat" style="flex:1"><div class="v">~7 a month</div><div class="k">UK FSA allergy alerts: 200 from 8 Jul 2024 to 21 Oct 2026</div><div class="m">counted in Zetaris and in the source JSON: equal</div></div>
-        <div class="stat" style="flex:1"><div class="v">17 of 17</div><div class="k">catalogue listings whose barcode an FDA recall names, held or blocked automatically</div><div class="m">none proposed for clearance</div></div>
+        <div class="stat" style="flex:1"><div class="v">17 of 17</div><div class="k">catalogue listings whose barcode an FDA recall names, held or blocked automatically</div><div class="m">the 30-product catalogue includes 14 barcodes taken from FDA recalls; none proposed for clearance</div></div>
       </div>
       <p class="lead" style="margin-top:8px">ClearShelf reconciles these sources for each product and market, cites every claim, holds anything unsettled on its own, and clears only with the officer's signature.</p>
     </div>
@@ -222,12 +222,12 @@
     <div class="row" style="margin-top:24px; gap:36px; align-items:flex-start">
       <figure style="width:860px">
         <img class="shot" src="../img/catalogue.png" style="width:860px" alt="Catalogue of 33 listings with decision and the rules that decided each">
-        <figcaption>The catalogue after intake: 33 listings (30 products, UK and US), 24 HOLD, 3 BLOCK, 6 waiting for the officer's signature, each with the rules that decided it.</figcaption>
+        <figcaption>The catalogue after intake: 33 listings (30 products, UK and US). 17 cite an exact-barcode recall and were held or blocked; 10 more were held or blocked for other reasons; 6 wait for the officer's signature. Each row shows the rules that decided it.</figcaption>
       </figure>
       <div class="col" style="flex:1; gap:16px">
         <figure>
           <img class="shot" src="../img/watch-sweep.png" style="width:832px" alt="Recall watch sweep result with replay label, 15 new notices, one exact barcode match held">
-          <figcaption>Recall watch, labelled as a replay from 10 Oct polled to 23 Oct: 15 new notices, 1 exact barcode match, held automatically (a US-only recall does not cover UK units, so the UK listing is held for the officer).</figcaption>
+          <figcaption>Recall watch, labelled as a replay from 10 Oct polled to 23 Oct: 15 new notices, 1 exact barcode match, held automatically (a US-only recall does not cover UK units, so the UK listing is held for the officer). Notice to hold: median 68.5 s over 10 replayed polls.</figcaption>
         </figure>
         <div class="panel" style="padding:14px 18px; display:flex; gap:22px; align-items:center">
           <div style="display:grid; grid-template-columns:auto auto; gap:8px 12px; align-items:center; font-size:17px; line-height:1.25; flex:none">
@@ -241,7 +241,7 @@
       </div>
     </div>
   </div>
-  <div class="foot"><span class="src">R0 investigation incomplete &middot; R1 recall of this barcode &middot; R2 name-only match &middot; R3 data-quality rule failed &middot; R4 unresolved contradiction &middot; R5 verified allergens, clear with statement &middot; R6 no allergens, clear.</span><span class="pg">4 / 12</span></div>
+  <div class="foot"><span class="src">BLOCK: an active recall of this barcode covers this market. HOLD: waits for the officer. R0 investigation incomplete &middot; R1 recall of this barcode &middot; R2 name-only match &middot; R3 data-quality rule failed &middot; R4 unresolved contradiction &middot; R5 verified allergens, clear with statement &middot; R6 no allergens, clear.</span><span class="pg">4 / 12</span></div>
 </section>
 
 <!-- 5. Architecture -->
@@ -286,7 +286,7 @@
 
       <div class="box nvd" style="left:330px; top:606px; width:608px; height:122px">
         <h4>NVIDIA Nemotron 3 Nano 4B <span class="sub">Ollama, local RTX 4070 Ti SUPER</span></h4>
-        <div class="sub" style="font-size:17px">Label and notice extraction, investigation planner, adjudication briefs, memory mining. Loopback only: 0 cloud model calls.</div>
+        <div class="sub" style="font-size:17px">Label and notice extraction, investigation planner, memory mining. Loopback only: 0 cloud model calls.</div>
       </div>
 
       <div class="box" style="left:1006px; top:100px; width:248px; height:370px">
@@ -346,7 +346,7 @@
       <div class="card"><h4>Markovian: bounded investigation</h4><p>Vendored reference, unmodified. Nemotron plans the next tool call; each chunk carries a bounded state (768-token budget, peak 474, estimated). Measured prompts stay between 1,322 and 1,788 tokens per chunk while a full-history prompt (estimated) grows to 4,264.</p></div>
       <div class="card"><h4>H-MEM: memory, conflicts and the ledger</h4><p>Vendored reference plus an allergen-conflict module. Facts carry Zetaris provenance; conflicts are always queued (11 pairs now); the ledger answers "Why was this held?". A warm run reused a verified extraction: tool-model tokens 3,658 &rarr; 804.</p></div>
       <div class="card"><h4>World Model: what we knew when</h4><p>Vendored reference. Product, brand, firm, notice and allergen graph with a timeline and a merge review queue; re-ingesting the catalogue and live Zetaris rows gives an empty diff.</p></div>
-      <div class="card"><h4>Scout subset: guard and signed contracts</h4><p>Partly reimplemented from the spec (no reference code exists). The injection guard flags 7/7 Scout injection cases, passes 3/3 clean ones, and flagged 0 of 146 real texts. Contracts are HMAC-signed and single-use.</p></div>
+      <div class="card"><h4>Scout subset: guard and signed contracts</h4><p>Partly reimplemented from the spec (no reference engine is vendored). The injection guard flags 7/7 Scout injection cases, passes 3/3 clean ones, and flagged 0 of 146 real texts. Contracts are HMAC-signed and single-use.</p></div>
     </div>
     <div class="col" style="flex:1; gap:18px">
       <div class="panel" style="padding:16px 18px 10px; background:#fff">
@@ -514,7 +514,7 @@
   <h2 class="title">Built in a Cursor workspace; every source attributed</h2>
   <div class="body row" style="gap:48px">
     <div class="col" style="width:960px; gap:20px">
-      <div class="quote" style="font-size:23px">ClearShelf was developed in a Cursor workspace with project rules in <code>.cursor/rules</code> and <code>AGENTS.md</code>. Cursor Agent ran the Zetaris JDBC preflight against our local instance. It drafted the decision write-back SQL, the per-product Open Food Facts registration template and the DQ rule documentation, with static tests for the SQL. It also drafted the multilingual allergen lexicon, the jurisdiction rules, the GTIN normaliser and the claim tester, with their tests. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. Every Cursor task, its commit and what was corrected afterwards are listed in <code>docs/how-cursor-was-used.md</code>.</div>
+      <div class="quote" style="font-size:21px">ClearShelf was developed in a Cursor workspace with project rules in <code>.cursor/rules</code> and <code>AGENTS.md</code>. Cursor Agent ran the Zetaris JDBC preflight against our local instance. It drafted the decision write-back SQL, the per-product Open Food Facts registration template and the DQ rule documentation, with static tests for the SQL. It also drafted the multilingual allergen lexicon, the jurisdiction rules, the GTIN normaliser and the claim tester, with their tests. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. After an upgrade to the Pro plan, Cursor Agent ran C9 on 25 Oct 2026: clock-independent runtime tests. Every Cursor task, its commit and what was corrected afterwards are listed in <code>docs/how-cursor-was-used.md</code>.</div>
       <table class="t">
         <thead><tr><th style="white-space:nowrap">Cursor Agent run</th><th>Scope</th></tr></thead>
         <tbody>
@@ -522,6 +522,7 @@
           <tr><td>C1</td><td>Zetaris JDBC preflight against our local instance, read-only</td></tr>
           <tr><td>C2</td><td>Decision write-back SQL, Open Food Facts registration template, DQ rule documentation, static SQL tests</td></tr>
           <tr><td>C3</td><td>Multilingual allergen lexicon, jurisdiction rules, GTIN normaliser, claim tester, with tests</td></tr>
+          <tr><td>C9</td><td>Clock-independent runtime tests (after the submission, Pro plan)</td></tr>
         </tbody>
       </table>
       <div class="panel">
