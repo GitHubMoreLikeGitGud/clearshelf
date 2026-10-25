@@ -1,0 +1,1101 @@
+{
+  "label": "hand-checked",
+  "how": "Codes: every GTIN only one reader returned was checked by reading its place in the notice text (read through the gateway). TRUE = a product barcode the notice prints; codes the notice labels as case or shipper codes are FALSE. Allergens: every notice where the model and the lexicon disagree was read by hand; truth = the allergen groups the reason text names as undeclared (wheat counts as the gluten family; coconut is not a tree nut, as in FDA's Edition 5 guidance that ClearShelf follows). full_read: notices drawn at random (seeded) and read in full, every printed barcode listed.",
+  "codes": {
+    "H-0024-2027|0666186277607": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1397-2026|0078000037982": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1397-2026|0007800003798": {
+      "verdict": false,
+      "why": "model dropped the last digit of the printed UPC; the 11 digits padded to 13 pass the check digit by chance"
+    },
+    "H-1330-2026|0628634442166": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1192-2026|0100001000297": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1167-2026|0827912008531": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1167-2026|0827912008494": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1167-2026|0827912008593": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1167-2026|0827912008449": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1168-2026|0827912008531": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1168-2026|0827912008494": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1168-2026|0827912008593": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1168-2026|0827912008449": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-1162-2026|0827912008487": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0903-2026|0810001560768": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0854-2026|0850052239886": {
+      "verdict": true,
+      "why": "printed with hyphens and followed by \"4 pack\"; the scan joined the next number and dropped the run"
+    },
+    "H-0780-2026|0854120040862": {
+      "verdict": false,
+      "why": "spurious: a 10-digit printed code joined with the next size (\"62oz\"); not a barcode the notice prints"
+    },
+    "H-0685-2026|0079581187097": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0659-2026|0826766250363": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0615-2026|0850033937589": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0552-2026|0741643055766": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0548-2026|0810037810042": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0548-2026|0081003781004": {
+      "verdict": false,
+      "why": "model dropped the last digit of the printed UPC; padded 11 digits pass the check digit by chance"
+    },
+    "H-0517-2026|0758108301498": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0509-2026|0897307002437": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0508-2026|0897307002512": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0508-2026|0089730700251": {
+      "verdict": false,
+      "why": "model dropped the last digit of the printed UPC; padded 11 digits pass the check digit by chance"
+    },
+    "H-0506-2026|0897307002154": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0483-2026|0738654000335": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0443-2026|0199284272279": {
+      "verdict": false,
+      "why": "a distributor case code, labelled as such next to the product UPC"
+    },
+    "H-0440-2026|0859955004126": {
+      "verdict": false,
+      "why": "labelled as the GTIN on the shipper case, not the retail barcode"
+    },
+    "H-0409-2026|0830825001247": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0399-2026|0749668242802": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0404-2026|0807814001243": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0397-2026|0722515914527": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0397-2026|0722515914565": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0384-2026|0075196005566": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0383-2026|0765265812378": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0352-2026|0018169668627": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0233-2026|0375854306302": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0145-2026|0810111022361": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0139-2026|0850016944306": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0103-2026|0077890514740": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0099-2026|0072431012945": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0104-2026|0077890540152": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0034-2026|0733739070661": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0029-2026|0072036953643": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0030-2026|0072036957344": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0037-2026|0860008575050": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0613-2025|0682906909351": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0612-2025|0682906909337": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0635-2025|0856781003613": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0635-2025|0856781003620": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0635-2025|0856781003637": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0568-2025|0885523318111": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0568-2025|0885523308112": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0568-2025|0041220842322": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0456-2025|0713733000482": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "H-0282-2025|0000000431095": {
+      "verdict": false,
+      "why": "a UPC-E printed 1+6+1; padding it as an EAN-8 gives a different GTIN than its UPC-E expansion"
+    },
+    "H-0283-2025|0000000045643": {
+      "verdict": false,
+      "why": "a UPC-E printed 1+6+1; padded as an EAN-8 it is a different GTIN"
+    },
+    "H-0283-2025|0000000045650": {
+      "verdict": false,
+      "why": "a UPC-E printed 1+6+1; padded as an EAN-8 it is a different GTIN"
+    },
+    "H-0283-2025|0000000045667": {
+      "verdict": false,
+      "why": "a UPC-E printed 1+6+1; padded as an EAN-8 it is a different GTIN"
+    },
+    "H-0283-2025|0000000045674": {
+      "verdict": false,
+      "why": "a UPC-E printed 1+6+1; padded as an EAN-8 it is a different GTIN"
+    },
+    "H-0063-2025|0024739120006": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0811-2025|0072992054644": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0811-2025|0072992055566": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0778-2025|0810077209363": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0762-2025|0000000773164": {
+      "verdict": true,
+      "why": "8 digits after \"UPC\" in the same retailer's scheme as F-0704 (printed 4+4 there); judged EAN-8, the least certain call in this file"
+    },
+    "F-0751-2025|0768050007553": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0747-2025|0095864800088": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0747-2025|0009586480008": {
+      "verdict": false,
+      "why": "model dropped the last digit of the printed UPC; padded 11 digits pass the check digit by chance"
+    },
+    "F-0704-2025|0000000801522": {
+      "verdict": true,
+      "why": "an 8-digit code printed 4+4 (the EAN-8 layout) after \"UPC\"; the scan treats 8 digits after UPC as UPC-E and skips them"
+    },
+    "F-0688-2025|0028400528481": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0668-2025|0721557511008": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0670-2025|0180596000391": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0667-2025|0085239096901": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0636-2025|0072992042603": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0608-2025|0029341002337": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0604-2025|0038511007041": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0570-2025|0019669003031": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0570-2025|0019669012811": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0570-2025|0019669013948": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0570-2025|0001966901394": {
+      "verdict": false,
+      "why": "model dropped the last digit of the printed UPC; padded 11 digits pass the check digit by chance"
+    },
+    "F-0467-2025|0072119203047": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0459-2025|0854540002129": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0460-2025|0854540002068": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0458-2025|0854540002303": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0466-2025|0072119207182": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0466-2025|0072119203054": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0259-2025|0787359175046": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0259-2025|0078735917504": {
+      "verdict": false,
+      "why": "model dropped the last digit of the printed UPC; padded 11 digits pass the check digit by chance"
+    },
+    "F-1836-2024|0857297007454": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-1836-2024|0855324005053": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-1836-2024|0085729700745": {
+      "verdict": false,
+      "why": "model dropped the last digit of the printed UPC; padded 11 digits pass the check digit by chance"
+    },
+    "F-1741-2024|0853407004184": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-1788-2024|0713733712972": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-1640-2024|0018169664285": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-1457-2024|0000020456436": {
+      "verdict": true,
+      "why": "an 8-digit EAN-8 after \"UPC\" on an imported product; the scan skips 8 digits after UPC as UPC-E"
+    },
+    "F-1426-2024|0196852665617": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-1224-2024|0860007403989": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-1224-2024|0860007403958": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0934-2024|0628451684879": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0776-2024|0099482518707": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    },
+    "F-0711-2024|0045251003127": {
+      "verdict": true,
+      "why": "printed after a UPC label (or in the notice's list of UPCs), check digit valid; the model did not return it"
+    }
+  },
+  "allergens": {
+    "H-1192-2026": {
+      "truth": [
+        "soy"
+      ],
+      "why": "reason names soy"
+    },
+    "H-1184-2026": {
+      "truth": [],
+      "why": "sodium tripolyphosphate is not an allergen"
+    },
+    "H-1182-2026": {
+      "truth": [],
+      "why": "sodium tripolyphosphate is not an allergen"
+    },
+    "H-1183-2026": {
+      "truth": [],
+      "why": "sodium tripolyphosphate is not an allergen"
+    },
+    "H-1166-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios; colours are not allergens"
+    },
+    "H-1172-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1160-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1159-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1171-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1169-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1165-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1168-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1173-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1161-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1170-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1163-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1158-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1164-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1162-2026": {
+      "truth": [
+        "milk",
+        "tree_nut"
+      ],
+      "why": "milk, pecans, pistachios"
+    },
+    "H-1150-2026": {
+      "truth": [
+        "peanut"
+      ],
+      "why": "reason names peanut"
+    },
+    "H-1125-2026": {
+      "truth": [
+        "peanut"
+      ],
+      "why": "reason names peanuts"
+    },
+    "H-0941-2026": {
+      "truth": [
+        "crustacean"
+      ],
+      "why": "shrimp"
+    },
+    "H-0905-2026": {
+      "truth": [
+        "tree_nut"
+      ],
+      "why": "cashews, pistachios; dried cherries are not an allergen"
+    },
+    "H-0779-2026": {
+      "truth": [
+        "soy"
+      ],
+      "why": "soy lecithin"
+    },
+    "H-0669-2026": {
+      "truth": [],
+      "why": "colours only"
+    },
+    "H-0682-2026": {
+      "truth": [
+        "soy",
+        "tree_nut"
+      ],
+      "why": "hazelnut and soy lecithin"
+    },
+    "H-0670-2026": {
+      "truth": [],
+      "why": "colours only"
+    },
+    "H-0654-2026": {
+      "truth": [],
+      "why": "sildenafil is a drug, not an allergen"
+    },
+    "H-0655-2026": {
+      "truth": [],
+      "why": "sildenafil is a drug, not an allergen"
+    },
+    "H-0659-2026": {
+      "truth": [
+        "sesame"
+      ],
+      "why": "reason names sesame"
+    },
+    "H-0615-2026": {
+      "truth": [
+        "gluten_cereal",
+        "soy"
+      ],
+      "why": "soy and wheat; \"Mustard\" is the name of the sauce flavour, not an undeclared allergen"
+    },
+    "H-0547-2026": {
+      "truth": [],
+      "why": "Yellow #5 only"
+    },
+    "H-0548-2026": {
+      "truth": [],
+      "why": "Yellow #5 only"
+    },
+    "H-0543-2026": {
+      "truth": [
+        "milk",
+        "soy"
+      ],
+      "why": "milk and soy"
+    },
+    "H-0542-2026": {
+      "truth": [
+        "milk",
+        "soy"
+      ],
+      "why": "milk and soy"
+    },
+    "H-0517-2026": {
+      "truth": [
+        "fish"
+      ],
+      "why": "tuna"
+    },
+    "H-0509-2026": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "H-0505-2026": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "H-0508-2026": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "H-0491-2026": {
+      "truth": [
+        "tree_nut"
+      ],
+      "why": "hazelnut"
+    },
+    "H-0507-2026": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "H-0506-2026": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "H-0395-2026": {
+      "truth": [
+        "soy"
+      ],
+      "why": "soy"
+    },
+    "H-0399-2026": {
+      "truth": [
+        "tree_nut"
+      ],
+      "why": "hazelnut"
+    },
+    "H-0396-2026": {
+      "truth": [
+        "soy"
+      ],
+      "why": "soy"
+    },
+    "H-0397-2026": {
+      "truth": [
+        "soy"
+      ],
+      "why": "soy"
+    },
+    "H-0364-2026": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk; Blue #1 is a colour"
+    },
+    "H-0226-2026": {
+      "truth": [
+        "sulphite"
+      ],
+      "why": "the undeclared allergen is sulfite; the shrimp is the product"
+    },
+    "H-0227-2026": {
+      "truth": [
+        "gluten_cereal"
+      ],
+      "why": "wheat"
+    },
+    "H-0148-2026": {
+      "truth": [],
+      "why": "colours only"
+    },
+    "H-0184-2026": {
+      "truth": [
+        "egg"
+      ],
+      "why": "egg; colours are not allergens"
+    },
+    "H-0027-2026": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "H-0568-2025": {
+      "truth": [],
+      "why": "Yellow #5 only"
+    },
+    "H-0278-2025": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "H-0068-2025": {
+      "truth": [
+        "sulphite"
+      ],
+      "why": "the shrimp contains undeclared sulfites; the shrimp is the product"
+    },
+    "F-0938-2025": {
+      "truth": [
+        "gluten_cereal",
+        "sesame"
+      ],
+      "why": "wheat, sesame"
+    },
+    "F-0811-2025": {
+      "truth": [
+        "tree_nut"
+      ],
+      "why": "almond and cashew"
+    },
+    "F-0810-2025": {
+      "truth": [
+        "tree_nut"
+      ],
+      "why": "almond and cashew"
+    },
+    "F-0809-2025": {
+      "truth": [
+        "milk",
+        "peanut"
+      ],
+      "why": "milk and/or peanuts"
+    },
+    "F-0808-2025": {
+      "truth": [
+        "milk",
+        "peanut"
+      ],
+      "why": "milk and/or peanuts"
+    },
+    "F-0762-2025": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "F-0747-2025": {
+      "truth": [
+        "egg"
+      ],
+      "why": "egg"
+    },
+    "F-0702-2025": {
+      "truth": [
+        "egg"
+      ],
+      "why": "eggs; pork is not in the allergen list"
+    },
+    "F-0695-2025": {
+      "truth": [
+        "gluten_cereal",
+        "sesame",
+        "soy"
+      ],
+      "why": "sesame, soy, wheat; colours are not allergens"
+    },
+    "F-0636-2025": {
+      "truth": [
+        "tree_nut"
+      ],
+      "why": "almonds"
+    },
+    "F-0564-2025": {
+      "truth": [
+        "sulphite"
+      ],
+      "why": "sulfites"
+    },
+    "F-0467-2025": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "F-0534-2025": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk; the monkfish liver is the product"
+    },
+    "F-0466-2025": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "F-0147-2025": {
+      "truth": [
+        "soy"
+      ],
+      "why": "hydrolyzed soy protein"
+    },
+    "F-0098-2025": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk"
+    },
+    "F-0054-2025": {
+      "truth": [
+        "tree_nut"
+      ],
+      "why": "almond; the milk is the product"
+    },
+    "F-0003-2025": {
+      "truth": [
+        "gluten_cereal"
+      ],
+      "why": "wheat"
+    },
+    "F-0015-2025": {
+      "truth": [
+        "gluten_cereal",
+        "milk"
+      ],
+      "why": "whey (milk) and wheat flour"
+    },
+    "F-0002-2025": {
+      "truth": [
+        "gluten_cereal"
+      ],
+      "why": "wheat"
+    },
+    "F-0021-2025": {
+      "truth": [
+        "gluten_cereal",
+        "milk"
+      ],
+      "why": "whey (milk), wheat flour; coconut is not a tree nut under FDA Edition 5"
+    },
+    "F-0016-2025": {
+      "truth": [
+        "gluten_cereal",
+        "milk"
+      ],
+      "why": "whey (milk), wheat flour, bran (wheat)"
+    },
+    "F-0001-2025": {
+      "truth": [
+        "gluten_cereal"
+      ],
+      "why": "wheat"
+    },
+    "F-1739-2024": {
+      "truth": [
+        "peanut"
+      ],
+      "why": "peanuts"
+    },
+    "F-1640-2024": {
+      "truth": [
+        "crustacean",
+        "sesame",
+        "soy",
+        "tree_nut"
+      ],
+      "why": "shrimp, cashew, soybeans, sesame"
+    },
+    "F-1426-2024": {
+      "truth": [],
+      "why": "coconut only, not a tree nut under FDA Edition 5"
+    },
+    "F-1269-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-1271-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-1265-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-1272-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-1266-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-1268-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-1270-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-1267-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-1273-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-1254-2024": {
+      "truth": [
+        "egg"
+      ],
+      "why": "egg"
+    },
+    "F-1224-2024": {
+      "truth": [
+        "gluten_cereal",
+        "soy"
+      ],
+      "why": "wheat, soy; colours are not allergens"
+    },
+    "F-1132-2024": {
+      "truth": [
+        "fish"
+      ],
+      "why": "tuna; \"egg salad\" is the name on the wrong label"
+    },
+    "F-1130-2024": {
+      "truth": [
+        "gluten_cereal",
+        "milk",
+        "soy"
+      ],
+      "why": "milk, wheat, soy"
+    },
+    "F-1099-2024": {
+      "truth": [
+        "milk"
+      ],
+      "why": "milk; coconut is not a tree nut under FDA Edition 5"
+    },
+    "F-1001-2024": {
+      "truth": [
+        "gluten_cereal"
+      ],
+      "why": "wheat; \"with Egg\" is the name on the wrong label"
+    },
+    "F-0806-2024": {
+      "truth": [],
+      "why": "coconut only"
+    },
+    "F-0663-2024": {
+      "truth": [],
+      "why": "coconut only"
+    }
+  },
+  "full_read": {
+    "F-0020-2025": {
+      "gtin13": [
+        "0713583051016"
+      ]
+    },
+    "F-0534-2025": {
+      "gtin13": [
+        "0072546611224"
+      ],
+      "why": "printed as 11 digits; the GTIN with the leading zero restored"
+    },
+    "F-0605-2024": {
+      "gtin13": [
+        "0686148000050"
+      ]
+    },
+    "F-0776-2024": {
+      "gtin13": [
+        "0099482518707"
+      ]
+    },
+    "F-1001-2024": {
+      "gtin13": [
+        "0071117190441"
+      ]
+    },
+    "F-1647-2024": {
+      "gtin13": [],
+      "why": "the only code printed has 10 digits, not a valid GTIN"
+    },
+    "H-0066-2025": {
+      "gtin13": [],
+      "why": "the only code printed fails the GS1 check digit"
+    },
+    "H-0099-2026": {
+      "gtin13": [
+        "0072431012945"
+      ]
+    },
+    "H-0100-2026": {
+      "gtin13": [
+        "0077890378892"
+      ],
+      "why": "the second form, 037889 plus five price digits, is not a fixed code"
+    },
+    "H-0156-2026": {
+      "gtin13": [
+        "4099100318715"
+      ]
+    },
+    "H-0213-2025": {
+      "gtin13": [
+        "0760208124501"
+      ]
+    },
+    "H-0233-2026": {
+      "gtin13": [
+        "0375854306302"
+      ],
+      "why": "the product code 75854-306-30 is not a barcode"
+    },
+    "H-0335-2025": {
+      "gtin13": [
+        "0100000222027"
+      ]
+    },
+    "H-0360-2026": {
+      "gtin13": [
+        "0072981005022"
+      ]
+    },
+    "H-0362-2025": {
+      "gtin13": [
+        "0078619010307"
+      ]
+    },
+    "H-0395-2026": {
+      "gtin13": [
+        "0722515918495"
+      ]
+    },
+    "H-0777-2026": {
+      "gtin13": [],
+      "why": "the only code printed has 10 digits, not a valid GTIN"
+    },
+    "H-0928-2026": {
+      "gtin13": [
+        "0824790852706"
+      ]
+    },
+    "H-1079-2026": {
+      "gtin13": [
+        "0860008784551"
+      ]
+    },
+    "H-1125-2026": {
+      "gtin13": [
+        "0797565011830"
+      ]
+    }
+  }
+}

@@ -1,4 +1,4 @@
-# Nemotron bench: Day-0 gates G8 and G8b, and the 25 Oct extraction re-run
+# Nemotron bench: Day-0 gates G8 and G8b, the 25 Oct extraction re-run, and recall notices at scale and the planner switched off (26 Oct)
 
 The main run was on Fri 23 Oct 2026, 07:50–08:09 SGT. The follow-up runs (Q8 A/B, host-RAM soak) were at 08:26–08:42 SGT. All runs used the development PC with the four Zetaris containers (`ui`, `api`, `driver`, `postgres`) up and healthy. Every number below is measured unless it is labelled `estimated`: Ollama's own token counts and durations, `nvidia-smi` at 1 s, OS CPU and available-RAM counters at 1 s, and, in the soak runs, the private memory of the Ollama processes at 1 s. The raw results are in `data/bench/` (local, gitignored): `g8-*.json`, `g8b-*.json` and `soak-*.json`. The follow-up files include every 1 s sample; the main-run files hold per-phase statistics only. (In the two Q8 A/B files the process-memory fields read 0, because the sampler did not yet find the runner process; it was fixed before the soak, and nothing below uses those fields.)
 
@@ -10,6 +10,8 @@ The main run was on Fri 23 Oct 2026, 07:50–08:09 SGT. The follow-up runs (Q8 A
 | G8, think on | `think` and `format` work together on this Ollama build | **Yes for planning and briefs**: 10/10 planner and 3/3 brief calls valid with think on. **No for ingredient extraction**: 2/10 valid, because the thinking reaches the 4,096-token cap before any answer, with or without `format`. | `think: true` for the planner and adjudication briefs; `think: false` for ingredient extraction, notice extraction, mining and classification. |
 | **G8b** | 30B at ≥8 tok/s with Zetaris running and ≥3,072 MiB free host RAM | **Fail on RAM.** The 30B needs about 11.8 GB of its weights in host RAM (`estimated`), but only 7,971 MiB was available, which projects to −3,851 MiB free. The model was not loaded, so **30B tok/s was not measured**. | **30B tier cut.** It was optional and off unless this gate passed. |
 | Host-RAM soak | Find out why available RAM fell to 617 MiB in the G8 think-on pass | **Reproduced and explained.** The model runner's private memory rose from 4,396 to 9,903 MiB (+5,507 MiB) over 30 calls. The cause is the runner's prompt cache in host RAM, which grows with each new prompt in both think modes. With the cache disabled, 10 of the same planner calls left the runner flat (+8 MiB). | **RAM guard on by default** in the Ollama client: below 2,048 MiB available, it unloads the model before the next call (fired once in the soak and recovered 6,542 MiB). Think on is kept for the planner and briefs. Capping the cache is an option for the PC owner. |
+| Recall notices at scale (26 Oct) | Score the notice job on every cached openFDA notice that prints a barcode (505), against the repository's GS1 scan | **The deterministic readers win.** UPC precision / recall: GS1 scan 0.996 / 0.994, Nemotron 0.981 / 0.879 after the host check (raw 0.757 precision; 21 codes not in the text). Allergens exactly right: lexicon 499/505, Nemotron 412/505. Nemotron found 4 true codes the scan missed. | The scan and the lexicon stay the decision path (as built); the model stays a second reader. Two host fixes noted (11-digit truncations, UPC-E). |
+| Planner switched off (26 Oct) | Does the decision depend on the model's plan? The 8 investigations with `fallbackStep()` only | **No.** Same decision, rules, contradiction kinds, claim verdicts and statement in 8 of 8, in two pairs of runs. The planner added 1 optional World Model lookup in 16 planned investigations and a note per step; the 8 took 569.9 and 530.6 s with it against 163.9 and 158.5 s without. | The planner stays on for its notes; `CLEARSHELF_PLANNER=off` is a measured mode. |
 | Optional Q8 tier | Adopt only if JSON validity and span grounding are no worse, at ≥40 tok/s | **Meets the rule on 10 texts:** 10/10 valid, 0 spans dropped, 117.4 tok/s. (group, relation) precision / recall 1.000 / 0.867, against 0.958 / 0.767 for Q4 in the same session. | **Not adopted in this pass.** Q4 stays the default until the lead decides; the costs are listed in the Q8 section. |
 
 ## 25 Oct 2026: the 27-SKU extraction harness with the lexicon alone, Q8_0 and recall per language
@@ -35,6 +37,53 @@ No Spanish label is among the 27 measured SKUs.
 - **The two readers miss different things.** With Q4, the lexicon found 17 of the model's 18 missed `contains` pairs, and the model found 1 of the lexicon's 2. ClearShelf runs both and holds any disagreement for the officer (R4), so the model's measured role in extraction is a second, independent reader. Its other jobs (recall notices, the planner, memory mining) have no lexicon equivalent.
 - **Q8_0 on 27 labels** confirms the Day-0 direction (better recall, slower): German recall 0.50 → 0.70, overall 0.78 → 0.84, English unchanged, 2 fewer exact "may contain" reads, 1,185 MiB more VRAM. **Q4 stays the default**, for the reasons in the Q8 section below; the planner, notice extraction and the soak were still measured on Q4 only.
 - The Q4 re-run reproduced the 23 Oct K, N and N+V scores exactly; generation speed was 154.1 tok/s against 159.8 on 23 Oct.
+
+## 26 Oct 2026: recall notices at scale, and the planner switched off
+
+### Recall-notice extraction on every cached openFDA notice that prints a barcode
+
+The Day-0 bench scored the notice job on 10 notices (UPC precision / recall 1.000 / 0.957, 0 invented). This run scores it on every notice that prints a barcode, against the repository's own deterministic GS1 scan. All values measured, on 26 Oct 2026, 01:12–01:23 SGT.
+
+- **Input.** Zetaris caches the newest 1,000 openFDA food enforcement reports whose recall reason says "undeclared" (`clearshelf_fda.enforcement_undeclared`). Each was read through the gateway with the `fda_notice` template, as the agent reads it. The gateway returns at most 200 rows per template, so the 1,000 recall numbers came from the dev-time openFDA page that onboarding cached (the same 1,000 reports; all 1,000 were found in Zetaris). A notice "prints a barcode" when its text names one (UPC, EAN, GTIN or barcode) and holds a run of 8 or more digits: **505 of the 1,000**.
+- **Readers.** Nemotron's notice job (`extractNotice`: the production prompt and schema, `nemotron-3-nano:4b` Q4_K_M, think off, temperature 0, one call per notice) and the GS1 scan (`extractUpcs`, no model). As in production, a model code is kept only when its digits appear in the notice and it passes the GS1 check digit.
+- **Gold.** A GTIN both readers return is counted true. Every GTIN only one reader returned (104) was decided by hand from its place in the notice; a code the notice labels as a case or shipper code counts as false. 20 notices drawn at random (seeded) were read in full to look for barcodes both readers missed. Allergens are scored against the groups the reason text names as undeclared: where the model and the lexicon agree (407 notices) the agreement stands, and all 98 disagreements were read by hand (coconut is not a tree nut, as in FDA's Edition 5 guidance that ClearShelf follows). Every hand decision is listed by notice id in [`docs/eval/notices-adjudication-2026-10-26.json`](eval/notices-adjudication-2026-10-26.json); the scores are in [`docs/eval/notices-2026-10-26.json`](eval/notices-2026-10-26.json).
+- **Command.** `npm run eval:notices -- run --ids <the openFDA page>` (commit `59d2b49`), then `npm run eval:notices -- score <run file> docs/eval/notices-adjudication-2026-10-26.json` (commit `9b0b514`).
+
+| UPCs: 705 true GTINs in 505 notices | GS1 scan, no model | Nemotron, after the host check | Nemotron, raw output |
+|---|---|---|---|
+| Precision | **0.996** (701 of 704) | 0.981 (620 of 632) | 0.757 (637 of 841 codes returned) |
+| Recall | **0.994** (701 of 705) | 0.879 (620 of 705) | |
+| Wrong codes | 3: a distributor case code, a shipper-case GTIN, and a 10-digit code joined to the next pack size | 12 that pass the host check: 7 printed UPCs with the last digit dropped, whose 11 digits pass the padded check digit by chance, and 5 UPC-E codes padded as EAN-8 (a different GTIN) | 21 codes whose digits are not in the notice; 171 that fail the check digit (the host drops them) |
+| True codes only this reader found | 85 | 4: a hyphenated code followed by "4 pack", and three 8-digit EAN-8 codes after "UPC", which the scan skips as UPC-E | |
+| 20 notices read in full (17 valid barcodes) | 17 | 14 | 0 missed by both |
+
+| Allergen groups against the reason text, 505 notices | Lexicon on the reason text | Nemotron |
+|---|---|---|
+| Notices with exactly the right groups | **499** (98.8%) | 412 (81.6%) |
+| Of the 98 disagreements, read by hand: right | 92 | 5 |
+| If coconut counted as a tree nut (FDA's list before Edition 5) | 486 | 425 |
+
+- **JSON and speed.** 505/505 replies valid on the first try. Median 0.78 s per notice (p95 2.66 s, max 6.51 s), 139.8 tok/s median, 61,273 output tokens; the run took 684 s, 165 s of it reading the 1,000 notices through the gateway. Other programs kept the CPU at 21 to 73%, and a Cursor Agent task (C10) ran during the first 2.5 minutes.
+- **This result goes against the model, and it is published as measured.** At scale the deterministic GS1 scan beats Nemotron on every UPC measure, and the lexicon reads the undeclared allergens better. The model's typical UPC error is a code printed in groups ("0 78000 03798 2"): it drops or merges a digit. The check digit catches most of these (171), but 7 truncated codes passed it by chance. Its typical allergen error is reporting allergens the product lists rather than the ones the reason calls undeclared, or reading a non-allergen as one (sodium tripolyphosphate as crustacean, fish and soy; sildenafil as sulphite; a colour as gluten). The lexicon's 6 misses are a product or flavour name read as an allergen ("egg salad", "with Egg", a "Mustard" flavour, the milk that is the recalled product, the shrimp in two sulfite recalls); the model got 5 of those 6 right. The Day-0 smoke result did not hold on 505 notices.
+- **What the model adds:** 4 true codes the scan missed (0.6% of the true codes), all from scan rules that can be fixed (8-digit codes after "UPC", a run followed by a pack count). What it would cost if trusted alone: 85 missed codes, and 12 wrong ones that pass the host's check.
+- **What this means for ClearShelf, as built.** The recall watch holds a listing whose GTIN either reader finds (`recallWatch.ts`), and the policy takes undeclared allergens from the lexicon's reading of the reason (`undeclared_groups`), not from the model. So the model's misses are covered by the scan, its allergen errors do not reach a decision, and its wrong codes could only add a hold, never a clearance; none of the 15 wrong codes (12 model, 3 scan) is a catalogue GTIN. Measured, the notice job is a weak second reader, and the deterministic path is the one that carries the result. Two host fixes follow from it and are not made yet: refuse an 11-digit model code when the notice prints those digits followed by another digit, and expand UPC-E.
+- One call is uncertain: F-0762-2025 prints `UPC 00773164`, judged an EAN-8. Counted the other way, the model's figures are 0.979 / 0.879.
+
+### The planner switched off
+
+`npm run eval:planner-ablation -- --planner model` and `-- --planner off` ran the 8 investigations behind the planner counts (E1, E3 to E7, and E2's SKU as of 10 Oct and as of 25 Oct) with the Nemotron planner and with `fallbackStep()` only, in two pairs of runs on 26 Oct 2026 (commit `0d75dd2`, then `9b0b514`). Method and the per-investigation table: [eval report, section 4](eval-report.md#planner-switched-off-26-oct-2026); summary: [`docs/eval/planner-ablation-2026-10-26.json`](eval/planner-ablation-2026-10-26.json). All values measured.
+
+| 8 investigations, pair 1 / pair 2 | Planner on (Nemotron, think on) | Planner off (`fallbackStep()`) |
+|---|---|---|
+| Decision, rules, contradiction kinds, claim verdicts, statement | | identical to the planner-on runs in 8 of 8, both pairs |
+| Tool calls | 66 / 65: 65 / 65 chosen by the model, 1 / 0 fallback steps | 65 / 65, all deterministic |
+| Optional tools called | 1 / 0 (a World Model lookup, E2 as of 25 Oct) | 0 / 0 |
+| Evidence records | 134 / 133 | 133 / 133 |
+| Planner calls valid on the first try, after one repair | 59 and 65 of 66 / 57 and 65 of 65 | none |
+| Planner tokens, prompt and output | 122,736 and 51,063 / 124,897 and 46,961 | 0 |
+| Wall time for the 8 (median per investigation) | 569.9 s (68.3 s) / 530.6 s (61.4 s) | 163.9 s (20.5 s) / 158.5 s (19.8 s) |
+
+**What it shows.** The decision does not depend on the model's plan: the deterministic policy decides from the evidence the host checklist requires, and the planner works through that checklist in order (the order differed once per pair: pair 1 added the World Model lookup in E2 as of 25 Oct, pair 2 ran the DQ gate early in E3). What the planner adds is a note per step on the card and an occasional optional lookup; what it costs is 3.3 to 3.5 times the wall time. Measured, the planner is a reviewability feature, and its reliability property is that a bad plan cannot change a decision. Where Nemotron adds measured value is the second, independent reading of labels (the 25 Oct section above); as a notice reader it measured weaker than the deterministic scan (the section above).
 
 ## Setup
 

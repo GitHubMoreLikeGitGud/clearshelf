@@ -53,7 +53,9 @@
       "planner_json_valid_first_try_rerun_2026_10_25": "59/65 (64/65 after one repair, 1 fallback step) on commit aeb5b92",
       "extraction_contains_precision_recall_27_labels": "Nemotron Q4_K_M 1.00 / 0.78; Q8_0 1.00 / 0.84; lexicon verifier alone, no model, 0.97 / 0.97 (it shares its rules with the reference labels); keyword baseline 0.71 / 0.99",
       "extraction_recall_by_language_q4_q8_lexicon": "en (21 labels) 0.90 / 0.90 / 0.98; de (4) 0.50 / 0.70 / 0.95; fr (1) 0.60 / 0.80 / 1.00; it (1) 0.83 / 0.83 / 1.00",
-      "q8_0_against_q4_k_m": "113.1 against 154.1 tokens/s, 2.55 against 2.09 s per extraction call, 4,066 against 2,881 MiB of VRAM; Q4 stays the default"
+      "q8_0_against_q4_k_m": "113.1 against 154.1 tokens/s, 2.55 against 2.09 s per extraction call, 4,066 against 2,881 MiB of VRAM; Q4 stays the default",
+      "recall_notices_at_scale_2026_10_26": "505 cached openFDA notices that print a barcode: UPC precision / recall GS1 scan 0.996 / 0.994, Nemotron 0.981 / 0.879 after the host check (raw 0.757 precision, 21 codes not in the text); allergen groups exactly right: lexicon 499 / 505, Nemotron 412 / 505; Nemotron found 4 true codes the scan missed (docs/eval/notices-2026-10-26.json)",
+      "planner_switched_off_2026_10_26": "8 investigations with fallbackStep() only (CLEARSHELF_PLANNER=off), two pairs of runs: same decision, rules, contradiction kinds, claim verdicts and statement in 8 of 8; 163.9 and 158.5 s against 569.9 and 530.6 s with the planner; the planner added 1 optional World Model lookup in 16 planned investigations (docs/eval/planner-ablation-2026-10-26.json)"
     },
     "cloud_model_calls": 0,
     "cloud_model_calls_basis": "by construction: the model client accepts loopback URLs only"

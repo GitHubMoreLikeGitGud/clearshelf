@@ -1,0 +1,1649 @@
+{
+  "label": "measured",
+  "what": "Recall-notice extraction on every cached openFDA notice that prints a UPC: Nemotron's notice job (extractNotice, think off) against the deterministic GS1 scan (extractUpcs), both reading the same notice text through the gateway. Score-only: recall numbers, counts and timings; no notice text, no product names, no model output text.",
+  "command": "cd agent && npm run eval:notices -- run --ids ../data/curation/raw/fda_enforcement_undeclared.json, then npm run eval:notices -- score <run file> docs/eval/notices-adjudication-2026-10-26.json",
+  "commit": "59d2b49 (run); 9b0b514 (score)",
+  "run_file": "notices-2026-10-25T17-12-02-286Z.json",
+  "started_at": "2026-10-25T17:12:02.286Z",
+  "model": "nemotron-3-nano:4b",
+  "ids": {
+    "gateway_row_count": 1000,
+    "gateway_listed_rows": 200,
+    "note": "the gateway returns at most 200 rows per template, so the 1,000 recall numbers came from the dev-time openFDA page that onboarding cached (the same 1,000 reports); all 200 listed ids are among them, and fda_notice found all 1,000 in Zetaris",
+    "ids_requested": 1000,
+    "not_in_zetaris": 0
+  },
+  "gateway_read_ms": 164556,
+  "cached_notices": 1000,
+  "printing_upc": 505,
+  "scored_notices": 505,
+  "model_json_valid": 505,
+  "model_retried": 0,
+  "upc": {
+    "gold_rule": "TRUE when both readers return the GTIN (literal in the text, GS1 check digit passes); single-reader codes decided by hand (adjudication file); invented = model digits not in the text",
+    "true_in_pool": 705,
+    "agreed_by_both": 616,
+    "single_reader_true": {
+      "scan_only": 85,
+      "model_only": 4
+    },
+    "unadjudicated": 0,
+    "scan": {
+      "precision": 0.996,
+      "recall": 0.994,
+      "tp": 701,
+      "fp": 3,
+      "fn": 4
+    },
+    "model_after_host_check": {
+      "precision": 0.981,
+      "recall": 0.879,
+      "tp": 620,
+      "fp": 12,
+      "fn": 85
+    },
+    "model_raw_codes": 841,
+    "model_raw_precision": 0.757,
+    "model_invented_not_in_text": 21,
+    "model_copied_but_fails_check_digit": 171,
+    "scan_rejected_check_digit": 57
+  },
+  "allergens": {
+    "gold_rule": "the lexicon's reading of the recall reason text; disagreements listed for hand-checking",
+    "notices": 505,
+    "exact_group_match": 407,
+    "groups_agreed": 531,
+    "model_only_groups": 211,
+    "reason_only_groups": 31,
+    "reason_type_agrees_with_lexicon": 488,
+    "disagreements_hand_checked": 98,
+    "hand_check_model_exactly_right": 5,
+    "hand_check_lexicon_exactly_right": 92
+  },
+  "full_read_sample": [
+    {
+      "recall_number": "F-0020-2025",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "F-0534-2025",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "F-0605-2024",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "F-0776-2024",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 0
+    },
+    {
+      "recall_number": "F-1001-2024",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "F-1647-2024",
+      "printed": 0,
+      "missed_by_both": [],
+      "scan_found": 0,
+      "model_found": 0
+    },
+    {
+      "recall_number": "H-0066-2025",
+      "printed": 0,
+      "missed_by_both": [],
+      "scan_found": 0,
+      "model_found": 0
+    },
+    {
+      "recall_number": "H-0099-2026",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 0
+    },
+    {
+      "recall_number": "H-0100-2026",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "H-0156-2026",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "H-0213-2025",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "H-0233-2026",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 0
+    },
+    {
+      "recall_number": "H-0335-2025",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "H-0360-2026",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "H-0362-2025",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "H-0395-2026",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "H-0777-2026",
+      "printed": 0,
+      "missed_by_both": [],
+      "scan_found": 0,
+      "model_found": 0
+    },
+    {
+      "recall_number": "H-0928-2026",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "H-1079-2026",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    },
+    {
+      "recall_number": "H-1125-2026",
+      "printed": 1,
+      "missed_by_both": [],
+      "scan_found": 1,
+      "model_found": 1
+    }
+  ],
+  "timing": {
+    "model_wall_ms_median": 781,
+    "model_wall_ms_p95": 2664,
+    "model_wall_ms_max": 6511,
+    "tokens_per_s_median": 139.8,
+    "tokens_out_median": 91,
+    "run_wall_ms": 684491
+  },
+  "notices_with_misses": [
+    {
+      "recall_number": "H-0024-2027",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-1397-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-1330-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-1192-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-1167-2026",
+      "x_missed": 0,
+      "n_missed": 4
+    },
+    {
+      "recall_number": "H-1168-2026",
+      "x_missed": 0,
+      "n_missed": 4
+    },
+    {
+      "recall_number": "H-1162-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0903-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0854-2026",
+      "x_missed": 1,
+      "n_missed": 0
+    },
+    {
+      "recall_number": "H-0685-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0659-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0615-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0552-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0548-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0517-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0509-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0508-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0506-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0483-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0409-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0399-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0404-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0397-2026",
+      "x_missed": 0,
+      "n_missed": 2
+    },
+    {
+      "recall_number": "H-0384-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0383-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0352-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0233-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0145-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0139-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0103-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0099-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0104-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0034-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0029-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0030-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0037-2026",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0613-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0612-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0635-2025",
+      "x_missed": 0,
+      "n_missed": 3
+    },
+    {
+      "recall_number": "H-0568-2025",
+      "x_missed": 0,
+      "n_missed": 3
+    },
+    {
+      "recall_number": "H-0456-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "H-0063-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0811-2025",
+      "x_missed": 0,
+      "n_missed": 2
+    },
+    {
+      "recall_number": "F-0778-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0762-2025",
+      "x_missed": 1,
+      "n_missed": 0
+    },
+    {
+      "recall_number": "F-0751-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0747-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0704-2025",
+      "x_missed": 1,
+      "n_missed": 0
+    },
+    {
+      "recall_number": "F-0688-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0668-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0670-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0667-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0636-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0608-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0604-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0570-2025",
+      "x_missed": 0,
+      "n_missed": 3
+    },
+    {
+      "recall_number": "F-0467-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0459-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0460-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0458-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0466-2025",
+      "x_missed": 0,
+      "n_missed": 2
+    },
+    {
+      "recall_number": "F-0259-2025",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-1836-2024",
+      "x_missed": 0,
+      "n_missed": 2
+    },
+    {
+      "recall_number": "F-1741-2024",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-1788-2024",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-1640-2024",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-1457-2024",
+      "x_missed": 1,
+      "n_missed": 0
+    },
+    {
+      "recall_number": "F-1426-2024",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-1224-2024",
+      "x_missed": 0,
+      "n_missed": 2
+    },
+    {
+      "recall_number": "F-0934-2024",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0776-2024",
+      "x_missed": 0,
+      "n_missed": 1
+    },
+    {
+      "recall_number": "F-0711-2024",
+      "x_missed": 0,
+      "n_missed": 1
+    }
+  ],
+  "allergen_disagreements": [
+    {
+      "recall_number": "H-1192-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk"
+      ],
+      "reason": [
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "H-1184-2026",
+      "model": [
+        "crustacean",
+        "fish",
+        "soy"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-1182-2026",
+      "model": [
+        "crustacean",
+        "fish",
+        "soy"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-1183-2026",
+      "model": [
+        "crustacean",
+        "egg",
+        "fish",
+        "gluten_cereal",
+        "soy"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-1166-2026",
+      "model": [
+        "milk",
+        "mustard",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1172-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1160-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1159-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1171-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1169-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1165-2026",
+      "model": [
+        "milk",
+        "mustard",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1168-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1173-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1161-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1170-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1163-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1158-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1164-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1162-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-1150-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "soy"
+      ],
+      "reason": [
+        "peanut"
+      ]
+    },
+    {
+      "recall_number": "H-1125-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "sesame",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "peanut"
+      ]
+    },
+    {
+      "recall_number": "H-0941-2026",
+      "model": [
+        "soy"
+      ],
+      "reason": [
+        "crustacean"
+      ]
+    },
+    {
+      "recall_number": "H-0905-2026",
+      "model": [
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-0779-2026",
+      "model": [
+        "gluten_cereal",
+        "milk",
+        "tree_nut"
+      ],
+      "reason": [
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "H-0669-2026",
+      "model": [
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-0682-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "sesame",
+        "tree_nut"
+      ],
+      "reason": [
+        "soy",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-0670-2026",
+      "model": [
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-0654-2026",
+      "model": [
+        "sulphite"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-0655-2026",
+      "model": [
+        "sulphite"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-0659-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "sesame",
+        "soy"
+      ],
+      "reason": [
+        "sesame"
+      ]
+    },
+    {
+      "recall_number": "H-0615-2026",
+      "model": [
+        "gluten_cereal",
+        "soy"
+      ],
+      "reason": [
+        "gluten_cereal",
+        "mustard",
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "H-0547-2026",
+      "model": [
+        "gluten_cereal",
+        "soy"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-0548-2026",
+      "model": [
+        "gluten_cereal",
+        "soy"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-0543-2026",
+      "model": [
+        "gluten_cereal",
+        "peanut",
+        "sesame",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "H-0542-2026",
+      "model": [
+        "peanut",
+        "sesame",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "H-0517-2026",
+      "model": [
+        "egg",
+        "fish",
+        "gluten_cereal",
+        "milk"
+      ],
+      "reason": [
+        "fish"
+      ]
+    },
+    {
+      "recall_number": "H-0509-2026",
+      "model": [
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "H-0505-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "H-0508-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "H-0491-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "soy"
+      ],
+      "reason": [
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-0507-2026",
+      "model": [
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "H-0506-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "H-0395-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "H-0399-2026",
+      "model": [
+        "peanut",
+        "sesame",
+        "tree_nut"
+      ],
+      "reason": [
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "H-0396-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "H-0397-2026",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "H-0364-2026",
+      "model": [
+        "egg",
+        "milk",
+        "peanut",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "H-0226-2026",
+      "model": [
+        "crustacean"
+      ],
+      "reason": [
+        "crustacean",
+        "sulphite"
+      ]
+    },
+    {
+      "recall_number": "H-0227-2026",
+      "model": [
+        "egg",
+        "milk",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "gluten_cereal"
+      ]
+    },
+    {
+      "recall_number": "H-0148-2026",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-0184-2026",
+      "model": [
+        "egg",
+        "gluten_cereal"
+      ],
+      "reason": [
+        "egg"
+      ]
+    },
+    {
+      "recall_number": "H-0027-2026",
+      "model": [
+        "gluten_cereal",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "H-0568-2025",
+      "model": [
+        "sulphite"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "H-0278-2025",
+      "model": [
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "sesame",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "H-0068-2025",
+      "model": [
+        "sulphite"
+      ],
+      "reason": [
+        "crustacean",
+        "sulphite"
+      ]
+    },
+    {
+      "recall_number": "F-0938-2025",
+      "model": [
+        "egg",
+        "milk",
+        "tree_nut"
+      ],
+      "reason": [
+        "gluten_cereal",
+        "sesame"
+      ]
+    },
+    {
+      "recall_number": "F-0811-2025",
+      "model": [
+        "milk",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "F-0810-2025",
+      "model": [
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "sesame",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "F-0809-2025",
+      "model": [
+        "gluten_cereal",
+        "mustard",
+        "peanut",
+        "sesame",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "peanut"
+      ]
+    },
+    {
+      "recall_number": "F-0808-2025",
+      "model": [
+        "gluten_cereal",
+        "mustard",
+        "peanut",
+        "sesame",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "peanut"
+      ]
+    },
+    {
+      "recall_number": "F-0762-2025",
+      "model": [
+        "sesame"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "F-0747-2025",
+      "model": [
+        "crustacean",
+        "fish",
+        "milk"
+      ],
+      "reason": [
+        "egg"
+      ]
+    },
+    {
+      "recall_number": "F-0702-2025",
+      "model": [
+        "egg",
+        "peanut"
+      ],
+      "reason": [
+        "egg"
+      ]
+    },
+    {
+      "recall_number": "F-0695-2025",
+      "model": [
+        "gluten_cereal",
+        "sesame",
+        "soy",
+        "sulphite"
+      ],
+      "reason": [
+        "gluten_cereal",
+        "sesame",
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "F-0636-2025",
+      "model": [
+        "milk",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "F-0564-2025",
+      "model": [
+        "peanut"
+      ],
+      "reason": [
+        "sulphite"
+      ]
+    },
+    {
+      "recall_number": "F-0467-2025",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "soy"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "F-0534-2025",
+      "model": [
+        "fish",
+        "milk"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "F-0466-2025",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "soy"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "F-0147-2025",
+      "model": [
+        "crustacean",
+        "egg",
+        "soy"
+      ],
+      "reason": [
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "F-0098-2025",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "milk",
+        "mustard",
+        "peanut",
+        "sesame",
+        "soy",
+        "sulphite",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "F-0054-2025",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": [
+        "milk",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "F-0003-2025",
+      "model": [
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "sesame",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "gluten_cereal"
+      ]
+    },
+    {
+      "recall_number": "F-0015-2025",
+      "model": [
+        "gluten_cereal"
+      ],
+      "reason": [
+        "gluten_cereal",
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "F-0002-2025",
+      "model": [
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "sesame",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "gluten_cereal"
+      ]
+    },
+    {
+      "recall_number": "F-0021-2025",
+      "model": [
+        "gluten_cereal",
+        "milk",
+        "tree_nut"
+      ],
+      "reason": [
+        "gluten_cereal",
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "F-0016-2025",
+      "model": [
+        "gluten_cereal"
+      ],
+      "reason": [
+        "gluten_cereal",
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "F-0001-2025",
+      "model": [
+        "gluten_cereal",
+        "milk",
+        "peanut",
+        "sesame",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "gluten_cereal"
+      ]
+    },
+    {
+      "recall_number": "F-1739-2024",
+      "model": [
+        "gluten_cereal",
+        "tree_nut"
+      ],
+      "reason": [
+        "peanut"
+      ]
+    },
+    {
+      "recall_number": "F-1640-2024",
+      "model": [
+        "sesame",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "crustacean",
+        "sesame",
+        "soy",
+        "tree_nut"
+      ]
+    },
+    {
+      "recall_number": "F-1426-2024",
+      "model": [
+        "crustacean"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1269-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1271-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1265-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1272-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1266-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1268-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1270-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1267-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1273-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-1254-2024",
+      "model": [
+        "egg",
+        "fish",
+        "sesame",
+        "tree_nut"
+      ],
+      "reason": [
+        "egg"
+      ]
+    },
+    {
+      "recall_number": "F-1224-2024",
+      "model": [
+        "gluten_cereal",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "gluten_cereal",
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "F-1132-2024",
+      "model": [
+        "fish"
+      ],
+      "reason": [
+        "egg",
+        "fish"
+      ]
+    },
+    {
+      "recall_number": "F-1130-2024",
+      "model": [
+        "egg",
+        "gluten_cereal",
+        "soy",
+        "tree_nut"
+      ],
+      "reason": [
+        "gluten_cereal",
+        "milk",
+        "soy"
+      ]
+    },
+    {
+      "recall_number": "F-1099-2024",
+      "model": [
+        "milk",
+        "tree_nut"
+      ],
+      "reason": [
+        "milk"
+      ]
+    },
+    {
+      "recall_number": "F-1001-2024",
+      "model": [
+        "gluten_cereal"
+      ],
+      "reason": [
+        "egg",
+        "gluten_cereal"
+      ]
+    },
+    {
+      "recall_number": "F-0806-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    },
+    {
+      "recall_number": "F-0663-2024",
+      "model": [
+        "tree_nut"
+      ],
+      "reason": []
+    }
+  ],
+  "pending_adjudication": 0
+}

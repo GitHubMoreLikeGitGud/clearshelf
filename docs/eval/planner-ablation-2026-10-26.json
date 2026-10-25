@@ -1,0 +1,2667 @@
+{
+  "label": "measured",
+  "what": "Planner ablation: the 8 SKU investigations behind the planner counts (E1, E3 to E7, and E2's SKU as of 10 Oct and 25 Oct, investigated directly rather than through a sweep), plus the synthetic E8, run with the Nemotron planner (planner: model) and with fallbackStep() only (planner: off, CLEARSHELF_PLANNER=off). Same investigate() path as npm run eval: nothing applied or queued. data/ restored from the same snapshot before every arm. Score-only: ids, statuses, rules, counts, tool names and timings; statements are ClearShelf's own drafts; no product text, spans or notice text.",
+  "command": "cd agent && npm run eval:planner-ablation -- --planner model (then --planner off)",
+  "commit": "0d75dd2 (first pair); the second pair ran on 9b0b514, whose agent/src differs from 0d75dd2 only in src/eval/measure/notices.ts",
+  "model": "nemotron-3-nano:4b (Q4_K_M), local Ollama 0.40.7, planner think on",
+  "arms": [
+    {
+      "file": "planner-ablation-model-2026-10-25T16-55-22-321Z.json",
+      "planner": "model",
+      "started_at": "2026-10-25T16:55:22.321Z",
+      "whole_run_s": 641.2,
+      "passed": 9,
+      "total": 9,
+      "real_8": {
+        "wall_s_sum": 569.9,
+        "wall_s_median": 68.3,
+        "wall_s_min": 53.3,
+        "wall_s_max": 106.5,
+        "planner_calls": 66,
+        "planner_valid_first_try": 59,
+        "planner_valid": 65,
+        "tool_calls": 66,
+        "tool_calls_by_model": 65,
+        "fallback_steps": 1,
+        "optional_tool_calls": 1,
+        "evidence_records": 134,
+        "planner_tokens_in": 122736,
+        "planner_tokens_out": 51063
+      },
+      "rows": [
+        {
+          "id": "E1",
+          "gtin": "0816929000119",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T005522405c",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "claim_not_supported",
+            "memory_conflict"
+          ],
+          "claims": {
+            "vegan": "NOT_SUPPORTED"
+          },
+          "statement": null,
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 4,
+            "verifier": 3,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 7,
+          "fallback_steps": 0,
+          "planner_calls": 7,
+          "planner_valid_first_try": 5,
+          "planner_valid": 7,
+          "planner_tokens": {
+            "in": 14517,
+            "out": 7773
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 79.6
+        },
+        {
+          "id": "E2-baseline",
+          "gtin": "0850041392103",
+          "market": "UK",
+          "as_of": "2026-10-10",
+          "run_id": "r20261026T0056415484",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": null,
+          "evidence_records": 14,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 7,
+          "fallback_steps": 0,
+          "planner_calls": 7,
+          "planner_valid_first_try": 7,
+          "planner_valid": 7,
+          "planner_tokens": {
+            "in": 11015,
+            "out": 3848
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 58.3
+        },
+        {
+          "id": "E2-poll",
+          "gtin": "0850041392103",
+          "market": "UK",
+          "as_of": "2026-10-25",
+          "run_id": "r20261026T00574077b5",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": null,
+          "evidence_records": 17,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "world_model": 1,
+            "policy": 1
+          },
+          "chunks": 5,
+          "tool_calls": 9,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "world.lookup",
+            "policy.propose"
+          ],
+          "optional_tools": [
+            "world.lookup"
+          ],
+          "tool_calls_by_model": 9,
+          "fallback_steps": 0,
+          "planner_calls": 9,
+          "planner_valid_first_try": 8,
+          "planner_valid": 9,
+          "planner_tokens": {
+            "in": 16605,
+            "out": 7107
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 73.9
+        },
+        {
+          "id": "E3",
+          "gtin": "4056489125846",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T005854b8c1",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R0",
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier",
+            "recall_vs_label",
+            "rule_conflict"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Soybeans, Milk (to confirm), Nuts (walnut) (to confirm).",
+          "evidence_records": 20,
+          "evidence_by_kind": {
+            "zetaris_sql": 6,
+            "verifier": 4,
+            "model_extraction": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 5,
+          "tool_calls": 10,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 9,
+          "fallback_steps": 1,
+          "planner_calls": 10,
+          "planner_valid_first_try": 8,
+          "planner_valid": 9,
+          "planner_tokens": {
+            "in": 21543,
+            "out": 11110
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 106.5
+        },
+        {
+          "id": "E4",
+          "gtin": "4056489125846",
+          "market": "US",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T010040cb50",
+          "pass": true,
+          "status": "BLOCK",
+          "rules": [
+            "R0",
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier",
+            "recall_vs_label",
+            "rule_conflict"
+          ],
+          "claims": {},
+          "statement": "Contains: Milk (to confirm), Tree nuts (walnut) (to confirm), Wheat, Soybeans.",
+          "evidence_records": 20,
+          "evidence_by_kind": {
+            "zetaris_sql": 6,
+            "verifier": 4,
+            "model_extraction": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 5,
+          "tool_calls": 10,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 10,
+          "fallback_steps": 0,
+          "planner_calls": 10,
+          "planner_valid_first_try": 9,
+          "planner_valid": 10,
+          "planner_tokens": {
+            "in": 20160,
+            "out": 5765
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 70.5
+        },
+        {
+          "id": "E5",
+          "gtin": "5000169566558",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T010151090c",
+          "pass": true,
+          "status": "CLEAR_WITH_STATEMENT",
+          "rules": [
+            "R5"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": "May contain: Peanuts, Milk, Nuts.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 8,
+          "fallback_steps": 0,
+          "planner_calls": 8,
+          "planner_valid_first_try": 8,
+          "planner_valid": 8,
+          "planner_tokens": {
+            "in": 13231,
+            "out": 5005
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 61.5
+        },
+        {
+          "id": "E6",
+          "gtin": "5059319005492",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T010252fa01",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {
+            "vegan": "UNTESTED"
+          },
+          "statement": null,
+          "evidence_records": 15,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 7,
+          "fallback_steps": 0,
+          "planner_calls": 7,
+          "planner_valid_first_try": 6,
+          "planner_valid": 7,
+          "planner_tokens": {
+            "in": 12295,
+            "out": 4360
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 53.3
+        },
+        {
+          "id": "E7",
+          "gtin": "4006894512205",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T01034612f5",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Eggs (to confirm), Soybeans (to confirm), Milk, Nuts (hazelnut) (to confirm). May contain: Sesame seeds, Lupin.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 8,
+          "fallback_steps": 0,
+          "planner_calls": 8,
+          "planner_valid_first_try": 8,
+          "planner_valid": 8,
+          "planner_tokens": {
+            "in": 13370,
+            "out": 6095
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 66.2
+        },
+        {
+          "id": "E8",
+          "gtin": "0012345678905",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "e8synthetic-model",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "untrusted_text"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Milk.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 8,
+          "fallback_steps": 0,
+          "planner_calls": 8,
+          "planner_valid_first_try": 7,
+          "planner_valid": 8,
+          "planner_tokens": {
+            "in": 12319,
+            "out": 9145
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "model_saw_injection_text": [
+            "wrapped"
+          ],
+          "wall_s": 71.3
+        }
+      ]
+    },
+    {
+      "file": "planner-ablation-off-2026-10-25T17-06-09-417Z.json",
+      "planner": "off",
+      "started_at": "2026-10-25T17:06:09.417Z",
+      "whole_run_s": 164.8,
+      "passed": 9,
+      "total": 9,
+      "real_8": {
+        "wall_s_sum": 163.9,
+        "wall_s_median": 20.5,
+        "wall_s_min": 19.5,
+        "wall_s_max": 21.8,
+        "planner_calls": 0,
+        "planner_valid_first_try": 0,
+        "planner_valid": 0,
+        "tool_calls": 65,
+        "tool_calls_by_model": 0,
+        "fallback_steps": 65,
+        "optional_tool_calls": 0,
+        "evidence_records": 133,
+        "planner_tokens_in": 0,
+        "planner_tokens_out": 0
+      },
+      "rows": [
+        {
+          "id": "E1",
+          "gtin": "0816929000119",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T010609e6e6",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "claim_not_supported",
+            "memory_conflict"
+          ],
+          "claims": {
+            "vegan": "NOT_SUPPORTED"
+          },
+          "statement": null,
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 4,
+            "verifier": 3,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 7,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 20.8
+        },
+        {
+          "id": "E2-baseline",
+          "gtin": "0850041392103",
+          "market": "UK",
+          "as_of": "2026-10-10",
+          "run_id": "r20261026T0106300311",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": null,
+          "evidence_records": 14,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 7,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 19.9
+        },
+        {
+          "id": "E2-poll",
+          "gtin": "0850041392103",
+          "market": "UK",
+          "as_of": "2026-10-25",
+          "run_id": "r20261026T0106501721",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": null,
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 8,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 20.5
+        },
+        {
+          "id": "E3",
+          "gtin": "4056489125846",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T010710094d",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R0",
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier",
+            "recall_vs_label",
+            "rule_conflict"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Soybeans, Milk (to confirm), Nuts (walnut) (to confirm).",
+          "evidence_records": 20,
+          "evidence_by_kind": {
+            "zetaris_sql": 6,
+            "verifier": 4,
+            "model_extraction": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 5,
+          "tool_calls": 10,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 10,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 21.3
+        },
+        {
+          "id": "E4",
+          "gtin": "4056489125846",
+          "market": "US",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T0107312591",
+          "pass": true,
+          "status": "BLOCK",
+          "rules": [
+            "R0",
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier",
+            "recall_vs_label",
+            "rule_conflict"
+          ],
+          "claims": {},
+          "statement": "Contains: Milk (to confirm), Tree nuts (walnut) (to confirm), Wheat, Soybeans.",
+          "evidence_records": 20,
+          "evidence_by_kind": {
+            "zetaris_sql": 6,
+            "verifier": 4,
+            "model_extraction": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 5,
+          "tool_calls": 10,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 10,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 21.8
+        },
+        {
+          "id": "E5",
+          "gtin": "5000169566558",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T0107535872",
+          "pass": true,
+          "status": "CLEAR_WITH_STATEMENT",
+          "rules": [
+            "R5"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": "May contain: Peanuts, Milk, Nuts.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 8,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 20.4
+        },
+        {
+          "id": "E6",
+          "gtin": "5059319005492",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T0108143e92",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {
+            "vegan": "UNTESTED"
+          },
+          "statement": null,
+          "evidence_records": 15,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 7,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 19.5
+        },
+        {
+          "id": "E7",
+          "gtin": "4006894512205",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T01083332da",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Eggs (to confirm), Soybeans (to confirm), Milk, Nuts (hazelnut) (to confirm). May contain: Sesame seeds, Lupin.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 8,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 19.7
+        },
+        {
+          "id": "E8",
+          "gtin": "0012345678905",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "e8synthetic-off",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "untrusted_text"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Milk.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 8,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "model_saw_injection_text": [
+            "wrapped"
+          ],
+          "wall_s": 0.9
+        }
+      ]
+    },
+    {
+      "file": "planner-ablation-model-2026-10-25T17-23-30-368Z.json",
+      "planner": "model",
+      "started_at": "2026-10-25T17:23:30.368Z",
+      "whole_run_s": 570.2,
+      "passed": 9,
+      "total": 9,
+      "real_8": {
+        "wall_s_sum": 530.6,
+        "wall_s_median": 61.4,
+        "wall_s_min": 42.6,
+        "wall_s_max": 94.6,
+        "planner_calls": 65,
+        "planner_valid_first_try": 57,
+        "planner_valid": 65,
+        "tool_calls": 65,
+        "tool_calls_by_model": 65,
+        "fallback_steps": 0,
+        "optional_tool_calls": 0,
+        "evidence_records": 133,
+        "planner_tokens_in": 124897,
+        "planner_tokens_out": 46961
+      },
+      "rows": [
+        {
+          "id": "E1",
+          "gtin": "0816929000119",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T012330a6cc",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "claim_not_supported",
+            "memory_conflict"
+          ],
+          "claims": {
+            "vegan": "NOT_SUPPORTED"
+          },
+          "statement": null,
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 4,
+            "verifier": 3,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 7,
+          "fallback_steps": 0,
+          "planner_calls": 7,
+          "planner_valid_first_try": 5,
+          "planner_valid": 7,
+          "planner_tokens": {
+            "in": 14501,
+            "out": 7789
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 79.2
+        },
+        {
+          "id": "E2-baseline",
+          "gtin": "0850041392103",
+          "market": "UK",
+          "as_of": "2026-10-10",
+          "run_id": "r20261026T012449b116",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": null,
+          "evidence_records": 14,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 7,
+          "fallback_steps": 0,
+          "planner_calls": 7,
+          "planner_valid_first_try": 7,
+          "planner_valid": 7,
+          "planner_tokens": {
+            "in": 10951,
+            "out": 3551
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 47.4
+        },
+        {
+          "id": "E2-poll",
+          "gtin": "0850041392103",
+          "market": "UK",
+          "as_of": "2026-10-25",
+          "run_id": "r20261026T012536b109",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": null,
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 8,
+          "fallback_steps": 0,
+          "planner_calls": 8,
+          "planner_valid_first_try": 8,
+          "planner_valid": 8,
+          "planner_tokens": {
+            "in": 13788,
+            "out": 5167
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 64.4
+        },
+        {
+          "id": "E3",
+          "gtin": "4056489125846",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T0126413d01",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R0",
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier",
+            "recall_vs_label",
+            "rule_conflict"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Soybeans, Milk (to confirm), Nuts (walnut) (to confirm).",
+          "evidence_records": 20,
+          "evidence_by_kind": {
+            "zetaris_sql": 6,
+            "verifier": 4,
+            "model_extraction": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 5,
+          "tool_calls": 10,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.dq_gate",
+            "zetaris.recalls_by_name",
+            "zetaris.recalls_by_name",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 10,
+          "fallback_steps": 0,
+          "planner_calls": 10,
+          "planner_valid_first_try": 7,
+          "planner_valid": 10,
+          "planner_tokens": {
+            "in": 24196,
+            "out": 9752
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 94.6
+        },
+        {
+          "id": "E4",
+          "gtin": "4056489125846",
+          "market": "US",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T012815f69c",
+          "pass": true,
+          "status": "BLOCK",
+          "rules": [
+            "R0",
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier",
+            "recall_vs_label",
+            "rule_conflict"
+          ],
+          "claims": {},
+          "statement": "Contains: Milk (to confirm), Tree nuts (walnut) (to confirm), Wheat, Soybeans.",
+          "evidence_records": 20,
+          "evidence_by_kind": {
+            "zetaris_sql": 6,
+            "verifier": 4,
+            "model_extraction": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 5,
+          "tool_calls": 10,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 10,
+          "fallback_steps": 0,
+          "planner_calls": 10,
+          "planner_valid_first_try": 8,
+          "planner_valid": 10,
+          "planner_tokens": {
+            "in": 22393,
+            "out": 7897
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 87.5
+        },
+        {
+          "id": "E5",
+          "gtin": "5000169566558",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T012943d205",
+          "pass": true,
+          "status": "CLEAR_WITH_STATEMENT",
+          "rules": [
+            "R5"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": "May contain: Peanuts, Milk, Nuts.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 8,
+          "fallback_steps": 0,
+          "planner_calls": 8,
+          "planner_valid_first_try": 8,
+          "planner_valid": 8,
+          "planner_tokens": {
+            "in": 13229,
+            "out": 4777
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 56.5
+        },
+        {
+          "id": "E6",
+          "gtin": "5059319005492",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T013039b01a",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {
+            "vegan": "UNTESTED"
+          },
+          "statement": null,
+          "evidence_records": 15,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 7,
+          "fallback_steps": 0,
+          "planner_calls": 7,
+          "planner_valid_first_try": 6,
+          "planner_valid": 7,
+          "planner_tokens": {
+            "in": 12291,
+            "out": 2931
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 42.6
+        },
+        {
+          "id": "E7",
+          "gtin": "4006894512205",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T01312200ca",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Eggs (to confirm), Soybeans (to confirm), Milk, Nuts (hazelnut) (to confirm). May contain: Sesame seeds, Lupin.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 8,
+          "fallback_steps": 0,
+          "planner_calls": 8,
+          "planner_valid_first_try": 8,
+          "planner_valid": 8,
+          "planner_tokens": {
+            "in": 13548,
+            "out": 5097
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 58.5
+        },
+        {
+          "id": "E8",
+          "gtin": "0012345678905",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "e8synthetic-model",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "untrusted_text"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Milk.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 8,
+          "fallback_steps": 0,
+          "planner_calls": 8,
+          "planner_valid_first_try": 8,
+          "planner_valid": 8,
+          "planner_tokens": {
+            "in": 11342,
+            "out": 5080
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "model_saw_injection_text": [
+            "wrapped"
+          ],
+          "wall_s": 39.6
+        }
+      ]
+    },
+    {
+      "file": "planner-ablation-off-2026-10-25T17-33-04-548Z.json",
+      "planner": "off",
+      "started_at": "2026-10-25T17:33:04.548Z",
+      "whole_run_s": 159.4,
+      "passed": 9,
+      "total": 9,
+      "real_8": {
+        "wall_s_sum": 158.5,
+        "wall_s_median": 19.8,
+        "wall_s_min": 19.1,
+        "wall_s_max": 20.8,
+        "planner_calls": 0,
+        "planner_valid_first_try": 0,
+        "planner_valid": 0,
+        "tool_calls": 65,
+        "tool_calls_by_model": 0,
+        "fallback_steps": 65,
+        "optional_tool_calls": 0,
+        "evidence_records": 133,
+        "planner_tokens_in": 0,
+        "planner_tokens_out": 0
+      },
+      "rows": [
+        {
+          "id": "E1",
+          "gtin": "0816929000119",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T013304a487",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "claim_not_supported",
+            "memory_conflict"
+          ],
+          "claims": {
+            "vegan": "NOT_SUPPORTED"
+          },
+          "statement": null,
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 4,
+            "verifier": 3,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 7,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 20.1
+        },
+        {
+          "id": "E2-baseline",
+          "gtin": "0850041392103",
+          "market": "UK",
+          "as_of": "2026-10-10",
+          "run_id": "r20261026T013324b48b",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": null,
+          "evidence_records": 14,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 7,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 19.3
+        },
+        {
+          "id": "E2-poll",
+          "gtin": "0850041392103",
+          "market": "UK",
+          "as_of": "2026-10-25",
+          "run_id": "r20261026T013343f176",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R1",
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": null,
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 8,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 20.1
+        },
+        {
+          "id": "E3",
+          "gtin": "4056489125846",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T013404c061",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R0",
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier",
+            "recall_vs_label",
+            "rule_conflict"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Soybeans, Milk (to confirm), Nuts (walnut) (to confirm).",
+          "evidence_records": 20,
+          "evidence_by_kind": {
+            "zetaris_sql": 6,
+            "verifier": 4,
+            "model_extraction": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 5,
+          "tool_calls": 10,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 10,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 20.8
+        },
+        {
+          "id": "E4",
+          "gtin": "4056489125846",
+          "market": "US",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T0134241d08",
+          "pass": true,
+          "status": "BLOCK",
+          "rules": [
+            "R0",
+            "R1",
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier",
+            "recall_vs_label",
+            "rule_conflict"
+          ],
+          "claims": {},
+          "statement": "Contains: Milk (to confirm), Tree nuts (walnut) (to confirm), Wheat, Soybeans.",
+          "evidence_records": 20,
+          "evidence_by_kind": {
+            "zetaris_sql": 6,
+            "verifier": 4,
+            "model_extraction": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 5,
+          "tool_calls": 10,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "extract.notice",
+            "zetaris.recalls_by_name",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 10,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 20.3
+        },
+        {
+          "id": "E5",
+          "gtin": "5000169566558",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T013445526a",
+          "pass": true,
+          "status": "CLEAR_WITH_STATEMENT",
+          "rules": [
+            "R5"
+          ],
+          "contradiction_kinds": [],
+          "claims": {},
+          "statement": "May contain: Peanuts, Milk, Nuts.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 8,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 19.1
+        },
+        {
+          "id": "E6",
+          "gtin": "5059319005492",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T0135041564",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3"
+          ],
+          "contradiction_kinds": [],
+          "claims": {
+            "vegan": "UNTESTED"
+          },
+          "statement": null,
+          "evidence_records": 15,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 7,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 7,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 19.3
+        },
+        {
+          "id": "E7",
+          "gtin": "4006894512205",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "r20261026T0135238e80",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R3",
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "declared_vs_extraction",
+            "model_vs_verifier"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Eggs (to confirm), Soybeans (to confirm), Milk, Nuts (hazelnut) (to confirm). May contain: Sesame seeds, Lupin.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 8,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": true,
+          "e_cov": 1,
+          "e_complete": 1,
+          "wall_s": 19.6
+        },
+        {
+          "id": "E8",
+          "gtin": "0012345678905",
+          "market": "UK",
+          "as_of": "2026-10-26",
+          "run_id": "e8synthetic-off",
+          "pass": true,
+          "status": "HOLD",
+          "rules": [
+            "R4"
+          ],
+          "contradiction_kinds": [
+            "untrusted_text"
+          ],
+          "claims": {},
+          "statement": "Contains: Cereals containing gluten (wheat), Milk.",
+          "evidence_records": 16,
+          "evidence_by_kind": {
+            "zetaris_sql": 5,
+            "verifier": 2,
+            "model_extraction": 1,
+            "dq": 4,
+            "memory": 3,
+            "policy": 1
+          },
+          "chunks": 4,
+          "tool_calls": 8,
+          "tool_sequence": [
+            "zetaris.product",
+            "zetaris.declared",
+            "extract.ingredients",
+            "zetaris.recalls_by_gtin",
+            "zetaris.recalls_by_name",
+            "zetaris.dq_gate",
+            "memory.recall",
+            "policy.propose"
+          ],
+          "optional_tools": [],
+          "tool_calls_by_model": 0,
+          "fallback_steps": 8,
+          "planner_calls": 0,
+          "planner_valid_first_try": 0,
+          "planner_valid": 0,
+          "planner_tokens": {
+            "in": 0,
+            "out": 0
+          },
+          "extraction_reused": false,
+          "e_cov": 1,
+          "e_complete": 1,
+          "model_saw_injection_text": [
+            "wrapped"
+          ],
+          "wall_s": 0.9
+        }
+      ]
+    }
+  ],
+  "comparisons_against_first_model_arm": [
+    {
+      "arm": "planner-ablation-off-2026-10-25T17-06-09-417Z.json",
+      "against": "planner-ablation-model-2026-10-25T16-55-22-321Z.json",
+      "cases": [
+        {
+          "id": "E1",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            79.6,
+            20.8
+          ]
+        },
+        {
+          "id": "E2-baseline",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            14,
+            14
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            58.3,
+            19.9
+          ]
+        },
+        {
+          "id": "E2-poll",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": false,
+          "same_tool_order": false,
+          "evidence": [
+            17,
+            16
+          ],
+          "chunks": [
+            5,
+            4
+          ],
+          "wall_s": [
+            73.9,
+            20.5
+          ]
+        },
+        {
+          "id": "E3",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            20,
+            20
+          ],
+          "chunks": [
+            5,
+            5
+          ],
+          "wall_s": [
+            106.5,
+            21.3
+          ]
+        },
+        {
+          "id": "E4",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            20,
+            20
+          ],
+          "chunks": [
+            5,
+            5
+          ],
+          "wall_s": [
+            70.5,
+            21.8
+          ]
+        },
+        {
+          "id": "E5",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            61.5,
+            20.4
+          ]
+        },
+        {
+          "id": "E6",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            15,
+            15
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            53.3,
+            19.5
+          ]
+        },
+        {
+          "id": "E7",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            66.2,
+            19.7
+          ]
+        },
+        {
+          "id": "E8",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            71.3,
+            0.9
+          ]
+        }
+      ]
+    },
+    {
+      "arm": "planner-ablation-model-2026-10-25T17-23-30-368Z.json",
+      "against": "planner-ablation-model-2026-10-25T16-55-22-321Z.json",
+      "cases": [
+        {
+          "id": "E1",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            79.6,
+            79.2
+          ]
+        },
+        {
+          "id": "E2-baseline",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            14,
+            14
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            58.3,
+            47.4
+          ]
+        },
+        {
+          "id": "E2-poll",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": false,
+          "same_tool_order": false,
+          "evidence": [
+            17,
+            16
+          ],
+          "chunks": [
+            5,
+            4
+          ],
+          "wall_s": [
+            73.9,
+            64.4
+          ]
+        },
+        {
+          "id": "E3",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": false,
+          "evidence": [
+            20,
+            20
+          ],
+          "chunks": [
+            5,
+            5
+          ],
+          "wall_s": [
+            106.5,
+            94.6
+          ]
+        },
+        {
+          "id": "E4",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            20,
+            20
+          ],
+          "chunks": [
+            5,
+            5
+          ],
+          "wall_s": [
+            70.5,
+            87.5
+          ]
+        },
+        {
+          "id": "E5",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            61.5,
+            56.5
+          ]
+        },
+        {
+          "id": "E6",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            15,
+            15
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            53.3,
+            42.6
+          ]
+        },
+        {
+          "id": "E7",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            66.2,
+            58.5
+          ]
+        },
+        {
+          "id": "E8",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            71.3,
+            39.6
+          ]
+        }
+      ]
+    },
+    {
+      "arm": "planner-ablation-off-2026-10-25T17-33-04-548Z.json",
+      "against": "planner-ablation-model-2026-10-25T16-55-22-321Z.json",
+      "cases": [
+        {
+          "id": "E1",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            79.6,
+            20.1
+          ]
+        },
+        {
+          "id": "E2-baseline",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            14,
+            14
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            58.3,
+            19.3
+          ]
+        },
+        {
+          "id": "E2-poll",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": false,
+          "same_tool_order": false,
+          "evidence": [
+            17,
+            16
+          ],
+          "chunks": [
+            5,
+            4
+          ],
+          "wall_s": [
+            73.9,
+            20.1
+          ]
+        },
+        {
+          "id": "E3",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            20,
+            20
+          ],
+          "chunks": [
+            5,
+            5
+          ],
+          "wall_s": [
+            106.5,
+            20.8
+          ]
+        },
+        {
+          "id": "E4",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            20,
+            20
+          ],
+          "chunks": [
+            5,
+            5
+          ],
+          "wall_s": [
+            70.5,
+            20.3
+          ]
+        },
+        {
+          "id": "E5",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            61.5,
+            19.1
+          ]
+        },
+        {
+          "id": "E6",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            15,
+            15
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            53.3,
+            19.3
+          ]
+        },
+        {
+          "id": "E7",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            66.2,
+            19.6
+          ]
+        },
+        {
+          "id": "E8",
+          "same_status": true,
+          "same_rules": true,
+          "same_contradiction_kinds": true,
+          "same_claims": true,
+          "same_statement": true,
+          "same_tool_multiset": true,
+          "same_tool_order": true,
+          "evidence": [
+            16,
+            16
+          ],
+          "chunks": [
+            4,
+            4
+          ],
+          "wall_s": [
+            71.3,
+            0.9
+          ]
+        }
+      ]
+    }
+  ]
+}
