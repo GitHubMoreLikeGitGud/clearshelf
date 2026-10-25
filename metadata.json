@@ -58,10 +58,10 @@
     "cloud_model_calls": 0,
     "cloud_model_calls_basis": "by construction: the model client accepts loopback URLs only"
   },
-  "cursor": "ClearShelf was developed in a Cursor workspace with project rules in .cursor/rules and AGENTS.md. Cursor Agent ran the Zetaris JDBC preflight against our local instance; drafted the decision write-back SQL, the per-product Open Food Facts registration template and the DQ rule documentation, with static tests for the SQL; and drafted the multilingual allergen lexicon, the jurisdiction rules, the GTIN normaliser and the claim tester, with their tests. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. After the submission and an upgrade to the Pro plan, Cursor Agent made the runtime tests independent of the date (C9, 25 Oct 2026). See docs/how-cursor-was-used.md.",
+  "cursor": "ClearShelf was developed in a Cursor workspace with project rules in .cursor/rules and AGENTS.md. Cursor Agent ran the Zetaris JDBC preflight against our local instance; drafted the decision write-back SQL, the per-product Open Food Facts registration template and the DQ rule documentation, with static tests for the SQL; and drafted the multilingual allergen lexicon, the jurisdiction rules, the GTIN normaliser and the claim tester, with their tests. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. After the submission and an upgrade to the Pro plan, Cursor Agent made the runtime tests independent of the date (C9, 25 Oct 2026) and wrote the README number check that CI runs (C10, 26 Oct 2026). See docs/how-cursor-was-used.md.",
   "cursor_tasks": {
-    "run_by_cursor_agent": ["G9", "C1", "C2", "C3", "C9"],
-    "cursor_agent_commits": ["6b732e3", "c499ca5", "59cf150", "ac22af3"],
+    "run_by_cursor_agent": ["G9", "C1", "C2", "C3", "C9", "C10"],
+    "cursor_agent_commits": ["6b732e3", "c499ca5", "59cf150", "ac22af3", "b1a4322"],
     "not_run_by_cursor_agent": ["C4", "C5", "C6", "C7", "C8"],
     "details": "docs/how-cursor-was-used.md"
   },

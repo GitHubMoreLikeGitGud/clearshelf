@@ -1,11 +1,11 @@
 # Cursor task files
 
-ClearShelf was developed in a Cursor workspace with project rules in `.cursor/rules`. Larger pieces of work are written up as task files in this folder and handed to Cursor Agent, which runs headless against the repository. Each task file is a self-contained brief: Cursor Agent reads it, does the work, and runs the listed checks until they pass. The task files and their commits are the record of how Cursor was used; the summary is [`docs/how-cursor-was-used.md`](../how-cursor-was-used.md). Cursor Agent ran G9, C1, C2 and C3. The Cursor Free plan reached its usage limit during C3, so C4 to C8 were not run by Cursor Agent: the work they describe was done outside Cursor Agent, or not done, as the index below says. After an upgrade to the Cursor Pro plan, Cursor Agent ran C9 on 25 Oct 2026, after the submission.
+ClearShelf was developed in a Cursor workspace with project rules in `.cursor/rules`. Larger pieces of work are written up as task files in this folder and handed to Cursor Agent, which runs headless against the repository. Each task file is a self-contained brief: Cursor Agent reads it, does the work, and runs the listed checks until they pass. The task files and their commits are the record of how Cursor was used; the summary is [`docs/how-cursor-was-used.md`](../how-cursor-was-used.md). Cursor Agent ran G9, C1, C2 and C3. The Cursor Free plan reached its usage limit during C3, so C4 to C8 were not run by Cursor Agent: the work they describe was done outside Cursor Agent, or not done, as the index below says. After an upgrade to the Cursor Pro plan, Cursor Agent ran C9 on 25 Oct 2026 and C10 on 26 Oct 2026, after the submission.
 
 ## File naming
 
 - One file per task: `Cn-<short-slug>.md`, for example `C3-lexicon-and-verifiers.md`.
-- `n` is the task number from the build plan (C1 to C8; C9 was added after the submission). Numbers are never reused; a task that needs a second pass gets a new section in the same file, not a new number.
+- `n` is the task number from the build plan (C1 to C8; C9 and C10 were added after the submission). Numbers are never reused; a task that needs a second pass gets a new section in the same file, not a new number.
 - This `README.md` describes the convention and is not a task.
 
 ## Sections in a task file
@@ -56,3 +56,4 @@ From the repository root, in PowerShell:
 | C7 | C7-readme-drafts.md | README and how-cursor-was-used drafts | **not run by Cursor Agent** (usage limit); both files were written outside Cursor Agent |
 | C8 | C8-rehearsal-fixes.md | interactive fixes during rehearsal | **not run** (usage limit; task file not written) |
 | C9 | C9-clock-independent-tests.md | an optional `today` on the runtime, pinned in the runtime tests, so the suite passes on any day | done 2026-10-25 on the Pro plan: 81.4 s, exit 0; `npm test` 419 of 419 and the type check clean, also with the clock moved 60 days later; committed unchanged, no corrections |
+| C10 | C10-readme-number-check.md | a script and `npm run check:readme` that recompute the README's headline numbers from `docs/eval/*.json` and fail on a mismatch | done 2026-10-26 on the Pro plan: 322 s, exit 0; 11 of 11 checks pass, an altered README copy fails; `npm test` 421 of 421; committed unchanged; CI runs it |
