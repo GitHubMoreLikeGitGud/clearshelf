@@ -86,10 +86,13 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
   .s1 .brand { position: absolute; left: 96px; top: 250px; font: 700 112px/1 var(--font-display); letter-spacing: -0.01em; color: var(--ink); }
   .s1 .tagline { position: absolute; left: 96px; top: 392px; width: 760px; font-size: 33px; line-height: 1.35; color: var(--ink); }
   .s1 .meta { position: absolute; left: 96px; top: 560px; width: 760px; }
-  .s1 .meta div { display: flex; gap: 14px; padding: 13px 0; border-top: 1px solid var(--rule); font-size: 21px; line-height: 1.4; }
+  .s1 .meta div { display: flex; gap: 14px; padding: 11px 0; border-top: 1px solid var(--rule); font-size: 21px; line-height: 1.38; }
   .s1 .meta div b { width: 132px; flex: none; font-family: var(--font-display); color: var(--accent); }
-  .s1 .team { position: absolute; left: 96px; top: 930px; font: 600 24px/1 var(--font-display); color: var(--ink-2); }
+  .s1 .team { position: absolute; left: 96px; top: 962px; font: 600 24px/1 var(--font-display); color: var(--ink-2); }
   .s1 .hero { position: absolute; left: 920px; top: 196px; width: 904px; }
+  .s1 .links { position: absolute; left: 920px; top: 760px; width: 904px; font-size: 20px; line-height: 1.6; }
+  .s1 .links b, .lic .links b { font-family: var(--font-display); color: var(--accent); display: inline-block; width: 130px; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--rule-strong); }
 
   /* flow band */
   .flow { display: flex; align-items: stretch; gap: 0; }
@@ -140,12 +143,14 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
     <div><b>Zetaris</b><span>The data harness: Open Food Facts, openFDA and UK FSA read only through Lightning SQL; the clearance USL's data-quality rules gate every clearance.</span></div>
     <div><b>Meterless</b><span>Markovian investigation loop, H-MEM memory and ledger, World Model timeline, Scout-style signed execution contracts.</span></div>
     <div><b>NVIDIA</b><span>Nemotron 3 Nano 4B on a local GPU reads labels and notices and plans each investigation. 0 cloud model calls.</span></div>
+    <div><b>Cursor</b><span>Developed in a Cursor workspace with project rules; Cursor Agent ran six tasks, among them the CI check on the README's numbers.</span></div>
   </div>
   <div class="team">Umar Mohktar, Singapore - solo</div>
   <figure class="hero" style="top:410px">
     <img class="shot" src="../img/hero-puffs-top.png" style="width:904px" alt="ClearShelf SKU card for Plant-Based Puffs, UK, held automatically on rules R1, R3 and R4, with evidence chips">
-    <figcaption>The SKU card for Plant-Based Puffs (UK): held automatically on an FDA milk recall, a missing ingredient list and a vegan claim the recall contradicts. Local ClearShelf UI, 23 Oct 2026.</figcaption>
+    <figcaption>The SKU card for Plant-Based Puffs (UK): held automatically on an FDA milk recall, a missing ingredient list and a vegan claim the recall contradicts. Local ClearShelf UI, 23 Oct 2026; times show the browser's zone (GMT+8 here, UK time in the video).</figcaption>
   </figure>
+  <div class="links"><div><b>Code</b> <a href="https://github.com/GitHubMoreLikeGitGud/clearshelf">github.com/GitHubMoreLikeGitGud/clearshelf</a></div><div><b>Demo video</b> <a href="https://youtu.be/9ggEvsDBWl4">youtu.be/9ggEvsDBWl4</a></div></div>
   <div class="foot"><span class="src">Data: Open Food Facts (ODbL 1.0), openFDA (public domain / CC0, not endorsed by the FDA), UK FSA (Open Government Licence v3.0).</span><span class="pg">1 / 12</span></div>
 </section>
 
@@ -165,8 +170,8 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
       </div>
       <div class="row" style="gap:20px">
         <div class="stat" style="flex:1"><div class="v">6,325</div><div class="k">openFDA food enforcement reports whose recall reason matches "undeclared"</div><div class="m">842 of the newest 1,000 concern an allergen; counted 23 Oct 2026</div></div>
-        <div class="stat" style="flex:1"><div class="v">~7 a month</div><div class="k">UK FSA allergy alerts: 200 from 8 Jul 2024 to 21 Oct 2026</div><div class="m">counted in Zetaris and in the source JSON: equal</div></div>
-        <div class="stat" style="flex:1"><div class="v">17 of 17</div><div class="k">catalogue listings whose barcode an FDA recall names, held or blocked automatically</div><div class="m">the 30-product catalogue includes 14 barcodes taken from FDA recalls; none proposed for clearance</div></div>
+        <div class="stat" style="flex:1"><div class="v">Class I</div><div class="k">the Puffs recall: FDA's class for "a reasonable probability" of "serious adverse health consequences or death"</div><div class="m">FDA recall classes, 21 CFR 7.3(m)</div></div>
+        <div class="stat" style="flex:1"><div class="v">17 of 17</div><div class="k">catalogue listings whose barcode an FDA recall names, held or blocked automatically</div><div class="m">a planted set: the 30-product catalogue includes 14 barcodes taken from FDA recalls</div></div>
       </div>
       <p class="lead" style="margin-top:8px">ClearShelf reconciles these sources for each product and market, cites every claim, holds anything unsettled on its own, and clears only with the officer's signature.</p>
     </div>
@@ -180,8 +185,8 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
 
 <!-- 3. Why an agent -->
 <section class="slide">
-  <div class="eyebrow">Why this needs an agent</div>
-  <h2 class="title">Reading, contradictions, memory and risk need an agent</h2>
+  <div class="eyebrow">What the agent does</div>
+  <h2 class="title">Reading, contradictions, memory and risk, with rules that decide</h2>
   <div class="body">
     <div class="row" style="gap:24px">
       <div class="card" style="flex:1"><h4><span class="num">1</span>Read, don't keyword-match</h4><p>Cocoa butter is not milk. "May contain" is precautionary. Labels arrive in German, French and Italian.</p></div>
@@ -197,11 +202,11 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
       <div class="col" style="flex:1; gap:14px">
         <div class="stat"><div class="v">5/15 &rarr; 0/15</div><div class="k">trap false alarms, keyword baseline against Nemotron</div></div>
         <div class="stat"><div class="v">0/27 &rarr; 18/27</div><div class="k">"may contain" read as exactly may-contain</div></div>
-        <p class="small muted">Measured on 27 SKUs, 23 Oct 2026 (docs/eval-report.md, section 3).</p>
+        <p class="small muted">Measured on 27 SKUs, 23 Oct 2026 (docs/eval-report.md, section 3). The lexicon verifier alone, no model: 1/15 and 26/27, partly because the reference labels use its word list (slide 8).</p>
       </div>
     </div>
   </div>
-  <div class="foot"><span class="src">A single prompt cannot query anything; a script cannot weigh a crowd-sourced vegan claim against a lab-tested recall and an earlier ruling. Trap words scored: cocoa butter, cream of tartar, lactic acid, plant milks, coconut, nutmeg, shea, buckwheat, maltodextrin.</span><span class="pg">3 / 12</span></div>
+  <div class="foot"><span class="src">Rules decide: with the planner switched off, the 8 test investigations reached the same decisions. The model is a second reader whose disagreements hold the listing, and it writes a note per step. Trap words scored: cocoa butter, cream of tartar, lactic acid, plant milks, coconut, nutmeg, shea, buckwheat, maltodextrin.</span><span class="pg">3 / 12</span></div>
 </section>
 
 <!-- 4. Solution walkthrough -->
@@ -407,7 +412,7 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
       </div>
     </div>
     <div class="row" style="margin-top:12px; gap:20px">
-      <div class="panel" style="flex:1; padding:14px 18px"><h4>Recall notices, all that print a barcode</h4><p class="small">505 FDA notices: UPC precision / recall 0.996 / 0.994 for the GS1 scan, 0.981 / 0.879 for Nemotron. The scan and the lexicon decide; the model found 4 codes the scan missed.</p></div>
+      <div class="panel" style="flex:1; padding:14px 18px"><h4>Recall notices, all that print a barcode</h4><p class="small">505 FDA notices: UPC P / R 0.996 / 0.994 for the GS1 scan, 0.981 / 0.879 for Nemotron. The scan and the lexicon decide; the model found the scan's 4 misses (705 of 705 together, pooled).</p></div>
       <div class="panel" style="flex:1; padding:14px 18px"><h4>Thinking, measured per job</h4><p class="small">Thinking on: 10/10 planner replies valid, but only 2/10 extractions (the reasoning hit the 4,096-token cap). So the planner thinks; extraction does not.</p></div>
       <div class="panel" style="flex:1; padding:14px 18px"><h4>Planner switched off</h4><p class="small">Same decision, rules and statement in all 8 investigations, two runs each, 3.3 to 3.5 times faster: the decision does not depend on the model's plan. The planner adds a note per step.</p></div>
     </div>
@@ -474,7 +479,7 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
           <tr><td>Agent tests / gateway tests</td><td class="n">421 / 199 pass (4 skipped)</td></tr>
         </tbody>
       </table>
-      <p class="small muted" style="margin-top:12px">E8 is a synthetic injection fixture, labelled and eval-only. E2 is a replay and is labelled as one on every row it writes.</p>
+      <p class="small muted" style="margin-top:12px">A scenario passes on the exact decision and the rules it expects, written by the author; five also fired other rules (docs/eval-report.md, section 1). E8 is a synthetic injection fixture, labelled and eval-only. E2 is a replay and is labelled as one on every row it writes.</p>
     </div>
     <figure style="flex:1">
       <img class="shot" src="../img/darkchoc-sign.png" style="width:100%" alt="Officer actions panel showing exactly what the officer signs for the Dark Chocolate clearance">
@@ -516,7 +521,7 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
   <h2 class="title">Built in a Cursor workspace; every source attributed</h2>
   <div class="body row" style="gap:48px">
     <div class="col" style="width:960px; gap:20px">
-      <div class="quote" style="font-size:21px">ClearShelf was developed in a Cursor workspace with project rules in <code>.cursor/rules</code> and <code>AGENTS.md</code>. Cursor Agent ran the Zetaris JDBC preflight against our local instance. It drafted the decision write-back SQL, the per-product Open Food Facts registration template and the DQ rule documentation, with static tests for the SQL. It also drafted the multilingual allergen lexicon, the jurisdiction rules, the GTIN normaliser and the claim tester, with their tests. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. After an upgrade to the Pro plan, Cursor Agent ran C9 on 25 Oct 2026: clock-independent runtime tests. Every Cursor task, its commit and what was corrected afterwards are listed in <code>docs/how-cursor-was-used.md</code>.</div>
+      <div class="quote" style="font-size:21px">ClearShelf was developed in a Cursor workspace with project rules in <code>.cursor/rules</code> and <code>AGENTS.md</code>. Cursor Agent ran the Zetaris JDBC preflight against our local instance and drafted the SQL, verifier and test work in the table. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. After an upgrade to the Pro plan it ran C9 (25 Oct 2026) and C10 (26 Oct 2026), which CI runs on every push. Every Cursor task, its commit and what was corrected afterwards are listed in <code>docs/how-cursor-was-used.md</code>.</div>
       <table class="t">
         <thead><tr><th style="white-space:nowrap">Cursor Agent run</th><th>Scope</th></tr></thead>
         <tbody>
@@ -525,6 +530,7 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
           <tr><td>C2</td><td>Decision write-back SQL, Open Food Facts registration template, DQ rule documentation, static SQL tests</td></tr>
           <tr><td>C3</td><td>Multilingual allergen lexicon, jurisdiction rules, GTIN normaliser, claim tester, with tests</td></tr>
           <tr><td>C9</td><td>Clock-independent runtime tests (after the submission, Pro plan)</td></tr>
+          <tr><td>C10</td><td>CI check that each README headline number matches its committed measurement in docs/eval (Pro plan)</td></tr>
         </tbody>
       </table>
       <div class="panel">
@@ -542,6 +548,7 @@ table.t.tight th, table.t.tight td { padding: 5px 12px; }
       <div><b>NVIDIA Nemotron</b> 3 Nano: NVIDIA Open Model License; weights not redistributed.</div>
       <div><b>ClearShelf</b>: Apache-2.0.</div>
       <div style="margin-top:12px; font: 600 24px/1.3 var(--font-display); color: var(--ink)">Umar Mohktar, Singapore - solo</div>
+      <div class="links" style="border-top:none; font-size:19px; line-height:1.6"><b>Code</b> <a href="https://github.com/GitHubMoreLikeGitGud/clearshelf">github.com/GitHubMoreLikeGitGud/clearshelf</a><br><b>Demo video</b> <a href="https://youtu.be/9ggEvsDBWl4">youtu.be/9ggEvsDBWl4</a></div>
     </div>
   </div>
   <div class="foot"><span class="src">Open Agent Hackathon 2026 (GenAI.Works), Track 3: Reasoning Architecture.</span><span class="pg">12 / 12</span></div>
