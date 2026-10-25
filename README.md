@@ -221,7 +221,7 @@ The Day-0 bench chose these settings. With think on, extraction gave valid JSON 
 
 ## How Cursor was used
 
-ClearShelf was developed in a Cursor workspace with project rules in `.cursor/rules` and `AGENTS.md`. Cursor Agent ran the Zetaris JDBC preflight against our local instance. It drafted the decision write-back SQL, the per-product Open Food Facts registration template and the DQ rule documentation, with static tests for the SQL. It also drafted the multilingual allergen lexicon, the jurisdiction rules, the GTIN normaliser and the claim tester, with their tests. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. Every Cursor task, its commit and what was corrected afterwards are listed in [`docs/how-cursor-was-used.md`](docs/how-cursor-was-used.md).
+ClearShelf was developed in a Cursor workspace with project rules in `.cursor/rules` and `AGENTS.md`. Cursor Agent ran the Zetaris JDBC preflight against our local instance. It drafted the decision write-back SQL, the per-product Open Food Facts registration template and the DQ rule documentation, with static tests for the SQL. It also drafted the multilingual allergen lexicon, the jurisdiction rules, the GTIN normaliser and the claim tester, with their tests. Its Free plan then reached its usage limit, so the remaining planned Cursor tasks were not run by Cursor Agent. After the submission and an upgrade to the Pro plan, Cursor Agent made the runtime tests independent of the date (C9). Every Cursor task, its commit and what was corrected afterwards are listed in [`docs/how-cursor-was-used.md`](docs/how-cursor-was-used.md).
 
 ## Evaluation
 
