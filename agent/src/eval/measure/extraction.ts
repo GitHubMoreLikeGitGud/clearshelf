@@ -1,8 +1,10 @@
-// SPEC 9.2 extraction measurement: systems K (keyword baseline), N (Nemotron's grounded spans)
-// and N+V (the spans the lexicon verifier agrees with), scored against the manifest's reference
-// labels (`label_text`). The numbers in docs/eval-report.md section 3 come from this script.
-// Its output keeps only group labels and counts, never the label text or spans. One model call
-// per SKU, one at a time, after a free-RAM check (the PC runs other model work).
+// SPEC 9.2 extraction measurement: systems K (keyword baseline), L (the deterministic lexicon
+// verifier alone, no model), N (Nemotron's grounded spans) and N+V (the spans the lexicon
+// verifier agrees with), scored against the manifest's reference labels (`label_text`), overall
+// and per label language. The numbers in docs/eval-report.md section 3 and docs/nemotron-bench.md
+// come from this script. Its output keeps only group labels and counts, never the label text or
+// spans. One model call per SKU, one at a time, after a free-RAM check (the PC runs other model
+// work). CLEARSHELF_MODEL picks the model (default nemotron-3-nano:4b, Q4_K_M).
 //
 //   cd agent && npx tsx src/eval/measure/extraction.ts [limit]
 
@@ -14,7 +16,7 @@ import { loadConfig, REPO_ROOT_URL } from "../../config.ts";
 import { scanText, wrapUntrusted } from "../../contract/guard.ts";
 import { allergenDisagreements, extractIngredients, verifiedAllergens } from "../../extract/ingredients.ts";
 import { OllamaClient } from "../../llm/ollama.ts";
-import { keywordBaseline } from "../../verify/lexicon.ts";
+import { keywordBaseline, lexiconScan } from "../../verify/lexicon.ts";
 import { GatewayClient, rowsAsObjects } from "../../zetaris/client.ts";
 
 export const GROUPS = ["milk", "egg", "fish", "crustacean", "mollusc", "tree_nut", "peanut", "gluten_cereal", "wheat", "soy", "sesame", "celery", "mustard", "lupin", "sulphite"] as const;
@@ -57,12 +59,14 @@ export interface SkuRecord {
   K: Record<Group, Label>;
   N: Record<Group, Label>;
   NV: Record<Group, Label>;
+  /** The lexicon verifier alone: its contains and may-contain hits, traps and free-from claims masked. */
+  L?: Record<Group, Label>;
 }
 
 const rate = (n: number, d: number): number | null => (d ? n / d : null);
 
 /** Precision/recall of `contains` per group (support >= 3) and micro, trap false alarms, precautionary accuracy. */
-export function score(sys: "K" | "N" | "NV", recs: SkuRecord[]) {
+export function score(sys: "K" | "N" | "NV" | "L", recs: SkuRecord[]) {
   const per: Record<string, { tp: number; fp: number; fn: number; support: number }> = {};
   let tp = 0,
     fp = 0,
@@ -78,7 +82,7 @@ export function score(sys: "K" | "N" | "NV", recs: SkuRecord[]) {
       const ref = r.reference[g];
       if (!ref || ref === "unscored") continue;
       scored++;
-      const got = r[sys][g];
+      const got = r[sys]?.[g] ?? "none";
       const p = (per[g] ??= { tp: 0, fp: 0, fn: 0, support: 0 });
       if (ref === "contains") p.support++;
       if (ref === "contains" && got === "contains") {
@@ -176,6 +180,9 @@ async function main(): Promise<void> {
       await new Promise((ok) => setTimeout(ok, 10_000));
     }
     const g = scanText(text, "off:ingredients_text");
+    const lt = performance.now();
+    const lex = lexiconScan(text.normalize("NFC")).filter((h) => h.relation === "contains" || h.relation === "may_contain");
+    const lexiconMs = performance.now() - lt;
     const res = await extractIngredients(text, ollama, g.hit ? wrapUntrusted(text, "off:ingredients_text") : undefined);
     const dis = allergenDisagreements(res.agreement, text);
     records.push({
@@ -189,6 +196,8 @@ async function main(): Promise<void> {
       K: labels(keywordBaseline(text).map((h) => ({ group: h.group, relation: "contains" }))),
       N: labels(res.spans.map((x) => ({ group: x.allergen_group, relation: x.relation }))),
       NV: labels(verifiedAllergens(res.agreement).map((x) => ({ group: x.group, relation: x.relation }))),
+      L: labels(lex.map((h) => ({ group: h.group, relation: h.relation }))),
+      lexicon_ms: Math.round(lexiconMs * 100) / 100,
       model: { ok: res.ok, attempts: res.model.attempts, tokens_in: res.model.tokens_in, tokens_out: res.model.tokens_out, tokens_per_s: res.model.tokens_per_s, eval_ms: res.model.eval_ms, label: "measured" },
       spans_grounded: res.spans.length,
       spans_dropped: res.ungrounded.length,
@@ -206,10 +215,17 @@ async function main(): Promise<void> {
   await new Promise((ok) => setTimeout(ok, 3000));
   const freeUnloaded = Math.round(os.freemem() / 1048576);
 
-  type Rec = (typeof records)[number] & { model: { ok: boolean; attempts: number; tokens_per_s?: number }; disagreements: number; spans_grounded: number; spans_dropped: number; extraction_wall_ms: number; sku_wall_ms: number };
+  type Rec = (typeof records)[number] & { model: { ok: boolean; attempts: number; tokens_per_s?: number }; disagreements: number; spans_grounded: number; spans_dropped: number; extraction_wall_ms: number; sku_wall_ms: number; lexicon_ms: number };
   const recs = records as Rec[];
   const ml = recs.filter((r) => r.lang && r.lang !== "en");
   const flagged = recs.filter((r) => r.disagreements > 0).length;
+  const langs = [...new Set(recs.map((r) => r.lang ?? "unknown"))].sort();
+  const byLanguage = Object.fromEntries(
+    langs.map((l) => {
+      const sub = recs.filter((r) => (r.lang ?? "unknown") === l);
+      return [l, { skus: sub.length, K: score("K", sub).micro, L: score("L", sub).micro, N: score("N", sub).micro, "N+V": score("NV", sub).micro }];
+    }),
+  );
   const out = {
     generated_at: new Date().toISOString(),
     model: ollama.model,
@@ -218,8 +234,9 @@ async function main(): Promise<void> {
     skus_in_eval: skus.length,
     measured: recs.length,
     not_measured: notMeasured,
-    systems: { K: score("K", recs), N: score("N", recs), "N+V": score("NV", recs) },
-    multilingual: { skus: ml.length, langs: [...new Set(ml.map((r) => r.lang))], K: score("K", ml).micro, N: score("N", ml).micro, "N+V": score("NV", ml).micro },
+    systems: { K: score("K", recs), L: score("L", recs), N: score("N", recs), "N+V": score("NV", recs) },
+    multilingual: { skus: ml.length, langs: [...new Set(ml.map((r) => r.lang))], K: score("K", ml).micro, L: score("L", ml).micro, N: score("N", ml).micro, "N+V": score("NV", ml).micro },
+    by_language: byLanguage,
     json_validity: { calls: recs.length, valid_first_attempt: recs.filter((r) => r.model.ok && r.model.attempts === 1).length, valid_at_all: recs.filter((r) => r.model.ok).length },
     nv_flag_rate: { skus_flagged: flagged, skus: recs.length, rate: rate(flagged, recs.length) },
     grounding: { grounded: recs.reduce((a, r) => a + r.spans_grounded, 0), dropped: recs.reduce((a, r) => a + r.spans_dropped, 0) },
@@ -227,6 +244,7 @@ async function main(): Promise<void> {
       median_tokens_per_s: median(recs.map((r) => r.model.tokens_per_s ?? Number.NaN)),
       median_extraction_s: (median(recs.map((r) => r.extraction_wall_ms)) ?? 0) / 1000,
       median_sku_s: (median(recs.map((r) => r.sku_wall_ms)) ?? 0) / 1000,
+      median_lexicon_ms: median(recs.map((r) => r.lexicon_ms)),
       total_s: Math.round(performance.now() - t0) / 1000,
     },
     vram: {
